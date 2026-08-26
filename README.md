@@ -26,6 +26,21 @@ A gallery of full-screen animated backgrounds. Each scene is its own page with l
 2. Press **Space** to open settings. Change colors, speed, density, and other scene-specific options.
 3. Press **Space** again to hide the panel. **Reset** restores the defaults.
 4. Settings are saved per background in `localStorage`, so they persist on the next visit.
+5. **Copy iframe** copies a full-screen embed of the scene with your current colors and settings baked into the URL. Paste it on another page and put your own content on top. The embed uses the `cfg` in the URL, not the visitor’s saved preferences.
+
+## Embed
+
+Open any scene, press **Space**, set colors and sliders, then **Copy iframe**. The clipboard gets a full-viewport snippet like:
+
+```html
+<iframe
+  src="https://ccavins.github.io/Dynamic_Backgrounds/backgrounds/ocean.html?embed=1&cfg=..."
+  style="position:fixed;inset:0;width:100%;height:100%;border:0;z-index:-1"
+  title="Ocean"
+></iframe>
+```
+
+Paste it on another page and layer your own content on top. The `cfg` value is the configured look. Embedded pages hide the gallery button and settings, and they do not read or write the visitor’s `localStorage`.
 
 ## Run locally
 

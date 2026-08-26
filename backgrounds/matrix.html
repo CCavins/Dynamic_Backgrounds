@@ -3,11 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script>
-        if (new URLSearchParams(location.search).has('preview')) {
-            document.documentElement.classList.add('preview');
-        }
-    </script>
+    <script src="embed.js"></script>
     <title>Matrix Rain</title>
     <style>
         body {
@@ -167,7 +163,8 @@
             background: #fff;
             cursor: pointer;
         }
-        #reset {
+        #reset,
+        #copy-iframe {
             width: 100%;
             margin-top: 4px;
             font: inherit;
@@ -180,13 +177,17 @@
             padding: 6px 0;
             cursor: pointer;
         }
-        #reset:hover {
+        #reset:hover,
+        #copy-iframe:hover {
             color: #fff;
             border-color: rgba(255, 255, 255, 0.3);
         }
         html.preview #home,
         html.preview #menu,
-        html.preview #loading {
+        html.preview #loading,
+        html.embed #home,
+        html.embed #menu,
+        html.embed #loading {
             display: none !important;
         }
     </style>
@@ -242,6 +243,7 @@
         </div>
 
         <button type="button" id="reset">RESET</button>
+        <button type="button" id="copy-iframe">COPY IFRAME</button>
     </aside>
     <canvas id="canvas"></canvas>
 
@@ -266,7 +268,7 @@
 
         function loadSettings() {
             try {
-                const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+                const data = window.BGEmbed ? BGEmbed.rawData(STORAGE_KEY) : JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
                 if (!data || typeof data !== 'object') return { ...DEFAULTS };
 
                 return {
@@ -454,9 +456,8 @@
             glyphSize: document.getElementById('glyph-size-out')
         };
 
-        function persist() {
-            if (document.documentElement.classList.contains('preview')) return;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        function currentSettings() {
+            return {
                 glyphColor: fields.glyphColor.value,
                 headColor: fields.headColor.value,
                 bgColor: fields.bgColor.value,
@@ -464,7 +465,12 @@
                 density: Number(fields.density.value),
                 trail: Number(fields.trail.value),
                 glyphSize: Number(fields.glyphSize.value)
-            }));
+            };
+        }
+
+        function persist() {
+            if (window.BGEmbed && !BGEmbed.shouldPersist) return;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentSettings()));
         }
 
         function applySettings(shouldPersist = true) {
@@ -512,6 +518,7 @@
         }
 
         document.getElementById('reset').addEventListener('click', resetSettings);
+        if (window.BGEmbed) BGEmbed.bindCopyButton(document.getElementById('copy-iframe'), currentSettings, 'Matrix Rain');
 
         document.addEventListener('keydown', (event) => {
             if (event.code !== 'Space' || event.repeat) return;

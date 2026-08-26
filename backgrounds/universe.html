@@ -3,11 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script>
-        if (new URLSearchParams(location.search).has('preview')) {
-            document.documentElement.classList.add('preview');
-        }
-    </script>
+    <script src="embed.js"></script>
     <title>Universe</title>
     <style>
         body {
@@ -256,7 +252,8 @@
         .toggle-row input:checked + .switch::after {
             transform: translateX(14px);
         }
-        #reset {
+        #reset,
+        #copy-iframe {
             width: 100%;
             margin-top: 4px;
             font: inherit;
@@ -269,13 +266,17 @@
             padding: 6px 0;
             cursor: pointer;
         }
-        #reset:hover {
+        #reset:hover,
+        #copy-iframe:hover {
             color: #fff;
             border-color: rgba(255, 255, 255, 0.3);
         }
         html.preview #home,
         html.preview #menu,
-        html.preview #loading {
+        html.preview #loading,
+        html.embed #home,
+        html.embed #menu,
+        html.embed #loading {
             display: none !important;
         }
     </style>
@@ -376,6 +377,7 @@
         </div>
 
         <button type="button" id="reset">RESET</button>
+        <button type="button" id="copy-iframe">COPY IFRAME</button>
     </aside>
     <div id="canvas-container"></div>
 
@@ -430,7 +432,7 @@
 
         function loadSettings() {
             try {
-                const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+                const data = window.BGEmbed ? BGEmbed.rawData(STORAGE_KEY) : JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
                 if (!data || typeof data !== 'object') return { ...DEFAULTS, starColors: [...DEFAULTS.starColors] };
 
                 const starColors = Array.isArray(data.starColors)
@@ -770,9 +772,8 @@
             size: document.getElementById('size-out')
         };
 
-        function persist() {
-            if (document.documentElement.classList.contains('preview')) return;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        function currentSettings() {
+            return {
                 palette: presetBar.querySelector('button.active')?.dataset.palette || null,
                 starColors: starColorInputs.map((input) => input.value),
                 bgColor: fields.bgColor.value,
@@ -786,7 +787,12 @@
                 density: Number(fields.density.value),
                 size: Number(fields.size.value),
                 followCursor: fields.followCursor.checked
-            }));
+            };
+        }
+
+        function persist() {
+            if (window.BGEmbed && !BGEmbed.shouldPersist) return;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentSettings()));
         }
 
         const starColorInputs = settings.starColors.map((hex, index) => {
@@ -924,6 +930,7 @@
         }
 
         document.getElementById('reset').addEventListener('click', resetSettings);
+        if (window.BGEmbed) BGEmbed.bindCopyButton(document.getElementById('copy-iframe'), currentSettings, 'Universe');
 
         fields.nebulaA.value = settings.nebulaA;
         fields.nebulaB.value = settings.nebulaB;
