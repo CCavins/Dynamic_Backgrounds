@@ -278,11 +278,6 @@
                 <input type="range" id="speed" min="0" max="3" step="0.05" value="1">
                 <output id="speed-out">1.00</output>
             </div>
-            <label class="toggle-row">
-                <span>Mouse repel</span>
-                <input type="checkbox" id="mouse-repel">
-                <span class="switch"></span>
-            </label>
         </div>
 
         <button type="button" id="reset">RESET</button>
@@ -297,8 +292,7 @@
             bgColor: '#04070e',
             count: 120,
             linkDist: 140,
-            speed: 1,
-            mouseRepel: true
+            speed: 1
         };
 
         const STORAGE_KEY = 'bg-plexus-v1';
@@ -320,8 +314,7 @@
                     bgColor: HEX.test(data.bgColor) ? data.bgColor : DEFAULTS.bgColor,
                     count: Math.round(clamp(data.count, 30, 300, DEFAULTS.count)),
                     linkDist: clamp(data.linkDist, 60, 260, DEFAULTS.linkDist),
-                    speed: clamp(data.speed, 0, 3, DEFAULTS.speed),
-                    mouseRepel: typeof data.mouseRepel === 'boolean' ? data.mouseRepel : DEFAULTS.mouseRepel
+                    speed: clamp(data.speed, 0, 3, DEFAULTS.speed)
                 };
             } catch {
                 return { ...DEFAULTS };
@@ -362,7 +355,6 @@
         let bgColor = settings.bgColor;
         let linkDist = settings.linkDist;
         let speed = settings.speed;
-        let mouseRepel = settings.mouseRepel;
 
         const particles = [];
 
@@ -401,18 +393,6 @@
             spriteCtx.fillRect(0, 0, size, size);
         }
 
-        const mouse = { x: 0, y: 0, inside: false };
-        const REPEL_RADIUS = 160;
-
-        document.addEventListener('mousemove', (event) => {
-            mouse.x = event.clientX;
-            mouse.y = event.clientY;
-            mouse.inside = true;
-        });
-        document.addEventListener('mouseleave', () => {
-            mouse.inside = false;
-        });
-
         let gridHeads = new Int32Array(0);
         let gridNext = new Int32Array(0);
 
@@ -444,7 +424,6 @@
             ctx.fillStyle = bgColor;
             ctx.fillRect(0, 0, width, height);
 
-            const repelSq = REPEL_RADIUS * REPEL_RADIUS;
             for (const p of particles) {
                 const rot = p.turn * step;
                 const cos = Math.cos(rot);
@@ -454,18 +433,6 @@
                 p.vx = vx;
                 p.x += p.vx * step;
                 p.y += p.vy * step;
-
-                if (mouseRepel && mouse.inside) {
-                    const dx = p.x - mouse.x;
-                    const dy = p.y - mouse.y;
-                    const distSq = dx * dx + dy * dy;
-                    if (distSq < repelSq && distSq > 0.01) {
-                        const dist = Math.sqrt(distSq);
-                        const force = (1 - dist / REPEL_RADIUS) * 130 * dt;
-                        p.x += (dx / dist) * force;
-                        p.y += (dy / dist) * force;
-                    }
-                }
 
                 if (p.x < -20) p.x += width + 40;
                 else if (p.x > width + 20) p.x -= width + 40;
@@ -545,8 +512,7 @@
             bgColor: document.getElementById('bg-color'),
             count: document.getElementById('count'),
             linkDist: document.getElementById('link-dist'),
-            speed: document.getElementById('speed'),
-            mouseRepel: document.getElementById('mouse-repel')
+            speed: document.getElementById('speed')
         };
 
         const outputs = {
@@ -562,8 +528,7 @@
                 bgColor: fields.bgColor.value,
                 count: Number(fields.count.value),
                 linkDist: Number(fields.linkDist.value),
-                speed: Number(fields.speed.value),
-                mouseRepel: fields.mouseRepel.checked
+                speed: Number(fields.speed.value)
             };
         }
 
@@ -584,7 +549,6 @@
             const count = Math.round(Number(fields.count.value));
             linkDist = Number(fields.linkDist.value);
             speed = Number(fields.speed.value);
-            mouseRepel = fields.mouseRepel.checked;
 
             outputs.count.value = String(count);
             outputs.linkDist.value = String(Math.round(linkDist));
@@ -600,7 +564,6 @@
         ['count', 'linkDist', 'speed'].forEach((key) => {
             fields[key].addEventListener('input', () => applyDynamics());
         });
-        fields.mouseRepel.addEventListener('change', () => applyDynamics());
 
         function resetSettings() {
             fields.nodeColor.value = DEFAULTS.nodeColor;
@@ -609,7 +572,6 @@
             fields.count.value = String(DEFAULTS.count);
             fields.linkDist.value = String(DEFAULTS.linkDist);
             fields.speed.value = String(DEFAULTS.speed);
-            fields.mouseRepel.checked = DEFAULTS.mouseRepel;
             applyColors(false);
             applyDynamics(false);
             persist();
@@ -632,7 +594,6 @@
         fields.count.value = String(settings.count);
         fields.linkDist.value = String(settings.linkDist);
         fields.speed.value = String(settings.speed);
-        fields.mouseRepel.checked = settings.mouseRepel;
 
         resize();
         applyColors(false);

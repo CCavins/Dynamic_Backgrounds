@@ -8,7 +8,7 @@ A gallery of full-screen animated backgrounds. Each scene is its own page with l
 
 | Scene | What it is |
 | --- | --- |
-| [Universe](backgrounds/universe.html) | A Three.js starfield of up to 65,000 stars, nebula color bands, and optional cursor follow |
+| [Universe](backgrounds/universe.html) | A Three.js starfield of twinkling stars and nebula color bands |
 | [Aurora](backgrounds/aurora.html) | Shader ribbons of northern lights over a cold night sky |
 | [Synthwave](backgrounds/synthwave.html) | A neon perspective grid racing toward a striped sun |
 | [Fluid Ink](backgrounds/fluid-ink.html) | Slow-folding ink and smoke in layered color |

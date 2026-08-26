@@ -355,19 +355,14 @@
                 <input type="range" id="twinkle" min="0" max="3" step="0.05" value="1">
                 <output id="twinkle-out">1.00</output>
             </div>
-            <label class="toggle-row">
-                <span>Follow cursor</span>
-                <input type="checkbox" id="follow-cursor">
-                <span class="switch"></span>
-            </label>
         </div>
 
         <div class="section">
             <span class="section-label">STARS</span>
             <div class="slider-row">
                 <label for="density">Density</label>
-                <input type="range" id="density" min="5000" max="80000" step="1000" value="65000">
-                <output id="density-out">65k</output>
+                <input type="range" id="density" min="1000" max="40000" step="500" value="8000">
+                <output id="density-out">8k</output>
             </div>
             <div class="slider-row">
                 <label for="size">Size</label>
@@ -417,12 +412,11 @@
             speed: 1,
             rotate: 0.4,
             twinkle: 1,
-            density: 65000,
-            size: 1,
-            followCursor: false
+            density: 8000,
+            size: 1
         };
 
-        const STORAGE_KEY = 'universe-settings-v3';
+        const STORAGE_KEY = 'universe-settings-v4';
         const HEX = /^#[0-9a-fA-F]{6}$/;
 
         function clamp(value, min, max, fallback) {
@@ -454,9 +448,8 @@
                     speed: clamp(data.speed, 0, 3, DEFAULTS.speed),
                     rotate: clamp(data.rotate, 0, 2, DEFAULTS.rotate),
                     twinkle: clamp(data.twinkle, 0, 3, DEFAULTS.twinkle),
-                    density: clamp(data.density, 5000, 80000, DEFAULTS.density),
-                    size: clamp(data.size, 0.3, 3, DEFAULTS.size),
-                    followCursor: typeof data.followCursor === 'boolean' ? data.followCursor : DEFAULTS.followCursor
+                    density: clamp(data.density, 1000, 40000, DEFAULTS.density),
+                    size: clamp(data.size, 0.3, 3, DEFAULTS.size)
                 };
             } catch {
                 return { ...DEFAULTS, starColors: [...DEFAULTS.starColors] };
@@ -468,7 +461,7 @@
             settings.density = Math.min(settings.density, 8000);
         }
 
-        const MAX_PARTICLES = 80000;
+        const MAX_PARTICLES = 40000;
         const RADIUS = 800;
 
         const container = document.getElementById('canvas-container');
@@ -480,7 +473,7 @@
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
         camera.position.set(0, 0, 100);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.setClearColor(settings.bgColor, 1);
@@ -613,7 +606,8 @@
         const twinkleSpeeds = new Float32Array(MAX_PARTICLES);
 
         for (let i = 0; i < MAX_PARTICLES; i++) {
-            const r = RADIUS * Math.cbrt(Math.random());
+            // Thin sky shell so stars sit on the visible celestial sphere, not inside a filled ball.
+            const r = RADIUS * (0.62 + Math.random() * 0.38);
             const theta = Math.random() * 2 * Math.PI;
             const phi = Math.acos(2 * Math.random() - 1);
 
@@ -659,7 +653,19 @@
                 vTwinkle = basePulse + flash;
 
                 vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                // Camera looks down -Z. Skip stars behind the near plane.
+                if (mvPosition.z > -1.0) {
+                    gl_PointSize = 0.0;
+                    gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+                    return;
+                }
+
                 gl_Position = projectionMatrix * mvPosition;
+                float w = gl_Position.w;
+                if (w <= 0.0 || abs(gl_Position.x) > w * 1.15 || abs(gl_Position.y) > w * 1.15) {
+                    gl_PointSize = 0.0;
+                    return;
+                }
 
                 float dist = length(mvPosition.xyz);
                 gl_PointSize = size * uSizeScale * uPixelRatio * (600.0 / dist) * vTwinkle;
@@ -728,14 +734,6 @@
         recolorStars(settings.starColors);
         document.getElementById('loading').style.opacity = '0';
 
-        let mouseX = 0;
-        let mouseY = 0;
-        let followCursor = settings.followCursor;
-        document.addEventListener('mousemove', (event) => {
-            mouseX = (event.clientX / window.innerWidth) * 2 - 1;
-            mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
-        });
-
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
@@ -759,8 +757,7 @@
             rotate: document.getElementById('rotate'),
             twinkle: document.getElementById('twinkle'),
             density: document.getElementById('density'),
-            size: document.getElementById('size'),
-            followCursor: document.getElementById('follow-cursor')
+            size: document.getElementById('size')
         };
 
         const outputs = {
@@ -785,8 +782,7 @@
                 rotate: Number(fields.rotate.value),
                 twinkle: Number(fields.twinkle.value),
                 density: Number(fields.density.value),
-                size: Number(fields.size.value),
-                followCursor: fields.followCursor.checked
+                size: Number(fields.size.value)
             };
         }
 
@@ -884,7 +880,6 @@
             const twinkle = Number(fields.twinkle.value);
             const density = Number(fields.density.value);
             const size = Number(fields.size.value);
-            followCursor = fields.followCursor.checked;
 
             outputs.speed.value = speed.toFixed(2);
             outputs.rotate.value = rotate.toFixed(2);
@@ -909,7 +904,6 @@
         ['speed', 'rotate', 'twinkle', 'density', 'size'].forEach((key) => {
             fields[key].addEventListener('input', () => applyMotionAndStars());
         });
-        fields.followCursor.addEventListener('change', () => applyMotionAndStars());
 
         function resetSettings() {
             applyPalette(DEFAULTS.palette, false);
@@ -922,7 +916,6 @@
             fields.twinkle.value = String(DEFAULTS.twinkle);
             fields.density.value = String(DEFAULTS.density);
             fields.size.value = String(DEFAULTS.size);
-            fields.followCursor.checked = DEFAULTS.followCursor;
             applyBackground(DEFAULTS.bgColor, false);
             applyNebula(false);
             applyMotionAndStars(false);
@@ -941,7 +934,6 @@
         fields.twinkle.value = String(settings.twinkle);
         fields.density.value = String(settings.density);
         fields.size.value = String(settings.size);
-        fields.followCursor.checked = settings.followCursor;
         setActivePreset(settings.palette);
         applyBackground(settings.bgColor, false);
         applyNebula(false);
@@ -972,11 +964,6 @@
 
             starMaterial.uniforms.uTime.value = elapsedTime;
             bgMaterial.uniforms.uTime.value = elapsedTime;
-
-            const targetX = followCursor ? mouseY * 0.08 : 0;
-            const targetY = followCursor ? mouseX * 0.08 : 0;
-            universe.rotation.x += (targetX - universe.rotation.x) * 0.05;
-            universe.rotation.y += (targetY - universe.rotation.y) * 0.05;
 
             controls.update();
 
