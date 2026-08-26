@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synthwave</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: "SF Mono", "Menlo", "Consolas", monospace;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        #home {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 11px;
+            letter-spacing: 1.6px;
+            text-decoration: none;
+            padding: 6px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 999px;
+            background: rgba(8, 8, 16, 0.5);
+            backdrop-filter: blur(12px);
+            transition: color 0.2s ease, border-color 0.2s ease;
+            z-index: 4;
+        }
+        #home:hover {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.35);
+        }
+        #menu {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            width: 268px;
+            max-height: calc(100vh - 32px);
+            overflow-y: auto;
+            padding: 14px 14px 12px;
+            color: #e8e8f0;
+            background: rgba(8, 8, 16, 0.78);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+            z-index: 3;
+            opacity: 0;
+            transform: translateY(8px) scale(0.98);
+            pointer-events: none;
+            transition: opacity 0.22s ease, transform 0.22s ease;
+        }
+        #menu.open {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+        #menu header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        #menu header span {
+            font-size: 11px;
+            letter-spacing: 1.8px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        kbd {
+            font-size: 9px;
+            letter-spacing: 1px;
+            padding: 2px 6px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        .section {
+            margin-bottom: 12px;
+        }
+        .section-label {
+            display: block;
+            font-size: 10px;
+            letter-spacing: 1.4px;
+            color: rgba(255, 255, 255, 0.42);
+            margin-bottom: 7px;
+        }
+        .bg-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .color-field {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+        }
+        .color-field span {
+            font-size: 8px;
+            letter-spacing: 0.6px;
+            color: rgba(255, 255, 255, 0.38);
+        }
+        input[type="color"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 26px;
+            height: 26px;
+            padding: 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 2px;
+        }
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 4px;
+        }
+        .slider-row {
+            display: grid;
+            grid-template-columns: 72px 1fr 36px;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .slider-row label {
+            font-size: 10px;
+            letter-spacing: 0.6px;
+            color: rgba(255, 255, 255, 0.55);
+        }
+        .slider-row output {
+            font-size: 10px;
+            text-align: right;
+            color: rgba(255, 255, 255, 0.45);
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.16);
+            border-radius: 999px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+        }
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            cursor: pointer;
+        }
+        .toggle-row span {
+            font-size: 10px;
+            letter-spacing: 0.6px;
+            color: rgba(255, 255, 255, 0.55);
+        }
+        .toggle-row input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .switch {
+            width: 30px;
+            height: 16px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.16);
+            position: relative;
+            transition: background 0.2s ease;
+        }
+        .switch::after {
+            content: "";
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #fff;
+            transition: transform 0.2s ease;
+        }
+        .toggle-row input:checked + .switch {
+            background: rgba(255, 255, 255, 0.55);
+        }
+        .toggle-row input:checked + .switch::after {
+            transform: translateX(14px);
+        }
+        #reset {
+            width: 100%;
+            margin-top: 4px;
+            font: inherit;
+            font-size: 10px;
+            letter-spacing: 1.2px;
+            color: rgba(255, 255, 255, 0.65);
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 7px;
+            padding: 6px 0;
+            cursor: pointer;
+        }
+        #reset:hover {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <a id="home" href="../index.html">&#9666; GALLERY</a>
+    <aside id="menu">
+        <header>
+            <span>SETTINGS</span>
+            <kbd>SPACE</kbd>
+        </header>
+
+        <div class="section">
+            <span class="section-label">COLORS</span>
+            <div class="bg-row">
+                <label class="color-field">
+                    <input type="color" id="grid-color" value="#ff2d9a">
+                    <span>GRID</span>
+                </label>
+                <label class="color-field">
+                    <input type="color" id="sun-a" value="#ffd319">
+                    <span>SUN TOP</span>
+                </label>
+                <label class="color-field">
+                    <input type="color" id="sun-b" value="#ff2975">
+                    <span>SUN LOW</span>
+                </label>
+                <label class="color-field">
+                    <input type="color" id="sky-color" value="#16063a">
+                    <span>SKY</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="section">
+            <span class="section-label">MOTION</span>
+            <div class="slider-row">
+                <label for="speed">Grid speed</label>
+                <input type="range" id="speed" min="0" max="3" step="0.05" value="1">
+                <output id="speed-out">1.00</output>
+            </div>
+            <div class="slider-row">
+                <label for="glow">Glow</label>
+                <input type="range" id="glow" min="0" max="2" step="0.05" value="1">
+                <output id="glow-out">1.00</output>
+            </div>
+            <label class="toggle-row">
+                <span>Scanlines</span>
+                <input type="checkbox" id="scanlines" checked>
+                <span class="switch"></span>
+            </label>
+        </div>
+
+        <button type="button" id="reset">RESET</button>
+    </aside>
+    <canvas id="scene"></canvas>
+
+    <script type="module">
+        const STORAGE_KEY = 'bg-synthwave-v1';
+        const HEX = /^#[0-9a-fA-F]{6}$/;
+
+        const DEFAULTS = {
+            gridColor: '#ff2d9a',
+            sunA: '#ffd319',
+            sunB: '#ff2975',
+            skyColor: '#16063a',
+            speed: 1,
+            glow: 1,
+            scanlines: true
+        };
+
+        function clamp(value, min, max, fallback) {
+            const number = Number(value);
+            return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+        }
+
+        function loadSettings() {
+            try {
+                const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+                if (!data || typeof data !== 'object') return { ...DEFAULTS };
+
+                return {
+                    gridColor: HEX.test(data.gridColor) ? data.gridColor : DEFAULTS.gridColor,
+                    sunA: HEX.test(data.sunA) ? data.sunA : DEFAULTS.sunA,
+                    sunB: HEX.test(data.sunB) ? data.sunB : DEFAULTS.sunB,
+                    skyColor: HEX.test(data.skyColor) ? data.skyColor : DEFAULTS.skyColor,
+                    speed: clamp(data.speed, 0, 3, DEFAULTS.speed),
+                    glow: clamp(data.glow, 0, 2, DEFAULTS.glow),
+                    scanlines: typeof data.scanlines === 'boolean' ? data.scanlines : DEFAULTS.scanlines
+                };
+            } catch {
+                return { ...DEFAULTS };
+            }
+        }
+
+        const settings = loadSettings();
+
+        const canvas = document.getElementById('scene');
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+
+        const vertexSource = `
+            attribute vec2 aPosition;
+            void main() {
+                gl_Position = vec4(aPosition, 0.0, 1.0);
+            }
+        `;
+
+        const fragmentSource = `
+            precision highp float;
+
+            uniform vec2 uResolution;
+            uniform float uScroll;
+            uniform vec3 uGridColor;
+            uniform vec3 uSunA;
+            uniform vec3 uSunB;
+            uniform vec3 uSky;
+            uniform float uGlow;
+            uniform float uScanlines;
+
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+            }
+
+            void main() {
+                vec2 uv = gl_FragCoord.xy / uResolution;
+                float aspect = uResolution.x / uResolution.y;
+                const float horizon = 0.42;
+
+                vec2 sunPos = vec2(0.5, horizon + 0.155);
+                vec2 sd = vec2((uv.x - sunPos.x) * aspect, uv.y - sunPos.y);
+                float r = length(sd);
+                const float R = 0.17;
+                vec3 sunCol = mix(uSunB, uSunA, clamp((uv.y - (sunPos.y - R)) / (2.0 * R), 0.0, 1.0));
+
+                vec3 col;
+                if (uv.y >= horizon) {
+                    // gradient sky, brighter near the horizon
+                    float sy = (uv.y - horizon) / (1.0 - horizon);
+                    col = mix(uSky * 1.5, uSky * 0.3, pow(sy, 0.8));
+
+                    // striped sun: gaps widen toward the bottom of the disc
+                    float k = smoothstep(sunPos.y - R, sunPos.y + R * 0.55, uv.y);
+                    float bias = mix(-0.9, 2.8, k);
+                    float visible = smoothstep(-0.3, 0.3, sin((uv.y - horizon) * 160.0) + bias);
+                    float disk = smoothstep(R, R - 0.003, r);
+                    col = mix(col, sunCol, disk * visible);
+                    col += sunCol * exp(-max(r - R, 0.0) * 7.0) * 0.45 * uGlow;
+                } else {
+                    // perspective neon grid scrolling toward the viewer
+                    float fy = horizon - uv.y;
+                    float pz = 1.0 / (fy + 0.015);
+                    vec2 gp = vec2((uv.x - 0.5) * aspect * pz, pz * 0.5 + uScroll);
+                    float lx = pow(0.5 + 0.5 * cos(gp.x * 6.28318), 30.0);
+                    float ly = pow(0.5 + 0.5 * cos(gp.y * 6.28318), 30.0);
+                    float fade = 1.0 - exp(-fy * 5.5);
+                    float line = clamp(lx + ly, 0.0, 1.5);
+
+                    col = uSky * 0.12;
+                    col += uGridColor * 0.10 * fade;
+                    col += uGridColor * line * fade * (0.55 + 0.75 * uGlow);
+                    col += sunCol * exp(-fy * 9.0) * 0.35 * uGlow;
+                }
+
+                // glowing horizon line
+                col += mix(uGridColor, uSunB, 0.5) * exp(-abs(uv.y - horizon) * 50.0) * (0.4 + 0.5 * uGlow);
+
+                // subtle scanline overlay
+                col *= 1.0 - uScanlines * 0.10 * (0.5 + 0.5 * sin(gl_FragCoord.y * 2.4));
+
+                // gentle tonemap + dither to avoid banding
+                col = col / (1.0 + col * 0.3);
+                col += (hash(gl_FragCoord.xy) - 0.5) / 255.0;
+                gl_FragColor = vec4(col, 1.0);
+            }
+        `;
+
+        function compileShader(type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                throw new Error(gl.getShaderInfoLog(shader));
+            }
+            return shader;
+        }
+
+        const program = gl.createProgram();
+        gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertexSource));
+        gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentSource));
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            throw new Error(gl.getProgramInfoLog(program));
+        }
+        gl.useProgram(program);
+
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+        const aPosition = gl.getAttribLocation(program, 'aPosition');
+        gl.enableVertexAttribArray(aPosition);
+        gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
+
+        const uniforms = {
+            resolution: gl.getUniformLocation(program, 'uResolution'),
+            scroll: gl.getUniformLocation(program, 'uScroll'),
+            gridColor: gl.getUniformLocation(program, 'uGridColor'),
+            sunA: gl.getUniformLocation(program, 'uSunA'),
+            sunB: gl.getUniformLocation(program, 'uSunB'),
+            sky: gl.getUniformLocation(program, 'uSky'),
+            glow: gl.getUniformLocation(program, 'uGlow'),
+            scanlines: gl.getUniformLocation(program, 'uScanlines')
+        };
+
+        function setColorUniform(location, hex) {
+            gl.uniform3f(
+                location,
+                parseInt(hex.slice(1, 3), 16) / 255,
+                parseInt(hex.slice(3, 5), 16) / 255,
+                parseInt(hex.slice(5, 7), 16) / 255
+            );
+        }
+
+        const menu = document.getElementById('menu');
+
+        const fields = {
+            gridColor: document.getElementById('grid-color'),
+            sunA: document.getElementById('sun-a'),
+            sunB: document.getElementById('sun-b'),
+            skyColor: document.getElementById('sky-color'),
+            speed: document.getElementById('speed'),
+            glow: document.getElementById('glow'),
+            scanlines: document.getElementById('scanlines')
+        };
+
+        const outputs = {
+            speed: document.getElementById('speed-out'),
+            glow: document.getElementById('glow-out')
+        };
+
+        function persist() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                gridColor: fields.gridColor.value,
+                sunA: fields.sunA.value,
+                sunB: fields.sunB.value,
+                skyColor: fields.skyColor.value,
+                speed: Number(fields.speed.value),
+                glow: Number(fields.glow.value),
+                scanlines: fields.scanlines.checked
+            }));
+        }
+
+        let gridSpeed = settings.speed;
+
+        function applySettings(shouldPersist = true) {
+            const speed = Number(fields.speed.value);
+            const glow = Number(fields.glow.value);
+
+            outputs.speed.value = speed.toFixed(2);
+            outputs.glow.value = glow.toFixed(2);
+
+            gridSpeed = speed;
+            setColorUniform(uniforms.gridColor, fields.gridColor.value);
+            setColorUniform(uniforms.sunA, fields.sunA.value);
+            setColorUniform(uniforms.sunB, fields.sunB.value);
+            setColorUniform(uniforms.sky, fields.skyColor.value);
+            gl.uniform1f(uniforms.glow, glow);
+            gl.uniform1f(uniforms.scanlines, fields.scanlines.checked ? 1 : 0);
+
+            if (shouldPersist) persist();
+        }
+
+        ['gridColor', 'sunA', 'sunB', 'skyColor', 'speed', 'glow'].forEach((key) => {
+            fields[key].addEventListener('input', () => applySettings());
+        });
+        fields.scanlines.addEventListener('change', () => applySettings());
+
+        function resetSettings() {
+            fields.gridColor.value = DEFAULTS.gridColor;
+            fields.sunA.value = DEFAULTS.sunA;
+            fields.sunB.value = DEFAULTS.sunB;
+            fields.skyColor.value = DEFAULTS.skyColor;
+            fields.speed.value = String(DEFAULTS.speed);
+            fields.glow.value = String(DEFAULTS.glow);
+            fields.scanlines.checked = DEFAULTS.scanlines;
+            applySettings(false);
+            persist();
+        }
+
+        document.getElementById('reset').addEventListener('click', resetSettings);
+
+        fields.gridColor.value = settings.gridColor;
+        fields.sunA.value = settings.sunA;
+        fields.sunB.value = settings.sunB;
+        fields.skyColor.value = settings.skyColor;
+        fields.speed.value = String(settings.speed);
+        fields.glow.value = String(settings.glow);
+        fields.scanlines.checked = settings.scanlines;
+        applySettings(false);
+
+        document.addEventListener('keydown', (event) => {
+            if (event.code !== 'Space' || event.repeat) return;
+            event.preventDefault();
+            menu.classList.toggle('open');
+        });
+
+        function onWindowResize() {
+            const dpr = Math.min(window.devicePixelRatio, 2);
+            canvas.width = Math.round(window.innerWidth * dpr);
+            canvas.height = Math.round(window.innerHeight * dpr);
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+        }
+
+        window.addEventListener('resize', onWindowResize, false);
+        onWindowResize();
+
+        let scroll = 0;
+        let lastFrame = performance.now();
+
+        function animate(now) {
+            requestAnimationFrame(animate);
+            const delta = Math.min((now - lastFrame) / 1000, 0.1);
+            lastFrame = now;
+            scroll += delta * gridSpeed * 0.6;
+            gl.uniform1f(uniforms.scroll, scroll);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+        }
+
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

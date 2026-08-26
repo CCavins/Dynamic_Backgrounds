@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Silk Waves</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: "SF Mono", "Menlo", "Consolas", monospace;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        #home {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 11px;
+            letter-spacing: 1.6px;
+            text-decoration: none;
+            padding: 6px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 999px;
+            background: rgba(8, 8, 16, 0.5);
+            backdrop-filter: blur(12px);
+            transition: color 0.2s ease, border-color 0.2s ease;
+            z-index: 4;
+        }
+        #home:hover {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.35);
+        }
+        #menu {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            width: 268px;
+            max-height: calc(100vh - 32px);
+            overflow-y: auto;
+            padding: 14px 14px 12px;
+            color: #e8e8f0;
+            background: rgba(8, 8, 16, 0.78);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+            z-index: 3;
+            opacity: 0;
+            transform: translateY(8px) scale(0.98);
+            pointer-events: none;
+            transition: opacity 0.22s ease, transform 0.22s ease;
+        }
+        #menu.open {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+        #menu header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        #menu header span {
+            font-size: 11px;
+            letter-spacing: 1.8px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        kbd {
+            font-size: 9px;
+            letter-spacing: 1px;
+            padding: 2px 6px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        .section {
+            margin-bottom: 12px;
+        }
+        .section-label {
+            display: block;
+            font-size: 10px;
+            letter-spacing: 1.4px;
+            color: rgba(255, 255, 255, 0.42);
+            margin-bottom: 7px;
+        }
+        .bg-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .color-field {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+        }
+        .color-field span {
+            font-size: 8px;
+            letter-spacing: 0.6px;
+            color: rgba(255, 255, 255, 0.38);
+        }
+        input[type="color"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 26px;
+            height: 26px;
+            padding: 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 2px;
+        }
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 4px;
+        }
+        .slider-row {
+            display: grid;
+            grid-template-columns: 72px 1fr 36px;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .slider-row label {
+            font-size: 10px;
+            letter-spacing: 0.6px;
+            color: rgba(255, 255, 255, 0.55);
+        }
+        .slider-row output {
+            font-size: 10px;
+            text-align: right;
+            color: rgba(255, 255, 255, 0.45);
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.16);
+            border-radius: 999px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+        }
+        #reset {
+            width: 100%;
+            margin-top: 4px;
+            font: inherit;
+            font-size: 10px;
+            letter-spacing: 1.2px;
+            color: rgba(255, 255, 255, 0.65);
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 7px;
+            padding: 6px 0;
+            cursor: pointer;
+        }
+        #reset:hover {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <a id="home" href="../index.html">&#9666; GALLERY</a>
+    <aside id="menu">
+        <header>
+            <span>SETTINGS</span>
+            <kbd>SPACE</kbd>
+        </header>
+
+        <div class="section">
+            <span class="section-label">COLORS</span>
+            <div class="bg-row">
+                <label class="color-field">
+                    <input type="color" id="color-a" value="#6a5cff">
+                    <span>A</span>
+                </label>
+                <label class="color-field">
+                    <input type="color" id="color-b" value="#c86bff">
+                    <span>B</span>
+                </label>
+                <label class="color-field">
+                    <input type="color" id="color-c" value="#3ec9ff">
+                    <span>C</span>
+                </label>
+                <label class="color-field">
+                    <input type="color" id="bg-color" value="#070510">
+                    <span>BG</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="section">
+            <span class="section-label">MOTION</span>
+            <div class="slider-row">
+                <label for="speed">Speed</label>
+                <input type="range" id="speed" min="0" max="3" step="0.05" value="1">
+                <output id="speed-out">1.00</output>
+            </div>
+            <div class="slider-row">
+                <label for="amplitude">Amplitude</label>
+                <input type="range" id="amplitude" min="0" max="2" step="0.05" value="1">
+                <output id="amplitude-out">1.00</output>
+            </div>
+            <div class="slider-row">
+                <label for="layers">Layers</label>
+                <input type="range" id="layers" min="2" max="6" step="1" value="4">
+                <output id="layers-out">4</output>
+            </div>
+        </div>
+
+        <button type="button" id="reset">RESET</button>
+    </aside>
+    <canvas id="scene"></canvas>
+
+    <script type="module">
+        const STORAGE_KEY = 'bg-silk-waves-v1';
+        const HEX = /^#[0-9a-fA-F]{6}$/;
+
+        const DEFAULTS = {
+            colorA: '#6a5cff',
+            colorB: '#c86bff',
+            colorC: '#3ec9ff',
+            bgColor: '#070510',
+            speed: 1,
+            amplitude: 1,
+            layers: 4
+        };
+
+        function clamp(value, min, max, fallback) {
+            const number = Number(value);
+            return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+        }
+
+        function loadSettings() {
+            try {
+                const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+                if (!data || typeof data !== 'object') return { ...DEFAULTS };
+
+                return {
+                    colorA: HEX.test(data.colorA) ? data.colorA : DEFAULTS.colorA,
+                    colorB: HEX.test(data.colorB) ? data.colorB : DEFAULTS.colorB,
+                    colorC: HEX.test(data.colorC) ? data.colorC : DEFAULTS.colorC,
+                    bgColor: HEX.test(data.bgColor) ? data.bgColor : DEFAULTS.bgColor,
+                    speed: clamp(data.speed, 0, 3, DEFAULTS.speed),
+                    amplitude: clamp(data.amplitude, 0, 2, DEFAULTS.amplitude),
+                    layers: Math.round(clamp(data.layers, 2, 6, DEFAULTS.layers))
+                };
+            } catch {
+                return { ...DEFAULTS };
+            }
+        }
+
+        const settings = loadSettings();
+
+        const canvas = document.getElementById('scene');
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+
+        const vertexSource = `
+            attribute vec2 aPosition;
+            void main() {
+                gl_Position = vec4(aPosition, 0.0, 1.0);
+            }
+        `;
+
+        const fragmentSource = `
+            precision highp float;
+
+            uniform vec2 uResolution;
+            uniform float uTime;
+            uniform vec3 uColorA;
+            uniform vec3 uColorB;
+            uniform vec3 uColorC;
+            uniform vec3 uBg;
+            uniform float uAmplitude;
+            uniform int uLayers;
+
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+            }
+
+            float noise(vec2 p) {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                vec2 u = f * f * (3.0 - 2.0 * f);
+                return mix(
+                    mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+                    mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+                    u.y
+                );
+            }
+
+            float fbm(vec2 p) {
+                float v = 0.0;
+                float a = 0.5;
+                mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
+                for (int i = 0; i < 4; i++) {
+                    v += a * noise(p);
+                    p = rot * p * 2.03;
+                    a *= 0.5;
+                }
+                return v;
+            }
+
+            void main() {
+                vec2 uv = gl_FragCoord.xy / uResolution;
+                float aspect = uResolution.x / uResolution.y;
+                float x = uv.x * aspect;
+                float t = uTime;
+
+                // soft ambient backdrop
+                vec3 col = uBg * mix(1.2, 0.8, uv.y);
+                col += (uColorA + uColorC) * 0.03 * fbm(vec2(x * 0.8, uv.y * 1.5 + t * 0.05));
+
+                for (int i = 0; i < 6; i++) {
+                    if (i >= uLayers) break;
+                    float fi = float(i);
+                    float n = float(uLayers);
+                    float baseline = (fi + 0.5) / n;
+                    float lt = t * (0.6 + 0.13 * fi);
+
+                    // noise-displaced sine curve
+                    float wave = sin(x * (1.3 + 0.4 * fi) + lt + fi * 2.1) * 0.10
+                               + sin(x * (2.3 + 0.3 * fi) - lt * 0.7 + fi * 4.7) * 0.05;
+                    wave += (fbm(vec2(x * 1.2 + fi * 9.0, lt * 0.35)) - 0.5) * 0.22;
+                    wave *= uAmplitude;
+
+                    float d = uv.y - (baseline + wave);
+                    float body = exp(-d * d * 90.0);
+                    float crest = exp(-d * d * 900.0);
+
+                    // layer color cycles through A -> B -> C
+                    float h = fi / max(n - 1.0, 1.0);
+                    vec3 c = h < 0.5 ? mix(uColorA, uColorB, h * 2.0) : mix(uColorB, uColorC, (h - 0.5) * 2.0);
+                    c *= 0.8 + 0.4 * fbm(vec2(x * 2.0 - lt * 0.2, fi * 3.0));
+
+                    col = mix(col, c, body * 0.55);
+                    col += c * crest * 0.35;
+                }
+
+                // gentle tonemap + dither to avoid banding
+                col = col / (1.0 + col * 0.25);
+                col += (hash(gl_FragCoord.xy) - 0.5) / 255.0;
+                gl_FragColor = vec4(col, 1.0);
+            }
+        `;
+
+        function compileShader(type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                throw new Error(gl.getShaderInfoLog(shader));
+            }
+            return shader;
+        }
+
+        const program = gl.createProgram();
+        gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertexSource));
+        gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentSource));
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            throw new Error(gl.getProgramInfoLog(program));
+        }
+        gl.useProgram(program);
+
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+        const aPosition = gl.getAttribLocation(program, 'aPosition');
+        gl.enableVertexAttribArray(aPosition);
+        gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
+
+        const uniforms = {
+            resolution: gl.getUniformLocation(program, 'uResolution'),
+            time: gl.getUniformLocation(program, 'uTime'),
+            colorA: gl.getUniformLocation(program, 'uColorA'),
+            colorB: gl.getUniformLocation(program, 'uColorB'),
+            colorC: gl.getUniformLocation(program, 'uColorC'),
+            bg: gl.getUniformLocation(program, 'uBg'),
+            amplitude: gl.getUniformLocation(program, 'uAmplitude'),
+            layers: gl.getUniformLocation(program, 'uLayers')
+        };
+
+        function setColorUniform(location, hex) {
+            gl.uniform3f(
+                location,
+                parseInt(hex.slice(1, 3), 16) / 255,
+                parseInt(hex.slice(3, 5), 16) / 255,
+                parseInt(hex.slice(5, 7), 16) / 255
+            );
+        }
+
+        const menu = document.getElementById('menu');
+
+        const fields = {
+            colorA: document.getElementById('color-a'),
+            colorB: document.getElementById('color-b'),
+            colorC: document.getElementById('color-c'),
+            bgColor: document.getElementById('bg-color'),
+            speed: document.getElementById('speed'),
+            amplitude: document.getElementById('amplitude'),
+            layers: document.getElementById('layers')
+        };
+
+        const outputs = {
+            speed: document.getElementById('speed-out'),
+            amplitude: document.getElementById('amplitude-out'),
+            layers: document.getElementById('layers-out')
+        };
+
+        function persist() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                colorA: fields.colorA.value,
+                colorB: fields.colorB.value,
+                colorC: fields.colorC.value,
+                bgColor: fields.bgColor.value,
+                speed: Number(fields.speed.value),
+                amplitude: Number(fields.amplitude.value),
+                layers: Number(fields.layers.value)
+            }));
+        }
+
+        let flowSpeed = settings.speed;
+
+        function applySettings(shouldPersist = true) {
+            const speed = Number(fields.speed.value);
+            const amplitude = Number(fields.amplitude.value);
+            const layers = Math.round(Number(fields.layers.value));
+
+            outputs.speed.value = speed.toFixed(2);
+            outputs.amplitude.value = amplitude.toFixed(2);
+            outputs.layers.value = String(layers);
+
+            flowSpeed = speed;
+            setColorUniform(uniforms.colorA, fields.colorA.value);
+            setColorUniform(uniforms.colorB, fields.colorB.value);
+            setColorUniform(uniforms.colorC, fields.colorC.value);
+            setColorUniform(uniforms.bg, fields.bgColor.value);
+            gl.uniform1f(uniforms.amplitude, amplitude);
+            gl.uniform1i(uniforms.layers, layers);
+
+            if (shouldPersist) persist();
+        }
+
+        Object.values(fields).forEach((field) => {
+            field.addEventListener('input', () => applySettings());
+        });
+
+        function resetSettings() {
+            fields.colorA.value = DEFAULTS.colorA;
+            fields.colorB.value = DEFAULTS.colorB;
+            fields.colorC.value = DEFAULTS.colorC;
+            fields.bgColor.value = DEFAULTS.bgColor;
+            fields.speed.value = String(DEFAULTS.speed);
+            fields.amplitude.value = String(DEFAULTS.amplitude);
+            fields.layers.value = String(DEFAULTS.layers);
+            applySettings(false);
+            persist();
+        }
+
+        document.getElementById('reset').addEventListener('click', resetSettings);
+
+        fields.colorA.value = settings.colorA;
+        fields.colorB.value = settings.colorB;
+        fields.colorC.value = settings.colorC;
+        fields.bgColor.value = settings.bgColor;
+        fields.speed.value = String(settings.speed);
+        fields.amplitude.value = String(settings.amplitude);
+        fields.layers.value = String(settings.layers);
+        applySettings(false);
+
+        document.addEventListener('keydown', (event) => {
+            if (event.code !== 'Space' || event.repeat) return;
+            event.preventDefault();
+            menu.classList.toggle('open');
+        });
+
+        function onWindowResize() {
+            const dpr = Math.min(window.devicePixelRatio, 2);
+            canvas.width = Math.round(window.innerWidth * dpr);
+            canvas.height = Math.round(window.innerHeight * dpr);
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+        }
+
+        window.addEventListener('resize', onWindowResize, false);
+        onWindowResize();
+
+        let simTime = 0;
+        let lastFrame = performance.now();
+
+        function animate(now) {
+            requestAnimationFrame(animate);
+            const delta = Math.min((now - lastFrame) / 1000, 0.1);
+            lastFrame = now;
+            simTime += delta * flowSpeed * 0.5;
+            gl.uniform1f(uniforms.time, simTime);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+        }
+
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plexus</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: "SF Mono", "Menlo", "Consolas", monospace;
+        }
+        #canvas {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        #home {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 11px;
+            letter-spacing: 1.6px;
+            text-decoration: none;
+            padding: 6px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 999px;
+            background: rgba(8, 8, 16, 0.5);
+            backdrop-filter: blur(12px);
+            transition: color 0.2s ease, border-color 0.2s ease;
+            z-index: 4;
+        }
+        #home:hover {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.35);
+        }
+        #menu {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            width: 268px;
+            max-height: calc(100vh - 32px);
+            overflow-y: auto;
+            padding: 14px 14px 12px;
+            color: #e8e8f0;
+            background: rgba(8, 8, 16, 0.78);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+            z-index: 3;
+            opacity: 0;
+            transform: translateY(8px) scale(0.98);
+            pointer-events: none;
+            transition: opacity 0.22s ease, transform 0.22s ease;
+        }
+        #menu.open {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+        #menu header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        #menu header span {
+            font-size: 11px;
+            letter-spacing: 1.8px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        kbd {
+            font-size: 9px;
+            letter-spacing: 1px;
+            padding: 2px 6px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        .section {
+            margin-bottom: 12px;
+        }
+        .section-label {
+            display: block;
+            font-size: 10px;
+            letter-spacing: 1.4px;
+            color: rgba(255, 255, 255, 0.42);
+            margin-bottom: 7px;
+        }
+        .bg-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .color-field {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+        }
+        .color-field span {
+            font-size: 8px;
+            letter-spacing: 0.6px;
+            color: rgba(255, 255, 255, 0.38);
+        }
+        input[type="color"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 26px;
+            height: 26px;
+            padding: 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 2px;
+        }
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 4px;
+        }
+        .slider-row {
+            display: grid;
+            grid-template-columns: 72px 1fr 36px;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .slider-row label {
+            font-size: 10px;
+            letter-spacing: 0.6px;
+            color: rgba(255, 255, 255, 0.55);
+        }
+        .slider-row output {
+            font-size: 10px;
+            text-align: right;
+            color: rgba(255, 255, 255, 0.45);
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.16);
+            border-radius: 999px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+        }
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            cursor: pointer;
+        }
+        .toggle-row span {
+            font-size: 10px;
+            letter-spacing: 0.6px;
+            color: rgba(255, 255, 255, 0.55);
+        }
+        .toggle-row input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .switch {
+            width: 30px;
+            height: 16px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.16);
+            position: relative;
+            transition: background 0.2s ease;
+        }
+        .switch::after {
+            content: "";
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #fff;
+            transition: transform 0.2s ease;
+        }
+        .toggle-row input:checked + .switch {
+            background: rgba(255, 255, 255, 0.55);
+        }
+        .toggle-row input:checked + .switch::after {
+            transform: translateX(14px);
+        }
+        #reset {
+            width: 100%;
+            margin-top: 4px;
+            font: inherit;
+            font-size: 10px;
+            letter-spacing: 1.2px;
+            color: rgba(255, 255, 255, 0.65);
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 7px;
+            padding: 6px 0;
+            cursor: pointer;
+        }
+        #reset:hover {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <a id="home" href="../index.html">&#9666; GALLERY</a>
+    <aside id="menu">
+        <header>
+            <span>SETTINGS</span>
+            <kbd>SPACE</kbd>
+        </header>
+
+        <div class="section">
+            <span class="section-label">COLORS</span>
+            <div class="bg-row">
+                <label class="color-field">
+                    <input type="color" id="node-color" value="#9bd4ff">
+                    <span>NODES</span>
+                </label>
+                <label class="color-field">
+                    <input type="color" id="line-color" value="#4a7fb0">
+                    <span>LINES</span>
+                </label>
+                <label class="color-field">
+                    <input type="color" id="bg-color" value="#04070e">
+                    <span>BG</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="section">
+            <span class="section-label">NETWORK</span>
+            <div class="slider-row">
+                <label for="count">Particles</label>
+                <input type="range" id="count" min="30" max="300" step="1" value="120">
+                <output id="count-out">120</output>
+            </div>
+            <div class="slider-row">
+                <label for="link-dist">Link dist</label>
+                <input type="range" id="link-dist" min="60" max="260" step="1" value="140">
+                <output id="link-dist-out">140</output>
+            </div>
+            <div class="slider-row">
+                <label for="speed">Drift</label>
+                <input type="range" id="speed" min="0" max="3" step="0.05" value="1">
+                <output id="speed-out">1.00</output>
+            </div>
+            <label class="toggle-row">
+                <span>Mouse repel</span>
+                <input type="checkbox" id="mouse-repel">
+                <span class="switch"></span>
+            </label>
+        </div>
+
+        <button type="button" id="reset">RESET</button>
+    </aside>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const DEFAULTS = {
+            nodeColor: '#9bd4ff',
+            lineColor: '#4a7fb0',
+            bgColor: '#04070e',
+            count: 120,
+            linkDist: 140,
+            speed: 1,
+            mouseRepel: true
+        };
+
+        const STORAGE_KEY = 'bg-plexus-v1';
+        const HEX = /^#[0-9a-fA-F]{6}$/;
+
+        function clamp(value, min, max, fallback) {
+            const number = Number(value);
+            return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+        }
+
+        function loadSettings() {
+            try {
+                const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+                if (!data || typeof data !== 'object') return { ...DEFAULTS };
+
+                return {
+                    nodeColor: HEX.test(data.nodeColor) ? data.nodeColor : DEFAULTS.nodeColor,
+                    lineColor: HEX.test(data.lineColor) ? data.lineColor : DEFAULTS.lineColor,
+                    bgColor: HEX.test(data.bgColor) ? data.bgColor : DEFAULTS.bgColor,
+                    count: Math.round(clamp(data.count, 30, 300, DEFAULTS.count)),
+                    linkDist: clamp(data.linkDist, 60, 260, DEFAULTS.linkDist),
+                    speed: clamp(data.speed, 0, 3, DEFAULTS.speed),
+                    mouseRepel: typeof data.mouseRepel === 'boolean' ? data.mouseRepel : DEFAULTS.mouseRepel
+                };
+            } catch {
+                return { ...DEFAULTS };
+            }
+        }
+
+        const settings = loadSettings();
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = 0;
+        let height = 0;
+
+        function resize() {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = Math.round(width * dpr);
+            canvas.height = Math.round(height * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            for (const p of particles) {
+                p.x = ((p.x % width) + width) % width;
+                p.y = ((p.y % height) + height) % height;
+            }
+        }
+
+        function hexToRgb(hex) {
+            return {
+                r: parseInt(hex.slice(1, 3), 16),
+                g: parseInt(hex.slice(3, 5), 16),
+                b: parseInt(hex.slice(5, 7), 16)
+            };
+        }
+
+        let nodeColor = settings.nodeColor;
+        let lineColor = settings.lineColor;
+        let bgColor = settings.bgColor;
+        let linkDist = settings.linkDist;
+        let speed = settings.speed;
+        let mouseRepel = settings.mouseRepel;
+
+        const particles = [];
+
+        function makeParticle() {
+            const angle = Math.random() * Math.PI * 2;
+            const velocity = 0.3 + Math.random() * 0.7;
+            return {
+                x: Math.random() * width,
+                y: Math.random() * height,
+                vx: Math.cos(angle) * velocity,
+                vy: Math.sin(angle) * velocity,
+                turn: (Math.random() - 0.5) * 0.006,
+                size: 4.5 + Math.random() * 5
+            };
+        }
+
+        function rebuildParticles(count) {
+            while (particles.length < count) particles.push(makeParticle());
+            particles.length = count;
+        }
+
+        const nodeSprite = document.createElement('canvas');
+
+        function buildNodeSprite() {
+            const size = 48;
+            nodeSprite.width = size;
+            nodeSprite.height = size;
+            const spriteCtx = nodeSprite.getContext('2d');
+            const { r, g, b } = hexToRgb(nodeColor);
+            const gradient = spriteCtx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+            gradient.addColorStop(0.18, `rgba(${r}, ${g}, ${b}, 0.9)`);
+            gradient.addColorStop(0.45, `rgba(${r}, ${g}, ${b}, 0.22)`);
+            gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+            spriteCtx.fillStyle = gradient;
+            spriteCtx.fillRect(0, 0, size, size);
+        }
+
+        const mouse = { x: 0, y: 0, inside: false };
+        const REPEL_RADIUS = 160;
+
+        document.addEventListener('mousemove', (event) => {
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
+            mouse.inside = true;
+        });
+        document.addEventListener('mouseleave', () => {
+            mouse.inside = false;
+        });
+
+        let gridHeads = new Int32Array(0);
+        let gridNext = new Int32Array(0);
+
+        const ALPHA_LEVELS = 8;
+        const segments = Array.from({ length: ALPHA_LEVELS }, () => []);
+
+        function tryLink(i, j, maxDistSq) {
+            const a = particles[i];
+            const b = particles[j];
+            const dx = a.x - b.x;
+            const dy = a.y - b.y;
+            const distSq = dx * dx + dy * dy;
+            if (distSq >= maxDistSq) return;
+            const closeness = 1 - Math.sqrt(distSq) / linkDist;
+            const level = Math.min(ALPHA_LEVELS - 1, (closeness * closeness * ALPHA_LEVELS) | 0);
+            segments[level].push(a.x, a.y, b.x, b.y);
+        }
+
+        let lastTime = performance.now();
+
+        function frame(now) {
+            requestAnimationFrame(frame);
+            const dt = Math.min((now - lastTime) / 1000, 0.05);
+            lastTime = now;
+            const step = speed * dt * 60;
+
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, width, height);
+
+            const repelSq = REPEL_RADIUS * REPEL_RADIUS;
+            for (const p of particles) {
+                const rot = p.turn * step;
+                const cos = Math.cos(rot);
+                const sin = Math.sin(rot);
+                const vx = p.vx * cos - p.vy * sin;
+                p.vy = p.vx * sin + p.vy * cos;
+                p.vx = vx;
+                p.x += p.vx * step;
+                p.y += p.vy * step;
+
+                if (mouseRepel && mouse.inside) {
+                    const dx = p.x - mouse.x;
+                    const dy = p.y - mouse.y;
+                    const distSq = dx * dx + dy * dy;
+                    if (distSq < repelSq && distSq > 0.01) {
+                        const dist = Math.sqrt(distSq);
+                        const force = (1 - dist / REPEL_RADIUS) * 130 * dt;
+                        p.x += (dx / dist) * force;
+                        p.y += (dy / dist) * force;
+                    }
+                }
+
+                if (p.x < -20) p.x += width + 40;
+                else if (p.x > width + 20) p.x -= width + 40;
+                if (p.y < -20) p.y += height + 40;
+                else if (p.y > height + 20) p.y -= height + 40;
+            }
+
+            const cell = Math.max(linkDist, 40);
+            const gridCols = Math.max(1, Math.ceil(width / cell));
+            const gridRows = Math.max(1, Math.ceil(height / cell));
+            const cellCount = gridCols * gridRows;
+            if (gridHeads.length < cellCount) gridHeads = new Int32Array(cellCount);
+            if (gridNext.length < particles.length) gridNext = new Int32Array(particles.length);
+            gridHeads.fill(-1, 0, cellCount);
+
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                const cx = Math.min(gridCols - 1, Math.max(0, (p.x / cell) | 0));
+                const cy = Math.min(gridRows - 1, Math.max(0, (p.y / cell) | 0));
+                const index = cy * gridCols + cx;
+                gridNext[i] = gridHeads[index];
+                gridHeads[index] = i;
+            }
+
+            for (const bucket of segments) bucket.length = 0;
+            const maxDistSq = linkDist * linkDist;
+
+            for (let cy = 0; cy < gridRows; cy++) {
+                for (let cx = 0; cx < gridCols; cx++) {
+                    const base = cy * gridCols + cx;
+                    for (let i = gridHeads[base]; i !== -1; i = gridNext[i]) {
+                        for (let j = gridNext[i]; j !== -1; j = gridNext[j]) tryLink(i, j, maxDistSq);
+                        if (cx + 1 < gridCols) {
+                            for (let j = gridHeads[base + 1]; j !== -1; j = gridNext[j]) tryLink(i, j, maxDistSq);
+                        }
+                        if (cy + 1 < gridRows) {
+                            const below = base + gridCols;
+                            if (cx > 0) {
+                                for (let j = gridHeads[below - 1]; j !== -1; j = gridNext[j]) tryLink(i, j, maxDistSq);
+                            }
+                            for (let j = gridHeads[below]; j !== -1; j = gridNext[j]) tryLink(i, j, maxDistSq);
+                            if (cx + 1 < gridCols) {
+                                for (let j = gridHeads[below + 1]; j !== -1; j = gridNext[j]) tryLink(i, j, maxDistSq);
+                            }
+                        }
+                    }
+                }
+            }
+
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = lineColor;
+            for (let level = 0; level < ALPHA_LEVELS; level++) {
+                const bucket = segments[level];
+                if (!bucket.length) continue;
+                ctx.globalAlpha = 0.62 * ((level + 1) / ALPHA_LEVELS);
+                ctx.beginPath();
+                for (let k = 0; k < bucket.length; k += 4) {
+                    ctx.moveTo(bucket[k], bucket[k + 1]);
+                    ctx.lineTo(bucket[k + 2], bucket[k + 3]);
+                }
+                ctx.stroke();
+            }
+
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = 'lighter';
+            for (const p of particles) {
+                ctx.drawImage(nodeSprite, p.x - p.size, p.y - p.size, p.size * 2, p.size * 2);
+            }
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        const menu = document.getElementById('menu');
+
+        const fields = {
+            nodeColor: document.getElementById('node-color'),
+            lineColor: document.getElementById('line-color'),
+            bgColor: document.getElementById('bg-color'),
+            count: document.getElementById('count'),
+            linkDist: document.getElementById('link-dist'),
+            speed: document.getElementById('speed'),
+            mouseRepel: document.getElementById('mouse-repel')
+        };
+
+        const outputs = {
+            count: document.getElementById('count-out'),
+            linkDist: document.getElementById('link-dist-out'),
+            speed: document.getElementById('speed-out')
+        };
+
+        function persist() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                nodeColor: fields.nodeColor.value,
+                lineColor: fields.lineColor.value,
+                bgColor: fields.bgColor.value,
+                count: Number(fields.count.value),
+                linkDist: Number(fields.linkDist.value),
+                speed: Number(fields.speed.value),
+                mouseRepel: fields.mouseRepel.checked
+            }));
+        }
+
+        function applyColors(shouldPersist = true) {
+            nodeColor = fields.nodeColor.value;
+            lineColor = fields.lineColor.value;
+            bgColor = fields.bgColor.value;
+            buildNodeSprite();
+            if (shouldPersist) persist();
+        }
+
+        function applyDynamics(shouldPersist = true) {
+            const count = Math.round(Number(fields.count.value));
+            linkDist = Number(fields.linkDist.value);
+            speed = Number(fields.speed.value);
+            mouseRepel = fields.mouseRepel.checked;
+
+            outputs.count.value = String(count);
+            outputs.linkDist.value = String(Math.round(linkDist));
+            outputs.speed.value = speed.toFixed(2);
+
+            rebuildParticles(count);
+            if (shouldPersist) persist();
+        }
+
+        ['nodeColor', 'lineColor', 'bgColor'].forEach((key) => {
+            fields[key].addEventListener('input', () => applyColors());
+        });
+        ['count', 'linkDist', 'speed'].forEach((key) => {
+            fields[key].addEventListener('input', () => applyDynamics());
+        });
+        fields.mouseRepel.addEventListener('change', () => applyDynamics());
+
+        function resetSettings() {
+            fields.nodeColor.value = DEFAULTS.nodeColor;
+            fields.lineColor.value = DEFAULTS.lineColor;
+            fields.bgColor.value = DEFAULTS.bgColor;
+            fields.count.value = String(DEFAULTS.count);
+            fields.linkDist.value = String(DEFAULTS.linkDist);
+            fields.speed.value = String(DEFAULTS.speed);
+            fields.mouseRepel.checked = DEFAULTS.mouseRepel;
+            applyColors(false);
+            applyDynamics(false);
+            persist();
+        }
+
+        document.getElementById('reset').addEventListener('click', resetSettings);
+
+        document.addEventListener('keydown', (event) => {
+            if (event.code !== 'Space' || event.repeat) return;
+            event.preventDefault();
+            menu.classList.toggle('open');
+        });
+
+        window.addEventListener('resize', resize, false);
+
+        fields.nodeColor.value = settings.nodeColor;
+        fields.lineColor.value = settings.lineColor;
+        fields.bgColor.value = settings.bgColor;
+        fields.count.value = String(settings.count);
+        fields.linkDist.value = String(settings.linkDist);
+        fields.speed.value = String(settings.speed);
+        fields.mouseRepel.checked = settings.mouseRepel;
+
+        resize();
+        applyColors(false);
+        applyDynamics(false);
+        requestAnimationFrame((now) => {
+            lastTime = now;
+            frame(now);
+        });
+    </script>
+</body>
+</html>

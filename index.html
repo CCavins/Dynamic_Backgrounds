@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backgrounds — Gallery</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: #05050c;
+            background-image:
+                radial-gradient(ellipse 80% 50% at 50% -10%, rgba(75, 29, 128, 0.25), transparent),
+                radial-gradient(ellipse 60% 40% at 90% 110%, rgba(5, 31, 64, 0.35), transparent);
+            color: #e8e8f0;
+            font-family: "SF Mono", "Menlo", "Consolas", monospace;
+        }
+        .wrap {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 56px 28px 72px;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 26px;
+            font-weight: 600;
+            letter-spacing: 6px;
+        }
+        header p {
+            margin: 10px 0 0;
+            font-size: 12px;
+            letter-spacing: 1.2px;
+            color: rgba(255, 255, 255, 0.45);
+        }
+        .hint {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 18px;
+            padding: 7px 14px;
+            font-size: 10px;
+            letter-spacing: 1.4px;
+            color: rgba(255, 255, 255, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .hint kbd {
+            font: inherit;
+            font-size: 9px;
+            padding: 2px 7px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 4px;
+            color: rgba(255, 255, 255, 0.75);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 22px;
+            margin-top: 40px;
+        }
+        .card {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.025);
+            transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+        }
+        .preview {
+            position: relative;
+            height: 170px;
+            overflow: hidden;
+        }
+        .preview::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(5, 5, 12, 0.35), transparent 40%);
+        }
+        .meta {
+            padding: 14px 16px 16px;
+        }
+        .meta h2 {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 2.4px;
+        }
+        .meta p {
+            margin: 6px 0 0;
+            font-size: 10.5px;
+            line-height: 1.55;
+            letter-spacing: 0.4px;
+            color: rgba(255, 255, 255, 0.45);
+        }
+
+        /* ---------- previews ---------- */
+
+        /* Universe */
+        .p-universe {
+            background:
+                radial-gradient(ellipse 70% 60% at 30% 60%, rgba(58, 12, 98, 0.55), transparent),
+                radial-gradient(ellipse 60% 50% at 75% 30%, rgba(6, 42, 84, 0.5), transparent),
+                #020108;
+        }
+        .p-universe i,
+        .p-universe i::before,
+        .p-universe i::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image:
+                radial-gradient(1.5px 1.5px at 12% 30%, #fff, transparent),
+                radial-gradient(1px 1px at 34% 68%, #ffd900, transparent),
+                radial-gradient(2px 2px at 55% 22%, #2a6fff, transparent),
+                radial-gradient(1px 1px at 70% 55%, #fff, transparent),
+                radial-gradient(1.5px 1.5px at 88% 34%, #ff00ea, transparent),
+                radial-gradient(1px 1px at 22% 84%, #00ffea, transparent),
+                radial-gradient(1.5px 1.5px at 63% 82%, #fff, transparent),
+                radial-gradient(1px 1px at 44% 45%, #ff8800, transparent),
+                radial-gradient(1px 1px at 92% 74%, #23ff4b, transparent);
+            animation: twinkle 3s ease-in-out infinite;
+        }
+        .p-universe i::before {
+            transform: translate(4%, 8%) scale(1.15);
+            animation-delay: -1s;
+        }
+        .p-universe i::after {
+            transform: translate(-6%, -4%) scale(0.9);
+            animation-delay: -2s;
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.35; }
+            50% { opacity: 1; }
+        }
+
+        /* Aurora */
+        .p-aurora {
+            background: linear-gradient(to top, #020510, #041020);
+        }
+        .p-aurora i,
+        .p-aurora i::before {
+            content: "";
+            position: absolute;
+            inset: -30% -10%;
+            background: linear-gradient(100deg,
+                transparent 20%,
+                rgba(35, 255, 136, 0.35) 38%,
+                rgba(0, 255, 234, 0.28) 50%,
+                rgba(122, 92, 255, 0.22) 62%,
+                transparent 80%);
+            filter: blur(14px);
+            animation: auroraSway 7s ease-in-out infinite alternate;
+        }
+        .p-aurora i::before {
+            inset: -10% -20%;
+            filter: blur(22px);
+            animation-duration: 9s;
+            animation-delay: -3s;
+        }
+        @keyframes auroraSway {
+            from { transform: translateX(-8%) skewX(-6deg); }
+            to { transform: translateX(8%) skewX(6deg); }
+        }
+
+        /* Synthwave */
+        .p-synthwave {
+            background: linear-gradient(to bottom, #12002e 0%, #3d0057 45%, #0b0018 46%, #0b0018 100%);
+        }
+        .p-synthwave::before {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 14%;
+            width: 74px;
+            height: 74px;
+            transform: translateX(-50%);
+            border-radius: 50%;
+            background: linear-gradient(to bottom, #ffd200, #ff2d6a 70%);
+            box-shadow: 0 0 34px rgba(255, 45, 106, 0.8);
+            -webkit-mask: linear-gradient(#000 0 0) top/100% 58%no-repeat,
+                repeating-linear-gradient(to bottom, #000 0 5px, transparent 5px 9px) bottom/100% 42% no-repeat;
+            mask: linear-gradient(#000 0 0) top/100% 58% no-repeat,
+                repeating-linear-gradient(to bottom, #000 0 5px, transparent 5px 9px) bottom/100% 42% no-repeat;
+        }
+        .p-synthwave i {
+            position: absolute;
+            left: -20%;
+            right: -20%;
+            top: 46%;
+            bottom: 0;
+            background:
+                repeating-linear-gradient(to right, rgba(255, 0, 234, 0.5) 0 1.5px, transparent 1.5px 34px),
+                repeating-linear-gradient(to bottom, rgba(255, 0, 234, 0.5) 0 1.5px, transparent 1.5px 26px);
+            transform: perspective(140px) rotateX(58deg);
+            transform-origin: top;
+            animation: gridScroll 1.6s linear infinite;
+        }
+        @keyframes gridScroll {
+            from { background-position: 0 0, 0 0; }
+            to { background-position: 0 0, 0 26px; }
+        }
+
+        /* Fluid Ink */
+        .p-ink {
+            background: #060310;
+        }
+        .p-ink i,
+        .p-ink i::before,
+        .p-ink i::after {
+            content: "";
+            position: absolute;
+            width: 130%;
+            height: 130%;
+            top: -15%;
+            left: -15%;
+            background: conic-gradient(from 0deg at 50% 50%,
+                #4b1d80, #2a6fff, #00b3a4, #ff2d6a, #4b1d80);
+            filter: blur(26px) saturate(1.3);
+            opacity: 0.75;
+            animation: inkSpin 11s linear infinite;
+        }
+        .p-ink i::before {
+            animation-duration: 17s;
+            animation-direction: reverse;
+            opacity: 0.5;
+            mix-blend-mode: screen;
+        }
+        .p-ink i::after {
+            width: 60%;
+            height: 60%;
+            top: 20%;
+            left: 20%;
+            animation-duration: 8s;
+            opacity: 0.6;
+            mix-blend-mode: overlay;
+        }
+        @keyframes inkSpin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Plexus */
+        .p-plexus {
+            background: radial-gradient(ellipse at 50% 50%, #0a1226, #04060f);
+        }
+        .p-plexus i,
+        .p-plexus i::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image:
+                radial-gradient(2px 2px at 18% 30%, #7aa2ff, transparent),
+                radial-gradient(2px 2px at 40% 60%, #7aa2ff, transparent),
+                radial-gradient(2px 2px at 65% 25%, #b8e0ff, transparent),
+                radial-gradient(2px 2px at 82% 62%, #7aa2ff, transparent),
+                radial-gradient(2px 2px at 30% 82%, #b8e0ff, transparent),
+                radial-gradient(2px 2px at 58% 45%, #ffffff, transparent),
+                linear-gradient(32deg, transparent 47%, rgba(122, 162, 255, 0.18) 50%, transparent 53%),
+                linear-gradient(115deg, transparent 46%, rgba(122, 162, 255, 0.14) 50%, transparent 54%),
+                linear-gradient(74deg, transparent 48%, rgba(122, 162, 255, 0.12) 50%, transparent 52%);
+            animation: plexusDrift 9s ease-in-out infinite alternate;
+        }
+        .p-plexus i::before {
+            transform: scale(1.3) rotate(8deg);
+            opacity: 0.6;
+            animation-delay: -4s;
+        }
+        @keyframes plexusDrift {
+            from { transform: translate(-3%, -2%); }
+            to { transform: translate(3%, 2%); }
+        }
+
+        /* Ocean */
+        .p-ocean {
+            background: linear-gradient(to bottom, #04364d 0%, #021c30 55%, #010b16 100%);
+        }
+        .p-ocean::before {
+            content: "";
+            position: absolute;
+            inset: -20% -10%;
+            background:
+                linear-gradient(102deg, transparent 30%, rgba(120, 220, 255, 0.16) 36%, transparent 43%),
+                linear-gradient(96deg, transparent 55%, rgba(120, 220, 255, 0.1) 60%, transparent 66%),
+                linear-gradient(108deg, transparent 70%, rgba(120, 220, 255, 0.13) 76%, transparent 82%);
+            animation: rays 6s ease-in-out infinite alternate;
+        }
+        .p-ocean i {
+            position: absolute;
+            inset: 0;
+            background-image:
+                radial-gradient(3px 3px at 20% 90%, rgba(255, 255, 255, 0.5), transparent),
+                radial-gradient(2px 2px at 45% 95%, rgba(255, 255, 255, 0.4), transparent),
+                radial-gradient(2.5px 2.5px at 70% 88%, rgba(255, 255, 255, 0.45), transparent),
+                radial-gradient(2px 2px at 88% 93%, rgba(255, 255, 255, 0.35), transparent);
+            animation: bubbles 5s linear infinite;
+        }
+        @keyframes rays {
+            from { transform: translateX(-3%); opacity: 0.8; }
+            to { transform: translateX(3%); opacity: 1; }
+        }
+        @keyframes bubbles {
+            from { transform: translateY(0); opacity: 1; }
+            to { transform: translateY(-160px); opacity: 0; }
+        }
+
+        /* Fireflies */
+        .p-fireflies {
+            background:
+                radial-gradient(ellipse 100% 60% at 50% 110%, rgba(16, 46, 24, 0.8), transparent),
+                linear-gradient(to bottom, #01050a, #04120a);
+        }
+        .p-fireflies i,
+        .p-fireflies i::before,
+        .p-fireflies i::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image:
+                radial-gradient(3px 3px at 25% 40%, rgba(255, 230, 120, 0.9), transparent),
+                radial-gradient(2px 2px at 60% 65%, rgba(255, 230, 120, 0.7), transparent),
+                radial-gradient(2.5px 2.5px at 80% 30%, rgba(200, 255, 140, 0.8), transparent),
+                radial-gradient(2px 2px at 42% 78%, rgba(255, 230, 120, 0.6), transparent);
+            filter: blur(0.4px);
+            animation: fireflyPulse 4s ease-in-out infinite;
+        }
+        .p-fireflies i::before {
+            transform: translate(8%, -6%) scale(1.2);
+            animation-delay: -1.4s;
+        }
+        .p-fireflies i::after {
+            transform: translate(-10%, 5%) scale(0.85);
+            animation-delay: -2.7s;
+        }
+        @keyframes fireflyPulse {
+            0%, 100% { opacity: 0.15; }
+            50% { opacity: 1; }
+        }
+
+        /* Lava Lamp */
+        .p-lava {
+            background: linear-gradient(to bottom, #14041c, #05010a);
+        }
+        .p-lava i,
+        .p-lava i::before,
+        .p-lava i::after {
+            content: "";
+            position: absolute;
+            width: 84px;
+            height: 84px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #ff7a3c, #ff2d6a 70%);
+            filter: blur(10px);
+            opacity: 0.85;
+            left: 18%;
+            bottom: -20%;
+            animation: blobRise 7s ease-in-out infinite;
+        }
+        .p-lava i::before {
+            width: 60px;
+            height: 60px;
+            left: 130%;
+            background: radial-gradient(circle at 35% 30%, #ffd200, #ff7a3c 75%);
+            animation-duration: 9s;
+            animation-delay: -3.5s;
+        }
+        .p-lava i::after {
+            width: 44px;
+            height: 44px;
+            left: 62%;
+            background: radial-gradient(circle at 35% 30%, #ff2d6a, #a1125f 75%);
+            animation-duration: 6s;
+            animation-delay: -1.8s;
+        }
+        @keyframes blobRise {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-150px) scale(1.12, 0.92); }
+        }
+
+        /* Matrix */
+        .p-matrix {
+            background: #010401;
+        }
+        .p-matrix i {
+            position: absolute;
+            inset: -100% 0 0;
+            background:
+                repeating-linear-gradient(to right, transparent 0 8px, rgba(0, 0, 0, 0.35) 8px 16px),
+                repeating-linear-gradient(to bottom,
+                    rgba(35, 255, 75, 0.9) 0 2px,
+                    rgba(35, 255, 75, 0.25) 2px 8px,
+                    transparent 8px 26px);
+            animation: rainFall 1.4s linear infinite;
+            opacity: 0.8;
+        }
+        .p-matrix::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(1, 4, 1, 0.8));
+            z-index: 1;
+        }
+        @keyframes rainFall {
+            from { transform: translateY(0); }
+            to { transform: translateY(85px); }
+        }
+
+        /* Silk Waves */
+        .p-silk {
+            background: linear-gradient(115deg, #0b0a1e, #1a0b2e);
+        }
+        .p-silk i,
+        .p-silk i::before,
+        .p-silk i::after {
+            content: "";
+            position: absolute;
+            inset: 30% -30% -40%;
+            border-radius: 45% 55% 0 0 / 100% 100% 0 0;
+            background: linear-gradient(to right, rgba(122, 92, 255, 0.4), rgba(42, 111, 255, 0.35), rgba(255, 45, 106, 0.3));
+            filter: blur(8px);
+            animation: silkFlow 6s ease-in-out infinite alternate;
+        }
+        .p-silk i::before {
+            inset: 20% -40% -30%;
+            background: linear-gradient(to right, rgba(255, 45, 106, 0.25), rgba(122, 92, 255, 0.3));
+            animation-duration: 8s;
+            animation-delay: -2s;
+        }
+        .p-silk i::after {
+            inset: 45% -30% -50%;
+            background: linear-gradient(to right, rgba(0, 255, 234, 0.2), rgba(42, 111, 255, 0.3));
+            animation-duration: 5s;
+            animation-delay: -3.4s;
+        }
+        @keyframes silkFlow {
+            from { transform: translateX(-6%) scaleY(1); }
+            to { transform: translateX(6%) scaleY(1.15); }
+        }
+
+        /* Clouds */
+        .p-clouds {
+            background: linear-gradient(to bottom, #2a6fd0 0%, #7ab4e8 60%, #cfe6f5 100%);
+        }
+        .p-clouds i,
+        .p-clouds i::before,
+        .p-clouds i::after {
+            content: "";
+            position: absolute;
+            width: 150px;
+            height: 46px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.9);
+            filter: blur(10px);
+            top: 26%;
+            left: -30%;
+            animation: cloudDrift 12s linear infinite;
+        }
+        .p-clouds i::before {
+            width: 110px;
+            height: 34px;
+            top: 110%;
+            left: 30%;
+            opacity: 0.8;
+            animation-duration: 16s;
+            animation-delay: -6s;
+        }
+        .p-clouds i::after {
+            width: 190px;
+            height: 56px;
+            top: -160%;
+            left: 60%;
+            opacity: 0.65;
+            animation-duration: 20s;
+            animation-delay: -11s;
+        }
+        @keyframes cloudDrift {
+            from { transform: translateX(0); }
+            to { transform: translateX(420px); }
+        }
+
+        footer {
+            margin-top: 48px;
+            font-size: 10px;
+            letter-spacing: 1.2px;
+            color: rgba(255, 255, 255, 0.25);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .preview i,
+            .preview i::before,
+            .preview i::after,
+            .preview::before {
+                animation: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <header>
+            <h1>BACKGROUNDS</h1>
+            <p>A collection of animated, customizable background scenes.</p>
+            <span class="hint">PRESS <kbd>SPACE</kbd> ON ANY BACKGROUND TO OPEN SETTINGS</span>
+        </header>
+
+        <main class="grid">
+            <a class="card" href="backgrounds/universe.html">
+                <div class="preview p-universe"><i></i></div>
+                <div class="meta">
+                    <h2>UNIVERSE</h2>
+                    <p>A drifting starfield of 65,000 twinkling stars wrapped in nebula clouds.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/aurora.html">
+                <div class="preview p-aurora"><i></i></div>
+                <div class="meta">
+                    <h2>AURORA</h2>
+                    <p>Northern lights ribbons flowing across a cold night sky.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/synthwave.html">
+                <div class="preview p-synthwave"><i></i></div>
+                <div class="meta">
+                    <h2>SYNTHWAVE</h2>
+                    <p>A retro grid racing toward a striped neon sun on the horizon.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/fluid-ink.html">
+                <div class="preview p-ink"><i></i></div>
+                <div class="meta">
+                    <h2>FLUID INK</h2>
+                    <p>Swirling ink and smoke folding into itself in slow motion.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/plexus.html">
+                <div class="preview p-plexus"><i></i></div>
+                <div class="meta">
+                    <h2>PLEXUS</h2>
+                    <p>A living constellation of drifting nodes and connecting lines.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/ocean.html">
+                <div class="preview p-ocean"><i></i></div>
+                <div class="meta">
+                    <h2>OCEAN</h2>
+                    <p>Underwater light rays and rising bubbles in deep blue water.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/fireflies.html">
+                <div class="preview p-fireflies"><i></i></div>
+                <div class="meta">
+                    <h2>FIREFLIES</h2>
+                    <p>Glowing fireflies drifting through a dark midnight forest.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/lava-lamp.html">
+                <div class="preview p-lava"><i></i></div>
+                <div class="meta">
+                    <h2>LAVA LAMP</h2>
+                    <p>Molten blobs merging and splitting in a slow hypnotic rise.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/matrix.html">
+                <div class="preview p-matrix"><i></i></div>
+                <div class="meta">
+                    <h2>MATRIX RAIN</h2>
+                    <p>Cascading streams of glowing glyphs falling through the dark.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/silk-waves.html">
+                <div class="preview p-silk"><i></i></div>
+                <div class="meta">
+                    <h2>SILK WAVES</h2>
+                    <p>Layered gradient waves rippling like silk in the wind.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/clouds.html">
+                <div class="preview p-clouds"><i></i></div>
+                <div class="meta">
+                    <h2>CLOUDS</h2>
+                    <p>Soft volumetric clouds drifting across an open sky.</p>
+                </div>
+            </a>
+        </main>
+
+        <footer>SETTINGS ARE SAVED PER BACKGROUND IN YOUR BROWSER</footer>
+    </div>
+</body>
+</html>

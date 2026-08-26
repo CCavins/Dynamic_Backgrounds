@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universe</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: "SF Mono", "Menlo", "Consolas", monospace;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        #home {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 11px;
+            letter-spacing: 1.6px;
+            text-decoration: none;
+            padding: 6px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 999px;
+            background: rgba(8, 8, 16, 0.5);
+            backdrop-filter: blur(12px);
+            transition: color 0.2s ease, border-color 0.2s ease;
+            z-index: 4;
+        }
+        #home:hover {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.35);
+        }
+        #menu {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            width: 268px;
+            max-height: calc(100vh - 32px);
+            overflow-y: auto;
+            padding: 14px 14px 12px;
+            color: #e8e8f0;
+            background: rgba(8, 8, 16, 0.78);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+            z-index: 3;
+            opacity: 0;
+            transform: translateY(8px) scale(0.98);
+            pointer-events: none;
+            transition: opacity 0.22s ease, transform 0.22s ease;
+        }
+        #menu.open {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+        #menu header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        #menu header span {
+            font-size: 11px;
+            letter-spacing: 1.8px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        kbd {
+            font-size: 9px;
+            letter-spacing: 1px;
+            padding: 2px 6px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        .section {
+            margin-bottom: 12px;
+        }
+        .section-label {
+            display: block;
+            font-size: 10px;
+            letter-spacing: 1.4px;
+            color: rgba(255, 255, 255, 0.42);
+            margin-bottom: 7px;
+        }
+        .presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 8px;
+        }
+        .presets button {
+            font: inherit;
+            font-size: 9px;
+            letter-spacing: 0.8px;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            padding: 3px 8px;
+            cursor: pointer;
+        }
+        .presets button.active,
+        .presets button:hover {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.12);
+        }
+        .swatches,
+        .bg-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .bg-dot {
+            width: 22px;
+            height: 22px;
+            padding: 0;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+        }
+        .bg-dot.active {
+            border-color: #fff;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.22);
+        }
+        .color-field {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+        }
+        .color-field span {
+            font-size: 8px;
+            letter-spacing: 0.6px;
+            color: rgba(255, 255, 255, 0.38);
+        }
+        input[type="color"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 26px;
+            height: 26px;
+            padding: 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 2px;
+        }
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 4px;
+        }
+        .slider-row {
+            display: grid;
+            grid-template-columns: 72px 1fr 36px;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .slider-row label {
+            font-size: 10px;
+            letter-spacing: 0.6px;
+            color: rgba(255, 255, 255, 0.55);
+        }
+        .slider-row output {
+            font-size: 10px;
+            text-align: right;
+            color: rgba(255, 255, 255, 0.45);
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.16);
+            border-radius: 999px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+        }
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            cursor: pointer;
+        }
+        .toggle-row span {
+            font-size: 10px;
+            letter-spacing: 0.6px;
+            color: rgba(255, 255, 255, 0.55);
+        }
+        .toggle-row input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .switch {
+            width: 30px;
+            height: 16px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.16);
+            position: relative;
+            transition: background 0.2s ease;
+        }
+        .switch::after {
+            content: "";
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #fff;
+            transition: transform 0.2s ease;
+        }
+        .toggle-row input:checked + .switch {
+            background: rgba(255, 255, 255, 0.55);
+        }
+        .toggle-row input:checked + .switch::after {
+            transform: translateX(14px);
+        }
+        #reset {
+            width: 100%;
+            margin-top: 4px;
+            font: inherit;
+            font-size: 10px;
+            letter-spacing: 1.2px;
+            color: rgba(255, 255, 255, 0.65);
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 7px;
+            padding: 6px 0;
+            cursor: pointer;
+        }
+        #reset:hover {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.174.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="loading">GENERATING UNIVERSE...</div>
+    <a id="home" href="../index.html">&#9666; GALLERY</a>
+    <aside id="menu">
+        <header>
+            <span>SETTINGS</span>
+            <kbd>SPACE</kbd>
+        </header>
+
+        <div class="section">
+            <span class="section-label">STAR COLORS</span>
+            <div class="presets" id="palette-presets"></div>
+            <div class="swatches" id="star-swatches"></div>
+        </div>
+
+        <div class="section">
+            <span class="section-label">BACKGROUND</span>
+            <div class="bg-row">
+                <div class="bg-row" id="bg-presets"></div>
+                <label class="color-field">
+                    <input type="color" id="bg-color" value="#000000">
+                    <span>CUSTOM</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="section">
+            <span class="section-label">NEBULA</span>
+            <div class="bg-row">
+                <label class="color-field">
+                    <input type="color" id="nebula-a" value="#260640">
+                    <span>A</span>
+                </label>
+                <label class="color-field">
+                    <input type="color" id="nebula-b" value="#051f40">
+                    <span>B</span>
+                </label>
+                <label class="color-field">
+                    <input type="color" id="nebula-band" value="#1a140d">
+                    <span>BAND</span>
+                </label>
+            </div>
+            <div class="slider-row">
+                <label for="nebula-intensity">Intensity</label>
+                <input type="range" id="nebula-intensity" min="0" max="2" step="0.05" value="1">
+                <output id="nebula-intensity-out">1.00</output>
+            </div>
+        </div>
+
+        <div class="section">
+            <span class="section-label">MOTION</span>
+            <div class="slider-row">
+                <label for="speed">Speed</label>
+                <input type="range" id="speed" min="0" max="3" step="0.05" value="1">
+                <output id="speed-out">1.00</output>
+            </div>
+            <div class="slider-row">
+                <label for="rotate">Rotate</label>
+                <input type="range" id="rotate" min="0" max="2" step="0.05" value="0.4">
+                <output id="rotate-out">0.40</output>
+            </div>
+            <div class="slider-row">
+                <label for="twinkle">Twinkle</label>
+                <input type="range" id="twinkle" min="0" max="3" step="0.05" value="1">
+                <output id="twinkle-out">1.00</output>
+            </div>
+            <label class="toggle-row">
+                <span>Follow cursor</span>
+                <input type="checkbox" id="follow-cursor">
+                <span class="switch"></span>
+            </label>
+        </div>
+
+        <div class="section">
+            <span class="section-label">STARS</span>
+            <div class="slider-row">
+                <label for="density">Density</label>
+                <input type="range" id="density" min="5000" max="80000" step="1000" value="65000">
+                <output id="density-out">65k</output>
+            </div>
+            <div class="slider-row">
+                <label for="size">Size</label>
+                <input type="range" id="size" min="0.3" max="3" step="0.05" value="1">
+                <output id="size-out">1.00</output>
+            </div>
+        </div>
+
+        <button type="button" id="reset">RESET</button>
+    </aside>
+    <div id="canvas-container"></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const PALETTES = {
+            Neon: ['#ff1e4a', '#23ff4b', '#2a6fff', '#ffd900', '#ff00ea', '#00ffea', '#ffffff', '#ff8800'],
+            Warm: ['#ff1e4a', '#ff4d00', '#ff8800', '#ffd900', '#ffcc88', '#ffffff', '#ff6b6b', '#ffaa00'],
+            Cool: ['#2a6fff', '#00ffea', '#7aa2ff', '#ffffff', '#4de8ff', '#b8e0ff', '#3d5afe', '#80cbc4'],
+            Aurora: ['#23ff4b', '#00ffea', '#7cffb2', '#2a6fff', '#ff00ea', '#a0ff9e', '#ffffff', '#4dffd2'],
+            Sunset: ['#ff1e4a', '#ff6b35', '#ffd900', '#ff00ea', '#ff8800', '#ffffff', '#c44569', '#ffc3a0'],
+            Mono: ['#ffffff', '#e8e8ff', '#c8c8e0', '#a0a0c0', '#ffffff', '#ddeeff', '#f5f5ff', '#bbbbdd']
+        };
+
+        const BACKGROUNDS = {
+            Black: '#000000',
+            White: '#ffffff',
+            Violet: '#4b1d80',
+            Blue: '#2a6fff',
+            Teal: '#00b3a4',
+            Ember: '#ff4d1a',
+            Rose: '#ff2d6a',
+            Gold: '#d4a017',
+            Midnight: '#1c1633'
+        };
+
+        const DEFAULTS = {
+            palette: 'Neon',
+            starColors: [...PALETTES.Neon],
+            bgColor: BACKGROUNDS.Black,
+            nebulaA: '#260640',
+            nebulaB: '#051f40',
+            nebulaBand: '#1a140d',
+            nebulaIntensity: 1,
+            speed: 1,
+            rotate: 0.4,
+            twinkle: 1,
+            density: 65000,
+            size: 1,
+            followCursor: false
+        };
+
+        const STORAGE_KEY = 'universe-settings-v3';
+        const HEX = /^#[0-9a-fA-F]{6}$/;
+
+        function clamp(value, min, max, fallback) {
+            const number = Number(value);
+            return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+        }
+
+        function loadSettings() {
+            try {
+                const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+                if (!data || typeof data !== 'object') return { ...DEFAULTS, starColors: [...DEFAULTS.starColors] };
+
+                const starColors = Array.isArray(data.starColors)
+                    && data.starColors.length === 8
+                    && data.starColors.every((color) => HEX.test(color))
+                    ? data.starColors
+                    : [...DEFAULTS.starColors];
+
+                const palette = typeof data.palette === 'string' && PALETTES[data.palette] ? data.palette : null;
+
+                return {
+                    palette,
+                    starColors,
+                    bgColor: HEX.test(data.bgColor) ? data.bgColor : DEFAULTS.bgColor,
+                    nebulaA: HEX.test(data.nebulaA) ? data.nebulaA : DEFAULTS.nebulaA,
+                    nebulaB: HEX.test(data.nebulaB) ? data.nebulaB : DEFAULTS.nebulaB,
+                    nebulaBand: HEX.test(data.nebulaBand) ? data.nebulaBand : DEFAULTS.nebulaBand,
+                    nebulaIntensity: clamp(data.nebulaIntensity, 0, 2, DEFAULTS.nebulaIntensity),
+                    speed: clamp(data.speed, 0, 3, DEFAULTS.speed),
+                    rotate: clamp(data.rotate, 0, 2, DEFAULTS.rotate),
+                    twinkle: clamp(data.twinkle, 0, 3, DEFAULTS.twinkle),
+                    density: clamp(data.density, 5000, 80000, DEFAULTS.density),
+                    size: clamp(data.size, 0.3, 3, DEFAULTS.size),
+                    followCursor: typeof data.followCursor === 'boolean' ? data.followCursor : DEFAULTS.followCursor
+                };
+            } catch {
+                return { ...DEFAULTS, starColors: [...DEFAULTS.starColors] };
+            }
+        }
+
+        const settings = loadSettings();
+
+        const MAX_PARTICLES = 80000;
+        const RADIUS = 800;
+
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+
+        const universe = new THREE.Group();
+        scene.add(universe);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
+        camera.position.set(0, 0, 100);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setClearColor(settings.bgColor, 1);
+        container.appendChild(renderer.domElement);
+
+        const clock = new THREE.Clock();
+
+        const bgVertexShader = `
+            varying vec2 vNdc;
+            void main() {
+                vNdc = position.xy;
+                gl_Position = vec4(position.xy, 0.999, 1.0);
+            }
+        `;
+
+        const bgFragmentShader = `
+            uniform float uTime;
+            uniform float uTimeScale;
+            uniform vec3 uBaseSpace;
+            uniform vec3 uColor1;
+            uniform vec3 uColor2;
+            uniform vec3 uStarBand;
+            uniform float uNebulaStrength;
+            uniform mat4 uInvProjection;
+            uniform mat4 uCameraWorld;
+            uniform mat3 uUniverseInv;
+            varying vec2 vNdc;
+
+            vec3 hash3(vec3 p) {
+                p = vec3(
+                    dot(p, vec3(127.1, 311.7, 74.7)),
+                    dot(p, vec3(269.5, 183.3, 246.1)),
+                    dot(p, vec3(113.5, 271.9, 124.6))
+                );
+                return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
+            }
+
+            float noise(vec3 p) {
+                vec3 i = floor(p);
+                vec3 f = fract(p);
+                vec3 u = f * f * (3.0 - 2.0 * f);
+
+                return mix(
+                    mix(mix(dot(hash3(i + vec3(0.0, 0.0, 0.0)), f - vec3(0.0, 0.0, 0.0)),
+                            dot(hash3(i + vec3(1.0, 0.0, 0.0)), f - vec3(1.0, 0.0, 0.0)), u.x),
+                        mix(dot(hash3(i + vec3(0.0, 1.0, 0.0)), f - vec3(0.0, 1.0, 0.0)),
+                            dot(hash3(i + vec3(1.0, 1.0, 0.0)), f - vec3(1.0, 1.0, 0.0)), u.x), u.y),
+                    mix(mix(dot(hash3(i + vec3(0.0, 0.0, 1.0)), f - vec3(0.0, 0.0, 1.0)),
+                            dot(hash3(i + vec3(1.0, 0.0, 1.0)), f - vec3(1.0, 0.0, 1.0)), u.x),
+                        mix(dot(hash3(i + vec3(0.0, 1.0, 1.0)), f - vec3(0.0, 1.0, 1.0)),
+                            dot(hash3(i + vec3(1.0, 1.0, 1.0)), f - vec3(1.0, 1.0, 1.0)), u.x), u.y),
+                    u.z
+                );
+            }
+
+            float fbm(vec3 p) {
+                float v = 0.0;
+                float a = 0.5;
+                const mat3 rot = mat3(
+                    0.00,  0.80,  0.60,
+                   -0.80,  0.36, -0.48,
+                   -0.60, -0.48,  0.64
+                );
+                for (int i = 0; i < 5; i++) {
+                    v += a * noise(p);
+                    p = rot * p * 2.0;
+                    a *= 0.5;
+                }
+                return v * 0.5 + 0.5;
+            }
+
+            void main() {
+                vec4 view = uInvProjection * vec4(vNdc, 1.0, 1.0);
+                vec3 viewDir = normalize(view.xyz / view.w);
+                vec3 worldDir = normalize(mat3(uCameraWorld) * viewDir);
+                vec3 dir = normalize(uUniverseInv * worldDir);
+
+                float t = uTime * 0.02 * uTimeScale;
+                float milky = exp(-pow(dot(dir, normalize(vec3(0.18, 1.0, 0.12))), 2.0) * 2.4);
+
+                float n1 = fbm(dir * 2.4 + vec3(t, t * 0.7, -t * 0.4));
+                float n2 = fbm(dir * 4.2 - vec3(t * 1.2, t * 0.8, t) + n1);
+
+                vec3 finalColor = uBaseSpace;
+                finalColor += uColor1 * n1 * (0.45 + 0.55 * milky) * uNebulaStrength;
+                finalColor += uColor2 * n2 * (0.4 + 0.35 * milky) * uNebulaStrength;
+                finalColor += uStarBand * milky * n1 * n2 * 1.6 * uNebulaStrength;
+
+                gl_FragColor = vec4(finalColor, 1.0);
+            }
+        `;
+
+        const bgGeometry = new THREE.BufferGeometry();
+        bgGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+            -1, -1, 0,
+            3, -1, 0,
+            -1, 3, 0
+        ]), 3));
+
+        const bgMaterial = new THREE.ShaderMaterial({
+            vertexShader: bgVertexShader,
+            fragmentShader: bgFragmentShader,
+            uniforms: {
+                uTime: { value: 0 },
+                uTimeScale: { value: settings.speed },
+                uBaseSpace: { value: new THREE.Color(settings.bgColor) },
+                uColor1: { value: new THREE.Color(settings.nebulaA) },
+                uColor2: { value: new THREE.Color(settings.nebulaB) },
+                uStarBand: { value: new THREE.Color(settings.nebulaBand) },
+                uNebulaStrength: { value: settings.nebulaIntensity },
+                uInvProjection: { value: new THREE.Matrix4() },
+                uCameraWorld: { value: new THREE.Matrix4() },
+                uUniverseInv: { value: new THREE.Matrix3() }
+            },
+            depthWrite: false,
+            depthTest: false
+        });
+        const nebulaMesh = new THREE.Mesh(bgGeometry, bgMaterial);
+        nebulaMesh.frustumCulled = false;
+        nebulaMesh.renderOrder = -1;
+        scene.add(nebulaMesh);
+
+        const universeWorld3 = new THREE.Matrix3();
+
+        const starGeometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(MAX_PARTICLES * 3);
+        const colors = new Float32Array(MAX_PARTICLES * 3);
+        const sizes = new Float32Array(MAX_PARTICLES);
+        const phases = new Float32Array(MAX_PARTICLES);
+        const twinkleSpeeds = new Float32Array(MAX_PARTICLES);
+
+        for (let i = 0; i < MAX_PARTICLES; i++) {
+            const r = RADIUS * Math.cbrt(Math.random());
+            const theta = Math.random() * 2 * Math.PI;
+            const phi = Math.acos(2 * Math.random() - 1);
+
+            positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+            positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+            positions[i * 3 + 2] = r * Math.cos(phi);
+
+            sizes[i] = Math.pow(Math.random(), 7.0) * 20.0 + 1.0;
+            phases[i] = Math.random() * Math.PI * 2;
+            twinkleSpeeds[i] = Math.random() * 4.0 + 0.5;
+        }
+
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        starGeometry.setAttribute('customColor', new THREE.BufferAttribute(colors, 3));
+        starGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+        starGeometry.setAttribute('phase', new THREE.BufferAttribute(phases, 1));
+        starGeometry.setAttribute('twinkleSpeed', new THREE.BufferAttribute(twinkleSpeeds, 1));
+        starGeometry.setDrawRange(0, settings.density);
+
+        const starVertexShader = `
+            uniform float uTime;
+            uniform float uPixelRatio;
+            uniform float uTwinkleScale;
+            uniform float uSizeScale;
+
+            attribute float size;
+            attribute float phase;
+            attribute float twinkleSpeed;
+            attribute vec3 customColor;
+
+            varying vec3 vColor;
+            varying float vTwinkle;
+
+            void main() {
+                vColor = customColor;
+
+                float t = uTime * twinkleSpeed * uTwinkleScale + phase;
+                float wave = sin(t) * 0.5 + 0.5;
+
+                float flash = pow(wave, 10.0) * 2.5;
+                float basePulse = 0.15 + wave * 0.3;
+
+                vTwinkle = basePulse + flash;
+
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                gl_Position = projectionMatrix * mvPosition;
+
+                float dist = length(mvPosition.xyz);
+                gl_PointSize = size * uSizeScale * uPixelRatio * (600.0 / dist) * vTwinkle;
+            }
+        `;
+
+        const starFragmentShader = `
+            varying vec3 vColor;
+            varying float vTwinkle;
+
+            void main() {
+                vec2 uv = gl_PointCoord.xy * 2.0 - 1.0;
+                float d = length(uv);
+
+                float rayX = exp(-abs(uv.x) * 30.0) * exp(-abs(uv.y) * 1.0);
+                float rayY = exp(-abs(uv.y) * 30.0) * exp(-abs(uv.x) * 1.0);
+
+                float core = exp(-d * 15.0);
+                float halo = exp(-d * 4.0) * 0.5;
+
+                float alpha = (rayX + rayY) * 0.8 + core + halo;
+
+                alpha *= smoothstep(1.0, 0.1, d);
+
+                if (alpha < 0.02) discard;
+
+                vec3 finalColor = mix(vColor, vec3(1.0), core * 0.9);
+
+                gl_FragColor = vec4(finalColor, alpha * min(vTwinkle, 2.5));
+            }
+        `;
+
+        const starMaterial = new THREE.ShaderMaterial({
+            vertexShader: starVertexShader,
+            fragmentShader: starFragmentShader,
+            uniforms: {
+                uTime: { value: 0.0 },
+                uPixelRatio: { value: renderer.getPixelRatio() },
+                uTwinkleScale: { value: settings.twinkle },
+                uSizeScale: { value: settings.size }
+            },
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const starMesh = new THREE.Points(starGeometry, starMaterial);
+        universe.add(starMesh);
+
+        function recolorStars(palette) {
+            const attr = starGeometry.attributes.customColor;
+            const paletteColors = palette.map((hex) => new THREE.Color(hex));
+            const white = new THREE.Color(0xffffff);
+
+            for (let i = 0; i < MAX_PARTICLES; i++) {
+                const baseColor = paletteColors[Math.floor(Math.random() * paletteColors.length)];
+                const color = baseColor.clone().lerp(white, Math.random() * 0.2);
+                attr.array[i * 3] = color.r;
+                attr.array[i * 3 + 1] = color.g;
+                attr.array[i * 3 + 2] = color.b;
+            }
+
+            attr.needsUpdate = true;
+        }
+
+        recolorStars(settings.starColors);
+        document.getElementById('loading').style.opacity = '0';
+
+        let mouseX = 0;
+        let mouseY = 0;
+        let followCursor = settings.followCursor;
+        document.addEventListener('mousemove', (event) => {
+            mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enablePan = false;
+        controls.enableZoom = true;
+        controls.autoRotate = settings.rotate > 0;
+        controls.autoRotateSpeed = settings.rotate;
+
+        const menu = document.getElementById('menu');
+        const starSwatches = document.getElementById('star-swatches');
+        const presetBar = document.getElementById('palette-presets');
+        const bgPresets = document.getElementById('bg-presets');
+
+        const fields = {
+            bgColor: document.getElementById('bg-color'),
+            nebulaA: document.getElementById('nebula-a'),
+            nebulaB: document.getElementById('nebula-b'),
+            nebulaBand: document.getElementById('nebula-band'),
+            nebulaIntensity: document.getElementById('nebula-intensity'),
+            speed: document.getElementById('speed'),
+            rotate: document.getElementById('rotate'),
+            twinkle: document.getElementById('twinkle'),
+            density: document.getElementById('density'),
+            size: document.getElementById('size'),
+            followCursor: document.getElementById('follow-cursor')
+        };
+
+        const outputs = {
+            nebulaIntensity: document.getElementById('nebula-intensity-out'),
+            speed: document.getElementById('speed-out'),
+            rotate: document.getElementById('rotate-out'),
+            twinkle: document.getElementById('twinkle-out'),
+            density: document.getElementById('density-out'),
+            size: document.getElementById('size-out')
+        };
+
+        function persist() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                palette: presetBar.querySelector('button.active')?.dataset.palette || null,
+                starColors: starColorInputs.map((input) => input.value),
+                bgColor: fields.bgColor.value,
+                nebulaA: fields.nebulaA.value,
+                nebulaB: fields.nebulaB.value,
+                nebulaBand: fields.nebulaBand.value,
+                nebulaIntensity: Number(fields.nebulaIntensity.value),
+                speed: Number(fields.speed.value),
+                rotate: Number(fields.rotate.value),
+                twinkle: Number(fields.twinkle.value),
+                density: Number(fields.density.value),
+                size: Number(fields.size.value),
+                followCursor: fields.followCursor.checked
+            }));
+        }
+
+        const starColorInputs = settings.starColors.map((hex, index) => {
+            const input = document.createElement('input');
+            input.type = 'color';
+            input.value = hex;
+            input.setAttribute('aria-label', `Star color ${index + 1}`);
+            input.addEventListener('input', () => {
+                setActivePreset(null);
+                applyStarColors();
+                persist();
+            });
+            starSwatches.appendChild(input);
+            return input;
+        });
+
+        Object.keys(PALETTES).forEach((name) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = name.toUpperCase();
+            button.dataset.palette = name;
+            button.addEventListener('click', () => applyPalette(name));
+            presetBar.appendChild(button);
+        });
+
+        Object.entries(BACKGROUNDS).forEach(([name, hex]) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'bg-dot';
+            button.style.background = hex;
+            button.dataset.hex = hex.toLowerCase();
+            button.setAttribute('aria-label', `${name} background`);
+            button.addEventListener('click', () => applyBackground(hex));
+            bgPresets.appendChild(button);
+        });
+
+        function setActivePreset(name) {
+            presetBar.querySelectorAll('button').forEach((button) => {
+                button.classList.toggle('active', button.dataset.palette === name);
+            });
+        }
+
+        function setActiveBackground(hex) {
+            const normalized = hex.toLowerCase();
+            bgPresets.querySelectorAll('button').forEach((button) => {
+                button.classList.toggle('active', button.dataset.hex === normalized);
+            });
+        }
+
+        function applyPalette(name, shouldPersist = true) {
+            const palette = PALETTES[name];
+            starColorInputs.forEach((input, index) => {
+                input.value = palette[index];
+            });
+            setActivePreset(name);
+            applyStarColors();
+            if (shouldPersist) persist();
+        }
+
+        function applyStarColors() {
+            recolorStars(starColorInputs.map((input) => input.value));
+        }
+
+        function applyBackground(hex, shouldPersist = true) {
+            fields.bgColor.value = hex;
+            bgMaterial.uniforms.uBaseSpace.value.set(hex);
+            renderer.setClearColor(hex, 1);
+            setActiveBackground(hex);
+            if (shouldPersist) persist();
+        }
+
+        function applyNebula(shouldPersist = true) {
+            const intensity = Number(fields.nebulaIntensity.value);
+            outputs.nebulaIntensity.value = intensity.toFixed(2);
+            bgMaterial.uniforms.uColor1.value.set(fields.nebulaA.value);
+            bgMaterial.uniforms.uColor2.value.set(fields.nebulaB.value);
+            bgMaterial.uniforms.uStarBand.value.set(fields.nebulaBand.value);
+            bgMaterial.uniforms.uNebulaStrength.value = intensity;
+            if (shouldPersist) persist();
+        }
+
+        function formatDensity(value) {
+            return `${Math.round(Number(value) / 1000)}k`;
+        }
+
+        function applyMotionAndStars(shouldPersist = true) {
+            const speed = Number(fields.speed.value);
+            const rotate = Number(fields.rotate.value);
+            const twinkle = Number(fields.twinkle.value);
+            const density = Number(fields.density.value);
+            const size = Number(fields.size.value);
+            followCursor = fields.followCursor.checked;
+
+            outputs.speed.value = speed.toFixed(2);
+            outputs.rotate.value = rotate.toFixed(2);
+            outputs.twinkle.value = twinkle.toFixed(2);
+            outputs.density.value = formatDensity(density);
+            outputs.size.value = size.toFixed(2);
+
+            bgMaterial.uniforms.uTimeScale.value = speed;
+            starMaterial.uniforms.uTwinkleScale.value = twinkle;
+            starMaterial.uniforms.uSizeScale.value = size;
+            controls.autoRotateSpeed = rotate;
+            controls.autoRotate = rotate > 0;
+            starGeometry.setDrawRange(0, density);
+            if (shouldPersist) persist();
+        }
+
+        fields.bgColor.addEventListener('input', () => applyBackground(fields.bgColor.value));
+        ['nebulaA', 'nebulaB', 'nebulaBand', 'nebulaIntensity'].forEach((key) => {
+            fields[key].addEventListener('input', () => applyNebula());
+        });
+
+        ['speed', 'rotate', 'twinkle', 'density', 'size'].forEach((key) => {
+            fields[key].addEventListener('input', () => applyMotionAndStars());
+        });
+        fields.followCursor.addEventListener('change', () => applyMotionAndStars());
+
+        function resetSettings() {
+            applyPalette(DEFAULTS.palette, false);
+            fields.nebulaA.value = DEFAULTS.nebulaA;
+            fields.nebulaB.value = DEFAULTS.nebulaB;
+            fields.nebulaBand.value = DEFAULTS.nebulaBand;
+            fields.nebulaIntensity.value = String(DEFAULTS.nebulaIntensity);
+            fields.speed.value = String(DEFAULTS.speed);
+            fields.rotate.value = String(DEFAULTS.rotate);
+            fields.twinkle.value = String(DEFAULTS.twinkle);
+            fields.density.value = String(DEFAULTS.density);
+            fields.size.value = String(DEFAULTS.size);
+            fields.followCursor.checked = DEFAULTS.followCursor;
+            applyBackground(DEFAULTS.bgColor, false);
+            applyNebula(false);
+            applyMotionAndStars(false);
+            persist();
+        }
+
+        document.getElementById('reset').addEventListener('click', resetSettings);
+
+        fields.nebulaA.value = settings.nebulaA;
+        fields.nebulaB.value = settings.nebulaB;
+        fields.nebulaBand.value = settings.nebulaBand;
+        fields.nebulaIntensity.value = String(settings.nebulaIntensity);
+        fields.speed.value = String(settings.speed);
+        fields.rotate.value = String(settings.rotate);
+        fields.twinkle.value = String(settings.twinkle);
+        fields.density.value = String(settings.density);
+        fields.size.value = String(settings.size);
+        fields.followCursor.checked = settings.followCursor;
+        setActivePreset(settings.palette);
+        applyBackground(settings.bgColor, false);
+        applyNebula(false);
+        applyMotionAndStars(false);
+
+        function toggleMenu() {
+            menu.classList.toggle('open');
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.code !== 'Space' || event.repeat) return;
+            event.preventDefault();
+            toggleMenu();
+        });
+
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            starMaterial.uniforms.uPixelRatio.value = Math.min(window.devicePixelRatio, 2);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+
+            starMaterial.uniforms.uTime.value = elapsedTime;
+            bgMaterial.uniforms.uTime.value = elapsedTime;
+
+            const targetX = followCursor ? mouseY * 0.08 : 0;
+            const targetY = followCursor ? mouseX * 0.08 : 0;
+            universe.rotation.x += (targetX - universe.rotation.x) * 0.05;
+            universe.rotation.y += (targetY - universe.rotation.y) * 0.05;
+
+            controls.update();
+
+            universe.updateMatrixWorld();
+            bgMaterial.uniforms.uInvProjection.value.copy(camera.projectionMatrixInverse);
+            bgMaterial.uniforms.uCameraWorld.value.copy(camera.matrixWorld);
+            universeWorld3.setFromMatrix4(universe.matrixWorld);
+            bgMaterial.uniforms.uUniverseInv.value.copy(universeWorld3).invert();
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
