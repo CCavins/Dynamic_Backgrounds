@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic Backgrounds</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>BACKGROUNDS</h1>
+      <p>Apply an iframe to matching output URLs.</p>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="enabled" checked>
+      <span class="switch-ui" aria-hidden="true"></span>
+      <span class="switch-label" id="enabled-label">On</span>
+    </label>
+  </header>
+
+  <section>
+    <h2>Any output URL</h2>
+    <p class="help">Used when the page is an output and does not match a specific row. Leave blank to skip.</p>
+    <textarea id="any-output" rows="4" placeholder="Paste iframe or background URL"></textarea>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Specific output URLs</h2>
+    </div>
+    <p class="help">A matching output URL always wins, even if Any output URL is blank.</p>
+    <div id="rules"></div>
+    <button type="button" id="add-rule">Add output URL</button>
+  </section>
+
+  <template id="rule-template">
+    <article class="rule">
+      <label>
+        <span>Output URL</span>
+        <input type="url" class="output-url" placeholder="https://…/go/o/…">
+      </label>
+      <label>
+        <span>Iframe</span>
+        <textarea class="iframe-html" rows="3" placeholder="Paste iframe or background URL"></textarea>
+      </label>
+      <button type="button" class="remove-rule">Remove</button>
+    </article>
+  </template>
+
+  <script src="rules.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

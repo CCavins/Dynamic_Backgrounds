@@ -42,6 +42,29 @@ Open any scene, press **Space**, set colors and sliders, then **Copy iframe**. T
 
 Paste it on another page and layer your own content on top. The `cfg` value is the configured look. Embedded pages hide the gallery button and settings, and they do not read or write the visitor’s `localStorage`.
 
+## Chrome extension
+
+The gallery has a **Download Chrome extension** link (`extension.zip`). Chrome cannot install from that click. Unzip the file, then:
+
+1. Open `chrome://extensions`
+2. Turn on **Developer mode**
+3. Click **Load unpacked**
+4. Select the unzipped `extension` folder
+
+The popup has a master **On / Off** switch:
+
+- **Off** leaves every page alone.
+- **Specific output URLs** apply one iframe to one matching output URL. A match always wins.
+- **Any output URL** is a fallback iframe for recognized output pages that do not match a specific row. Leave it blank to skip unmatched pages.
+
+Tokens and extra query params on an output URL are ignored when matching. Staging and production stay separate.
+
+If you change files in `extension/`, rebuild the zip from the repo root:
+
+```bash
+rm -f extension.zip && zip -r extension.zip extension -x "*.DS_Store"
+```
+
 ## Run locally
 
 These pages are static HTML. Any local server works:

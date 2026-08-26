@@ -35,11 +35,16 @@
             letter-spacing: 1.2px;
             color: rgba(255, 255, 255, 0.45);
         }
+        .hints {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+        }
         .hint {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            margin-top: 18px;
             padding: 7px 14px;
             font-size: 10px;
             letter-spacing: 1.4px;
@@ -47,6 +52,11 @@
             border: 1px solid rgba(255, 255, 255, 0.14);
             border-radius: 999px;
             background: rgba(255, 255, 255, 0.03);
+            text-decoration: none;
+        }
+        a.hint:hover {
+            border-color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.8);
         }
         .hint kbd {
             font: inherit;
@@ -127,7 +137,10 @@
         <header>
             <h1>BACKGROUNDS</h1>
             <p>A collection of animated, customizable background scenes.</p>
-            <span class="hint">PRESS <kbd>SPACE</kbd> ON ANY BACKGROUND TO OPEN SETTINGS</span>
+            <div class="hints">
+                <span class="hint">PRESS <kbd>SPACE</kbd> ON ANY BACKGROUND TO OPEN SETTINGS</span>
+                <a class="hint" href="extension.zip" download>DOWNLOAD CHROME EXTENSION</a>
+            </div>
         </header>
 
         <main class="grid">
