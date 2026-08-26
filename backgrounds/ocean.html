@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        if (new URLSearchParams(location.search).has('preview')) {
+            document.documentElement.classList.add('preview');
+        }
+    </script>
     <title>Ocean</title>
     <style>
         body {
@@ -179,6 +184,11 @@
             color: #fff;
             border-color: rgba(255, 255, 255, 0.3);
         }
+        html.preview #home,
+        html.preview #menu,
+        html.preview #loading {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -230,6 +240,11 @@
                 <input type="range" id="bubble-speed" min="0.2" max="3" step="0.05" value="1">
                 <output id="bubble-speed-out">1.00</output>
             </div>
+            <div class="slider-row">
+                <label for="bubble-size">Size</label>
+                <input type="range" id="bubble-size" min="0.3" max="3" step="0.05" value="1">
+                <output id="bubble-size-out">1.00</output>
+            </div>
         </div>
 
         <button type="button" id="reset">RESET</button>
@@ -243,7 +258,8 @@
             rayColor: '#bfe8ff',
             rayIntensity: 1,
             bubbleDensity: 40,
-            bubbleSpeed: 1
+            bubbleSpeed: 1,
+            bubbleSize: 1
         };
 
         const STORAGE_KEY = 'bg-ocean-v1';
@@ -265,7 +281,8 @@
                     rayColor: HEX.test(data.rayColor) ? data.rayColor : DEFAULTS.rayColor,
                     rayIntensity: clamp(data.rayIntensity, 0, 2, DEFAULTS.rayIntensity),
                     bubbleDensity: Math.round(clamp(data.bubbleDensity, 0, 100, DEFAULTS.bubbleDensity)),
-                    bubbleSpeed: clamp(data.bubbleSpeed, 0.2, 3, DEFAULTS.bubbleSpeed)
+                    bubbleSpeed: clamp(data.bubbleSpeed, 0.2, 3, DEFAULTS.bubbleSpeed),
+                    bubbleSize: clamp(data.bubbleSize, 0.3, 3, DEFAULTS.bubbleSize)
                 };
             } catch {
                 return { ...DEFAULTS };
@@ -288,6 +305,7 @@
         let rayIntensity = settings.rayIntensity;
         let bubbleDensity = settings.bubbleDensity;
         let bubbleSpeed = settings.bubbleSpeed;
+        let bubbleSize = settings.bubbleSize;
 
         function hexToRgb(hex) {
             return {
@@ -447,12 +465,12 @@
         const bubbles = [];
 
         function makeBubble(spawnAnywhere) {
-            const radius = 1.5 + Math.pow(Math.random(), 2.2) * 6.5;
+            const baseRadius = 1.5 + Math.pow(Math.random(), 2.2) * 6.5;
             return {
                 baseX: Math.random() * width,
                 y: spawnAnywhere ? Math.random() * height : height + 12 + Math.random() * 60,
-                radius,
-                rise: (0.35 + radius * 0.11 + Math.random() * 0.3) * 60,
+                baseRadius,
+                rise: (0.35 + baseRadius * 0.11 + Math.random() * 0.3) * 60,
                 wobbleAmp: 5 + Math.random() * 14,
                 wobbleFreq: 0.6 + Math.random() * 1.1,
                 wobblePhase: Math.random() * Math.PI * 2,
@@ -483,7 +501,7 @@
                 }
                 const x = bubble.baseX + Math.sin(time * bubble.wobbleFreq + bubble.wobblePhase) * bubble.wobbleAmp;
                 const scale = 1 + bubble.pop * 0.7;
-                const drawRadius = bubble.radius * scale;
+                const drawRadius = bubble.baseRadius * bubbleSize * scale;
                 ctx.globalAlpha = bubble.opacity * (1 - bubble.pop);
                 ctx.drawImage(bubbleSprite, x - drawRadius, bubble.y - drawRadius, drawRadius * 2, drawRadius * 2);
             }
@@ -526,23 +544,27 @@
             rayColor: document.getElementById('ray-color'),
             rayIntensity: document.getElementById('ray-intensity'),
             bubbleDensity: document.getElementById('bubble-density'),
-            bubbleSpeed: document.getElementById('bubble-speed')
+            bubbleSpeed: document.getElementById('bubble-speed'),
+            bubbleSize: document.getElementById('bubble-size')
         };
 
         const outputs = {
             rayIntensity: document.getElementById('ray-intensity-out'),
             bubbleDensity: document.getElementById('bubble-density-out'),
-            bubbleSpeed: document.getElementById('bubble-speed-out')
+            bubbleSpeed: document.getElementById('bubble-speed-out'),
+            bubbleSize: document.getElementById('bubble-size-out')
         };
 
         function persist() {
+            if (document.documentElement.classList.contains('preview')) return;
             localStorage.setItem(STORAGE_KEY, JSON.stringify({
                 waterTop: fields.waterTop.value,
                 waterBottom: fields.waterBottom.value,
                 rayColor: fields.rayColor.value,
                 rayIntensity: Number(fields.rayIntensity.value),
                 bubbleDensity: Number(fields.bubbleDensity.value),
-                bubbleSpeed: Number(fields.bubbleSpeed.value)
+                bubbleSpeed: Number(fields.bubbleSpeed.value),
+                bubbleSize: Number(fields.bubbleSize.value)
             }));
         }
 
@@ -554,10 +576,12 @@
             rayIntensity = Number(fields.rayIntensity.value);
             bubbleDensity = Math.round(Number(fields.bubbleDensity.value));
             bubbleSpeed = Number(fields.bubbleSpeed.value);
+            bubbleSize = Number(fields.bubbleSize.value);
 
             outputs.rayIntensity.value = rayIntensity.toFixed(2);
             outputs.bubbleDensity.value = String(bubbleDensity);
             outputs.bubbleSpeed.value = bubbleSpeed.toFixed(2);
+            outputs.bubbleSize.value = bubbleSize.toFixed(2);
 
             rebuildWaterGradient();
             buildRaySprite();
@@ -576,6 +600,7 @@
             fields.rayIntensity.value = String(DEFAULTS.rayIntensity);
             fields.bubbleDensity.value = String(DEFAULTS.bubbleDensity);
             fields.bubbleSpeed.value = String(DEFAULTS.bubbleSpeed);
+            fields.bubbleSize.value = String(DEFAULTS.bubbleSize);
             applySettings(false);
             persist();
         }
@@ -596,6 +621,7 @@
         fields.rayIntensity.value = String(settings.rayIntensity);
         fields.bubbleDensity.value = String(settings.bubbleDensity);
         fields.bubbleSpeed.value = String(settings.bubbleSpeed);
+        fields.bubbleSize.value = String(settings.bubbleSize);
 
         buildCausticStrip();
         buildBubbleSprite();

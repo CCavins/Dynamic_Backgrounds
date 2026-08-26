@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        if (new URLSearchParams(location.search).has('preview')) {
+            document.documentElement.classList.add('preview');
+        }
+    </script>
     <title>Matrix Rain</title>
     <style>
         body {
@@ -178,6 +183,11 @@
         #reset:hover {
             color: #fff;
             border-color: rgba(255, 255, 255, 0.3);
+        }
+        html.preview #home,
+        html.preview #menu,
+        html.preview #loading {
+            display: none !important;
         }
     </style>
 </head>
@@ -445,6 +455,7 @@
         };
 
         function persist() {
+            if (document.documentElement.classList.contains('preview')) return;
             localStorage.setItem(STORAGE_KEY, JSON.stringify({
                 glyphColor: fields.glyphColor.value,
                 headColor: fields.headColor.value,

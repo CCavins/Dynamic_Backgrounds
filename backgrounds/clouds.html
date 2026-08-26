@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        if (new URLSearchParams(location.search).has('preview')) {
+            document.documentElement.classList.add('preview');
+        }
+    </script>
     <title>Clouds</title>
     <style>
         body {
@@ -179,6 +184,11 @@
             color: #fff;
             border-color: rgba(255, 255, 255, 0.3);
         }
+        html.preview #home,
+        html.preview #menu,
+        html.preview #loading {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -314,6 +324,7 @@
         };
 
         function persist() {
+            if (document.documentElement.classList.contains('preview')) return;
             localStorage.setItem(STORAGE_KEY, JSON.stringify({
                 skyTop: fields.skyTop.value,
                 skyBottom: fields.skyBottom.value,

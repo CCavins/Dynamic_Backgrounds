@@ -1,0 +1,8 @@
+{
+  "name": "dynamic-backgrounds-preview-recorder",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "puppeteer-core": "^24.15.0"
+  }
+}

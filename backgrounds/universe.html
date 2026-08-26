@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        if (new URLSearchParams(location.search).has('preview')) {
+            document.documentElement.classList.add('preview');
+        }
+    </script>
     <title>Universe</title>
     <style>
         body {
@@ -268,6 +273,11 @@
             color: #fff;
             border-color: rgba(255, 255, 255, 0.3);
         }
+        html.preview #home,
+        html.preview #menu,
+        html.preview #loading {
+            display: none !important;
+        }
     </style>
     <script type="importmap">
         {
@@ -452,6 +462,9 @@
         }
 
         const settings = loadSettings();
+        if (document.documentElement.classList.contains('preview')) {
+            settings.density = Math.min(settings.density, 8000);
+        }
 
         const MAX_PARTICLES = 80000;
         const RADIUS = 800;
@@ -758,6 +771,7 @@
         };
 
         function persist() {
+            if (document.documentElement.classList.contains('preview')) return;
             localStorage.setItem(STORAGE_KEY, JSON.stringify({
                 palette: presetBar.querySelector('button.active')?.dataset.palette || null,
                 starColors: starColorInputs.map((input) => input.value),
