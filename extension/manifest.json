@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dynamic Backgrounds",
-  "version": "1.6.0",
+  "version": "1.8.3",
   "description": "Apply a Dynamic Backgrounds iframe, mosaic themes, and message themes to matching output URLs.",
   "action": {
     "default_popup": "popup.html",
@@ -12,17 +12,39 @@
       "128": "icons/icon128.png"
     }
   },
-  "permissions": ["storage"],
-  "host_permissions": ["*://*.thefamousgroup.com/*"],
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.thefamousgroup.com/*"
+  ],
   "content_scripts": [
     {
-      "matches": ["*://*.thefamousgroup.com/*"],
-      "js": ["early.js"],
+      "matches": [
+        "*://*.thefamousgroup.com/*"
+      ],
+      "js": [
+        "early.js"
+      ],
       "run_at": "document_start"
     },
     {
-      "matches": ["*://*.thefamousgroup.com/*"],
-      "js": ["rules.js", "handoff.js", "content.js", "mosaic-themes.js", "message-themes.js", "custom-themes.js", "mosaic.js", "message.js"],
+      "matches": [
+        "*://*.thefamousgroup.com/*"
+      ],
+      "js": [
+        "rules.js",
+        "handoff.js",
+        "content.js",
+        "mosaic-themes.js",
+        "message-themes.js",
+        "engines/api.js",
+        "engines/example-aurora.js",
+        "engines/example-orbit-swap.js",
+        "custom-themes.js",
+        "mosaic.js",
+        "message.js"
+      ],
       "run_at": "document_idle"
     }
   ],

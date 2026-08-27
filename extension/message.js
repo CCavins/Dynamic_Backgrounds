@@ -82,6 +82,8 @@
     const root = ensureOverlay();
     if (!root) return false;
     root.dataset.theme = id;
+    if (def.engine) root.dataset.engine = def.engine;
+    else delete root.dataset.engine;
     const state = def.mount(root, themeSettings) || {};
     if (typeof def.applySettings === "function") {
       def.applySettings(root, state, themeSettings);
@@ -157,7 +159,21 @@
     teardown: teardownSoft,
   });
 
+  const customApi = globalThis.BGCustomThemes;
+  if (customApi && typeof customApi.onChange === "function") {
+    customApi.onChange(() => {
+      mountedTheme = "";
+      lastKey = "";
+      scheduleApply();
+    });
+  }
+
   async function apply() {
+    // Sideloaded engines compile from storage after this file starts. Wait so
+    // the first paint does not treat the selected theme as missing.
+    if (customApi && typeof customApi.whenReady === "function") {
+      await customApi.whenReady();
+    }
     // If the extension was reloaded, chrome APIs are gone but the page keeps
     // running this script. loadSettings falls back to the cached settings, so
     // theming continues instead of dropping back to the stock Vixi look.

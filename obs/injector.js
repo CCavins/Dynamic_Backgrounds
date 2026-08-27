@@ -32,6 +32,22 @@ const PAGE_MATCH = /\/go\/(output|o)\//i;
 
 const EXT_DIR = path.join(__dirname, "..", "extension");
 const SETTINGS_PATH = path.join(__dirname, "settings.json");
+const ENGINE_MANIFEST = path.join(EXT_DIR, "engines.json");
+
+function listedEngineFiles() {
+  const files = ["engines/api.js"];
+  try {
+    const data = JSON.parse(fs.readFileSync(ENGINE_MANIFEST, "utf8"));
+    (data.engines || []).forEach((name) => {
+      const file = String(name).replace(/^engines\//, "").replace(/^.*[/\\]/, "");
+      if (file && !file.includes("..") && file.endsWith(".js")) files.push("engines/" + file);
+    });
+  } catch {
+    /* engines.json optional */
+  }
+  return files;
+}
+
 // Same order as the extension manifest (early.js first, then document_idle set).
 const FILES = [
   "early.js",
@@ -39,8 +55,10 @@ const FILES = [
   "handoff.js",
   "content.js",
   "mosaic-themes.js",
-  "mosaic.js",
   "message-themes.js",
+  ...listedEngineFiles(),
+  "custom-themes.js",
+  "mosaic.js",
   "message.js",
 ];
 

@@ -1,0 +1,11 @@
+{
+  "format": "dynamic-backgrounds-theme",
+  "version": 1,
+  "kind": "mosaic",
+  "id": "tmpl-card-decks",
+  "label": "Card decks",
+  "layout": "row",
+  "count": 9,
+  "interval": 2800,
+  "css": "#dyn-mosaic-theme[data-theme=\"tmpl-card-decks\"]  {\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  gap: 12%;\n  padding: 8% 6% 16%;\n  overflow: visible;\n}\n#dyn-mosaic-theme[data-theme=\"tmpl-card-decks\"] .dyn-pile  {\n  position: relative;\n  width: min(26cqw, 360px);\n  aspect-ratio: 2 / 3;\n  flex: 0 0 auto;\n  overflow: visible;\n}\n#dyn-mosaic-theme[data-theme=\"tmpl-card-decks\"] .dyn-card  {\n  position: absolute;\n  inset: 0;\n  transform-origin: 50% 50%;\n  transition: transform 0.55s cubic-bezier(0.22, 0.8, 0.2, 1);\n}\n#dyn-mosaic-theme[data-theme=\"tmpl-card-decks\"] .dyn-card.is-dealing,\n#dyn-mosaic-theme[data-theme=\"tmpl-card-decks\"] .dyn-card.is-face  {\n  transition: none;\n}\n#dyn-mosaic-theme[data-theme=\"tmpl-card-decks\"]  {\n  background: radial-gradient(70% 50% at 50% 40%, #2a1c14, #0b0b0d 72%);\n}\n#dyn-mosaic-theme[data-theme=\"tmpl-card-decks\"].dyn-layout-row .dyn-custom-cards  {\n  justify-content: center;\n  gap: 11%;\n  padding: 8% 6% 16%;\n  align-items: center;\n}\n#dyn-mosaic-theme[data-theme=\"tmpl-card-decks\"] .dyn-card  {\n  position: relative;\n  flex: 0 0 16%;\n  width: 16%;\n  height: 58%;\n  border-radius: 14px;\n  box-shadow: 0 18px 40px rgba(0,0,0,.45);\n}\n#dyn-mosaic-theme[data-theme=\"tmpl-card-decks\"] .dyn-card:nth-child(3n+1)  {\n   transform: rotate(-9deg) translate(8px, 10px);\n   z-index: 1;\n   }\n#dyn-mosaic-theme[data-theme=\"tmpl-card-decks\"] .dyn-card:nth-child(3n+2)  {\n   transform: rotate(2deg) translate(-2px, -4px);\n   z-index: 2;\n   }\n#dyn-mosaic-theme[data-theme=\"tmpl-card-decks\"] .dyn-card:nth-child(3n)  {\n   transform: rotate(8deg) translate(-10px, 6px);\n   z-index: 3;\n   }"
+}

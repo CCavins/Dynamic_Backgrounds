@@ -68,11 +68,11 @@
 
   <section>
     <h2>Imported themes</h2>
-    <p class="help">Sideload a message or mosaic theme JSON file. See themes/README.md.</p>
+    <p class="help">Sideload a theme JSON, or JSON plus engine.js. See themes/README.md and themes/SPEC.md.</p>
     <div id="custom-themes" class="custom-theme-list"></div>
     <label class="v2-btn v2-btn-secondary import-btn">
-      Import theme.json
-      <input type="file" id="import-theme" accept="application/json,.json" hidden>
+      Import theme.json + engine.js
+      <input type="file" id="import-theme" accept=".json,.js,application/json,text/javascript" multiple hidden>
     </label>
     <p class="help" id="import-status"></p>
   </section>
@@ -92,6 +92,7 @@
   </template>
 
   <script src="rules.js"></script>
+  <script src="engines/api.js"></script>
   <script src="custom-themes.js"></script>
   <script src="popup.js"></script>
 </body>

@@ -156,7 +156,11 @@
       const row = document.createElement("div");
       row.className = "custom-theme-row";
       const name = document.createElement("span");
-      name.textContent = pack.label + " · " + pack.kind;
+      name.textContent =
+        pack.label +
+        " · " +
+        pack.kind +
+        (pack.engine ? " · has engine" : "");
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "v2-btn v2-btn-destructive";
@@ -357,11 +361,40 @@
 
   if (importInput && customApi) {
     importInput.addEventListener("change", async () => {
-      const file = importInput.files && importInput.files[0];
+      const files = [...(importInput.files || [])];
       importInput.value = "";
-      if (!file) return;
+      if (!files.length) return;
+      const jsonFiles = files.filter((file) => /\.json$/i.test(file.name));
+      const jsFiles = files.filter((file) => /\.js$/i.test(file.name));
+      if (jsonFiles.length !== 1) {
+        if (importStatus) {
+          importStatus.textContent = "Select one theme.json and an optional engine.js.";
+        }
+        return;
+      }
+      if (jsFiles.length > 1) {
+        if (importStatus) importStatus.textContent = "Select at most one engine.js.";
+        return;
+      }
       try {
-        const pack = await customApi.importPack(await file.text());
+        if (jsFiles[0]) {
+          const seen = rulesApi.loadCustomEngineWarningSeen
+            ? await rulesApi.loadCustomEngineWarningSeen()
+            : false;
+          if (!seen) {
+            const ok = window.confirm(
+              "This pack includes JavaScript that will run on matching output pages. Only import engines you wrote or trust."
+            );
+            if (!ok) return;
+            if (rulesApi.saveCustomEngineWarningSeen) {
+              await rulesApi.saveCustomEngineWarningSeen();
+            }
+          }
+        }
+        const pack = await customApi.importPack(
+          await jsonFiles[0].text(),
+          jsFiles[0] ? await jsFiles[0].text() : ""
+        );
         fillMosaicThemeOptions();
         fillMessageThemeOptions();
         if (pack.kind === "message") {
@@ -376,7 +409,10 @@
         persist();
         const packs = await rulesApi.loadCustomThemes();
         renderCustomList(packs);
-        if (importStatus) importStatus.textContent = "Imported " + pack.label + ".";
+        if (importStatus) {
+          importStatus.textContent =
+            "Imported " + pack.label + (pack.engine ? " with engine." : ".");
+        }
       } catch (err) {
         if (importStatus) importStatus.textContent = err && err.message ? err.message : "Import failed.";
       }

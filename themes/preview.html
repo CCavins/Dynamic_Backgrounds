@@ -5,7 +5,7 @@
 <title>Custom theme preview</title>
 <style>
   html, body { margin: 0; height: 100%; background: #1b1b1b; color: #fff; font-family: Inter, sans-serif; }
-  #bar { position: fixed; top: 12px; left: 12px; z-index: 20; display: flex; gap: 8px; }
+  #bar { position: fixed; top: 12px; left: 12px; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px; max-width: 70%; }
   #bar button { min-height: 36px; padding: 6px 12px; border: 0; border-radius: 8px; background: #d52265; color: #fff; font: 500 13px Inter, sans-serif; cursor: pointer; }
   #dyn-message-theme, #dyn-mosaic-theme { position: absolute; inset: 0; }
   #dyn-mosaic-theme { display: none; }
@@ -14,32 +14,44 @@
 </style>
 </head>
 <body>
-<div id="bar">
-  <button type="button" id="show-stamp">Stamp message</button>
-  <button type="button" id="show-ribbon">Ribbon mosaic</button>
-</div>
+<div id="bar"></div>
 <div id="dyn-message-theme"></div>
 <div id="dyn-mosaic-theme"></div>
+<script src="../extension/rules.js"></script>
 <script src="../extension/message-themes.js"></script>
 <script src="../extension/mosaic-themes.js"></script>
+<script src="../extension/engines/api.js"></script>
+<script src="../extension/engines/example-aurora.js"></script>
+<script src="../extension/engines/example-orbit-swap.js"></script>
 <script src="../extension/custom-themes.js"></script>
 <script>
 (async () => {
   const messageApi = globalThis.BGMessageThemes;
+  const mosaicApi = globalThis.BGMosaicThemes;
   const customApi = globalThis.BGCustomThemes;
   const style = document.createElement("style");
-  style.textContent = messageApi.STYLE;
+  style.textContent = messageApi.STYLE + "\n" + mosaicApi.STYLE;
   document.head.appendChild(style);
   const fonts = document.createElement("link");
   fonts.rel = "stylesheet";
   fonts.href = messageApi.FONTS;
   document.head.appendChild(fonts);
 
-  const [stamp, ribbon] = await Promise.all([
-    fetch("example-stamp.json").then((r) => r.json()),
-    fetch("example-ribbon.json").then((r) => r.json()),
-  ]);
-  const packs = [customApi.parsePack(stamp), customApi.parsePack(ribbon)];
+  const files = [
+    ["example-stamp.json", "Stamp message"],
+    ["example-ribbon.json", "Ribbon mosaic"],
+    ["example-engine.json", "Aurora engine"],
+    ["example-mosaic-engine.json", "Orbit engine"],
+    ["tmpl-card-decks.json", "Card decks"],
+    ["tmpl-live-mosaic.json", "Live mosaic"],
+    ["tmpl-polaroid-wall.json", "Polaroid wall"],
+    ["tmpl-neon-nightclub.json", "Neon Nightclub"],
+    ["tmpl-led-scoreboard.json", "LED Scoreboard"],
+    ["tmpl-liquid-glass.json", "Liquid Glass"],
+    ["tmpl-parallax-drift.json", "Parallax Drift"],
+  ];
+  const rawPacks = await Promise.all(files.map(([file]) => fetch(file).then((r) => r.json())));
+  const packs = rawPacks.map((raw) => customApi.parsePack(raw));
   customApi.registerPacks(packs);
 
   function mockPhoto(seed) {
@@ -63,36 +75,77 @@
   const photos = Array.from({ length: 8 }, (_, i) => mockPhoto(i));
   const messageRoot = document.getElementById("dyn-message-theme");
   const mosaicRoot = document.getElementById("dyn-mosaic-theme");
+  const bar = document.getElementById("bar");
   let messageState = null;
+  let mosaicState = null;
+  let mosaicTimer = 0;
 
-  function showStamp() {
+  function settingsFor(pack) {
+    const out = { revealMs: pack.revealMs || 1000 };
+    Object.keys(pack.settings || {}).forEach((key) => {
+      out[key] = pack.settings[key].default;
+    });
+    return out;
+  }
+
+  function showPack(pack) {
+    if (mosaicTimer) {
+      clearInterval(mosaicTimer);
+      mosaicTimer = 0;
+    }
+    if (mosaicState && mosaicApi.themes[mosaicState.id] && mosaicApi.themes[mosaicState.id].unmount) {
+      mosaicApi.themes[mosaicState.id].unmount(mosaicRoot, mosaicState.state);
+    }
+    mosaicRoot.replaceChildren();
+    mosaicState = null;
+    if (pack.kind === "mosaic") {
+      if (messageState && messageApi.themes[messageState.id] && messageApi.themes[messageState.id].unmount) {
+        messageApi.themes[messageState.id].unmount(messageRoot, messageState.state);
+      }
+      messageState = null;
+      document.body.classList.add("mosaic");
+      mosaicRoot.dataset.theme = pack.id;
+      if (pack.engine) mosaicRoot.dataset.engine = pack.engine;
+      else delete mosaicRoot.dataset.engine;
+      const def = mosaicApi.themes[pack.id];
+      const api = {
+        nextUrl() { return photos[Math.floor(Math.random() * photos.length)]; },
+      };
+      const state = def.mount(mosaicRoot, photos, api);
+      mosaicState = { id: pack.id, state };
+      if (def.tick) {
+        mosaicTimer = setInterval(() => def.tick(mosaicRoot, photos, state, api), def.interval || pack.interval || 2400);
+      }
+      return;
+    }
+    if (messageState && messageApi.themes[messageState.id] && messageApi.themes[messageState.id].unmount) {
+      messageApi.themes[messageState.id].unmount(messageRoot, messageState.state);
+    }
     document.body.classList.remove("mosaic");
-    messageRoot.dataset.theme = "example-stamp";
+    messageRoot.dataset.theme = pack.id;
+    if (pack.engine) messageRoot.dataset.engine = pack.engine;
+    else delete messageRoot.dataset.engine;
     messageRoot.replaceChildren();
-    const def = messageApi.themes["example-stamp"];
-    const settings = { primary: "#d52265", secondary: "#f4ead8", revealMs: 900 };
-    messageState = def.mount(messageRoot, settings);
-    def.applySettings(messageRoot, messageState, settings);
+    const def = messageApi.themes[pack.id];
+    const settings = settingsFor(pack);
+    const state = def.mount(messageRoot, settings);
+    messageState = { id: pack.id, state };
+    if (def.applySettings) def.applySettings(messageRoot, state, settings);
     def.show(messageRoot, {
       src: photos[0],
       message: "Wish you were here — the lights went on and the whole room went quiet.",
       name: "Sam & Jo",
-    }, messageState, settings);
+    }, state, settings);
   }
 
-  function showRibbon() {
-    document.body.classList.add("mosaic");
-    mosaicRoot.dataset.theme = "example-ribbon";
-    mosaicRoot.replaceChildren();
-    const def = globalThis.BGMosaicThemes.themes["example-ribbon"];
-    def.mount(mosaicRoot, photos, {
-      nextUrl() { return photos[Math.floor(Math.random() * photos.length)]; },
-    });
-  }
-
-  document.getElementById("show-stamp").onclick = showStamp;
-  document.getElementById("show-ribbon").onclick = showRibbon;
-  showStamp();
+  files.forEach(([, label], i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = label;
+    btn.onclick = () => showPack(packs[i]);
+    bar.appendChild(btn);
+  });
+  showPack(packs[0]);
 })();
 </script>
 </body>

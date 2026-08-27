@@ -903,7 +903,10 @@ html.dyn-mosaic-on .v2-qr-tile {
   border-radius: 0;
   overflow: visible;
 }
-`;
+`.replace(
+    /#dyn-mosaic-theme\[data-theme="([^"]+)"\]/g,
+    '#dyn-mosaic-theme:is([data-theme="$1"], [data-engine="$1"])'
+  );
 
   const SCATTER_SLOTS = [
     { x: 8, y: 6, r: -14 },

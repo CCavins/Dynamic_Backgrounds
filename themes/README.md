@@ -1,77 +1,54 @@
 # Custom themes
 
-You can build a message or mosaic theme as a JSON file outside the extension, then import it from the popup. Imported themes stay in Chrome storage and show up in the theme dropdowns with `(imported)` after the name.
+Build a message or mosaic theme as JSON (and optional JS) outside the extension, then import it from the popup. Imported themes stay in Chrome storage and show up in the dropdowns with `(imported)` after the name.
+
+## Hand this to an AI
+
+To have a model build a pack:
+
+1. Attach [SPEC.md](SPEC.md) (the contract).
+2. Attach the closest example:
+   - JSON-only message: `example-stamp.json`
+   - JSON-only mosaic: `example-ribbon.json`
+   - Message with JS: `example-engine.json` + `example-aurora.js`
+   - Mosaic with JS: `example-mosaic-engine.json` + `example-orbit-swap.js`
+3. Paste this prompt, then describe the look:
+
+```
+You are writing a Dynamic Backgrounds theme pack. Read themes/SPEC.md and clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine".
+```
+
+The spec lists every field, clamp, reserved id, reject rule, and engine hook.
 
 ## Import
 
 1. Reload the unpacked extension (or reinstall `extension.zip`).
 2. Open the extension popup.
-3. Under **Imported themes**, click **Import theme.json**.
-4. Choose one of the examples in this folder, or your own file.
+3. Under **Imported themes**, click **Import theme.json + engine.js**.
+4. Choose one JSON, or a JSON plus its `engine.js`.
 5. Select the imported theme in **Message theme** or **Mosaic theme**.
-6. Open a Vixi output page. The sideloaded theme should apply like a built-in one.
+6. Open a Vixi output page.
+
+A pack that includes JS runs on matching output pages. Only import engines you wrote or trust. The popup warns the first time.
 
 Examples to try:
 
-- `example-stamp.json` — message theme (postage-stamp card)
-- `example-ribbon.json` — mosaic theme (photos on a diagonal ribbon)
+- `example-stamp.json` — postage-stamp message card (JSON only)
+- `example-ribbon.json` — diagonal photo ribbon (JSON only)
+- `example-engine.json` + `example-aurora.js` — message card with a canvas aurora (same JS as `extension/engines/example-aurora.js`)
+- `example-mosaic-engine.json` + `example-orbit-swap.js` — orbiting mosaic with photo swaps (same JS as `extension/engines/example-orbit-swap.js`)
+- `tmpl-*.json` — full HTML/CSS ports of the built-in themes
 
-To preview without a live output, open `themes/preview.html` in a browser.
+To preview without a live output, open `preview.html` in a browser.
 
 Remove an imported theme from the same popup section. If that theme was selected, the dropdown returns to Off.
 
-## File format
+## Built-in-style examples
 
-The file must be JSON with this shape:
+The `tmpl-*.json` files are complete importable themes: HTML, CSS, fonts, text-fit, and color settings. They use new ids (`tmpl-led-scoreboard`, …) so you can import them beside the originals.
 
-```json
-{
-  "format": "dynamic-backgrounds-theme",
-  "version": 1,
-  "kind": "message",
-  "id": "my-theme",
-  "label": "My Theme",
-  "css": "/* selectors go here */",
-  "html": "<div class=\"dyn-stage\">...</div>"
-}
-```
-
-| Field | Required | Notes |
-| --- | --- | --- |
-| `format` | yes | Must be `dynamic-backgrounds-theme` |
-| `version` | yes | Must be `1` |
-| `kind` | yes | `message` or `mosaic` |
-| `id` | yes | Lowercase letters, numbers, dashes. Cannot reuse a built-in id |
-| `label` | yes | Name shown in the popup |
-| `css` | no | Styled against `#dyn-message-theme[data-theme="your-id"]` or `#dyn-mosaic-theme[data-theme="your-id"]` |
-| `html` | message yes | Markup mounted into the 1920×1080 (or 1080×1920) design stage |
-| `fonts` | no | Google Fonts stylesheet URL only |
-| `settings` | no | Color pickers: `primary`, `secondary`, `background`, each `{ "label", "default" }` |
-| `revealMs` / `hideMs` | no | Message in/out timing |
-| `fit` | no | Message text fitting: `{ "box", "text", "max", "min" }` |
-| `layout` | mosaic | `grid`, `row`, `scatter`, or `ribbon` |
-| `cols` / `rows` | mosaic grid | Defaults 4×3 |
-| `count` | mosaic | Card count for row / scatter / ribbon |
-| `interval` | mosaic | Milliseconds between photo swaps |
-
-### Message HTML hooks
-
-Put these attributes on elements the extension should fill:
-
-- `data-photo` on the image (or the first `img`)
-- `data-message` on the caption node
-- `data-name` on the name node (can appear more than once)
-
-The theme root gets class `on` when a message is shown and `off` while it hides. Use those for enter/leave animations. Color settings become CSS variables `--primary`, `--secondary`, and optionally `--background`.
-
-Prefer `cqh` / `cqw` units so the layout scales with the design stage.
-
-### Mosaic layouts
-
-Imported mosaic themes reuse the live photo pool. You do not need `html` unless you want extra chrome. `css` can restyle the cards and background.
-
-Script tags, `javascript:` URLs, and inline event handlers are rejected. Themes are data, not executable code.
+JSON cannot run the built-in canvas / WebGL / dealing scripts. For that exact runtime, add `"engine": "led-scoreboard"` (or `neon-nightclub`, `liquid-glass`, `parallax-drift`, `decks`, `polaroid`, `livewall`, …). For a **new** design with the same class of power, write a JS engine (see SPEC.md).
 
 ## Limits
 
-Up to 24 imported themes. CSS max 100 KB, HTML max 50 KB per file. Importing the same `id` again replaces the previous pack.
+Up to 24 imported themes. CSS max 100 KB, HTML max 50 KB, engine JS max ~200 KB. Importing the same `id` again replaces the previous pack. Full rules are in [SPEC.md](SPEC.md).

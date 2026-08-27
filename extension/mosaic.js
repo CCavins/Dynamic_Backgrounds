@@ -257,6 +257,8 @@
     const root = ensureOverlay();
     if (!root) return false;
     root.dataset.theme = id;
+    if (def.engine) root.dataset.engine = def.engine;
+    else delete root.dataset.engine;
     const state = def.mount(root, pool, makeApi()) || {};
     active = { id, def, state };
     mountedTheme = id;
@@ -290,7 +292,18 @@
     teardown: teardownSoft,
   });
 
+  const customApi = globalThis.BGCustomThemes;
+  if (customApi && typeof customApi.onChange === "function") {
+    customApi.onChange(() => {
+      mountedTheme = "";
+      scheduleApply();
+    });
+  }
+
   async function apply() {
+    if (customApi && typeof customApi.whenReady === "function") {
+      await customApi.whenReady();
+    }
     // Keep theming with cached settings even after an extension reload kills
     // the chrome APIs; only a page refresh swaps in the new script.
     const settings = await rules.loadSettings();

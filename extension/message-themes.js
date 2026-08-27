@@ -2120,7 +2120,11 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   // 1vh was in the original full-screen template.
   const STYLE = RAW_STYLE
     .replace(/(\d*\.?\d+)vh\b/g, "$1cqh")
-    .replace(/(\d*\.?\d+)vw\b/g, "$1cqw");
+    .replace(/(\d*\.?\d+)vw\b/g, "$1cqw")
+    .replace(
+      /#dyn-message-theme\[data-theme="([^"]+)"\]/g,
+      '#dyn-message-theme:is([data-theme="$1"], [data-engine="$1"])'
+    );
 
   const FONTS =
     "https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@600;700;800&family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Mr+Dafoe&family=Oswald:wght@500;600;700&family=Outfit:wght@400;500;600&family=Syne:wght@600;700;800&display=swap";

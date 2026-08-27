@@ -7,6 +7,8 @@
     messageTheme: "messageTheme",
     messageThemeSettings: "messageThemeSettings",
     customThemes: "customThemes",
+    customEngines: "customEngines",
+    customEngineWarningSeen: "customEngineWarningSeen",
   };
 
   const DEFAULTS = {
@@ -152,6 +154,10 @@
   let customMessageMeta = {};
   let customMosaicMeta = {};
   let lastGoodCustomThemes = [];
+  let lastGoodCustomEngines = {};
+  let lastRawSettings = null;
+  let lastGoodSettings = null;
+  let settingsFresh = false;
 
   function messageThemeMetaAll() {
     return { ...MESSAGE_THEME_META, ...customMessageMeta };
@@ -174,21 +180,30 @@
     customMosaicMeta = {};
     (Array.isArray(packs) ? packs : []).forEach((pack) => {
       if (!pack || !pack.id) return;
+      const engineMeta =
+        pack.kind === "message" && pack.engine ? MESSAGE_THEME_META[pack.engine] : null;
       const meta = {
         label: pack.label || pack.id,
         custom: true,
-        labels: {},
-        defaults: { revealMs: Number(pack.revealMs) || 1000 },
+        engine: pack.engine || "",
+        labels: { ...((engineMeta && engineMeta.labels) || {}) },
+        defaults: {
+          ...((engineMeta && engineMeta.defaults) || {}),
+          revealMs:
+            Number(pack.revealMs) ||
+            (engineMeta && engineMeta.defaults && engineMeta.defaults.revealMs) ||
+            1000,
+        },
       };
       const settings = pack.settings && typeof pack.settings === "object" ? pack.settings : {};
       ["primary", "secondary", "background"].forEach((key) => {
         const spec = settings[key];
         if (!spec) return;
-        meta.labels[key] = spec.label || key;
+        meta.labels[key] = spec.label || meta.labels[key] || key;
         if (spec.default) meta.defaults[key] = spec.default;
       });
       if (settings.motion && settings.motion.default) {
-        meta.labels.motion = settings.motion.label || "Motion";
+        meta.labels.motion = settings.motion.label || meta.labels.motion || "Motion";
         meta.defaults.motion = settings.motion.default;
       }
       if (!meta.defaults.primary) meta.defaults.primary = "#d52265";
@@ -197,6 +212,12 @@
       if (pack.kind === "mosaic") customMosaicMeta[pack.id] = { label: meta.label, custom: true };
     });
     lastGoodCustomThemes = Array.isArray(packs) ? packs.slice() : [];
+    if (lastRawSettings) {
+      lastGoodSettings = normalizeSettings(lastRawSettings);
+      settingsFresh = true;
+    } else {
+      settingsFresh = false;
+    }
   }
 
   function normalizeMosaicTheme(value) {
@@ -389,8 +410,6 @@
     }
   }
 
-  let lastGoodSettings = null;
-  let settingsFresh = false;
   let watchingSettings = false;
 
   function watchSettings() {
@@ -416,11 +435,14 @@
         return;
       }
       try {
-        chrome.storage.local.get(DEFAULTS, (stored) => {
+        chrome.storage.local.get(Object.assign({}, DEFAULTS, { customThemes: [] }), (stored) => {
           if (!extensionAlive() || (chrome.runtime.lastError && /invalidated/i.test(chrome.runtime.lastError.message || ""))) {
             resolve(lastGoodSettings || normalizeSettings(DEFAULTS));
             return;
           }
+          lastRawSettings = stored;
+          const packs = Array.isArray(stored.customThemes) ? stored.customThemes : [];
+          applyCustomThemeMeta(packs);
           lastGoodSettings = normalizeSettings(stored);
           settingsFresh = true;
           resolve(lastGoodSettings);
@@ -464,6 +486,72 @@
     });
   }
 
+  function loadCustomEngines() {
+    return new Promise((resolve) => {
+      if (!extensionAlive()) {
+        resolve({ ...lastGoodCustomEngines });
+        return;
+      }
+      try {
+        chrome.storage.local.get({ customEngines: {} }, (stored) => {
+          const raw = stored.customEngines && typeof stored.customEngines === "object"
+            ? stored.customEngines
+            : {};
+          lastGoodCustomEngines = raw;
+          resolve(raw);
+        });
+      } catch {
+        resolve({ ...lastGoodCustomEngines });
+      }
+    });
+  }
+
+  function saveCustomEngines(engines) {
+    const next = engines && typeof engines === "object" ? engines : {};
+    lastGoodCustomEngines = next;
+    return new Promise((resolve) => {
+      if (!extensionAlive()) {
+        resolve();
+        return;
+      }
+      try {
+        chrome.storage.local.set({ customEngines: next }, () => resolve());
+      } catch {
+        resolve();
+      }
+    });
+  }
+
+  function loadCustomEngineWarningSeen() {
+    return new Promise((resolve) => {
+      if (!extensionAlive()) {
+        resolve(false);
+        return;
+      }
+      try {
+        chrome.storage.local.get({ customEngineWarningSeen: false }, (stored) => {
+          resolve(Boolean(stored.customEngineWarningSeen));
+        });
+      } catch {
+        resolve(false);
+      }
+    });
+  }
+
+  function saveCustomEngineWarningSeen() {
+    return new Promise((resolve) => {
+      if (!extensionAlive()) {
+        resolve();
+        return;
+      }
+      try {
+        chrome.storage.local.set({ customEngineWarningSeen: true }, () => resolve());
+      } catch {
+        resolve();
+      }
+    });
+  }
+
   function saveCustomThemes(packs) {
     const next = Array.isArray(packs) ? packs : [];
     applyCustomThemeMeta(next);
@@ -493,6 +581,10 @@
     applyCustomThemeMeta,
     loadCustomThemes,
     saveCustomThemes,
+    loadCustomEngines,
+    saveCustomEngines,
+    loadCustomEngineWarningSeen,
+    saveCustomEngineWarningSeen,
     envKey,
     extractIds,
     isOutputPage,

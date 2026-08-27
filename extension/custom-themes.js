@@ -4,8 +4,8 @@
   const MAX_PACKS = 24;
   const MAX_CSS = 100000;
   const MAX_HTML = 50000;
-  const RESERVED = new Set([
-    "off",
+  const MAX_ENGINE_JS = 200000;
+  const MESSAGE_ENGINES = new Set([
     "led-scoreboard",
     "neon-nightclub",
     "ultras-tifo",
@@ -13,6 +13,8 @@
     "broadcast-tv",
     "liquid-glass",
     "parallax-drift",
+  ]);
+  const MOSAIC_ENGINES = new Set([
     "decks",
     "spotlight",
     "coverflow",
@@ -29,8 +31,39 @@
     "cubes",
     "pedestals",
   ]);
+  const RESERVED = new Set(["off", ...MESSAGE_ENGINES, ...MOSAIC_ENGINES]);
 
   let registeredIds = { message: [], mosaic: [] };
+  const changeListeners = [];
+  let readyResolved = false;
+  let readyResolve = null;
+  const readyPromise = new Promise((resolve) => {
+    readyResolve = resolve;
+  });
+
+  function whenReady() {
+    return readyResolved ? Promise.resolve() : readyPromise;
+  }
+
+  function onChange(fn) {
+    if (typeof fn === "function") changeListeners.push(fn);
+  }
+
+  function markReady() {
+    if (readyResolved) return;
+    readyResolved = true;
+    if (readyResolve) readyResolve();
+  }
+
+  function notifyChange() {
+    changeListeners.forEach((fn) => {
+      try {
+        fn();
+      } catch {
+        /* listener failed */
+      }
+    });
+  }
 
   function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -69,6 +102,18 @@
     if (RESERVED.has(id)) {
       throw new Error("That id is reserved by a built-in theme.");
     }
+    const engine = String(data.engine || "").trim();
+    if (engine) {
+      if (!/^[a-z][a-z0-9-]{1,40}$/.test(engine)) {
+        throw new Error("engine must be lowercase letters, numbers, and dashes.");
+      }
+      const builtinOk = (data.kind === "message" ? MESSAGE_ENGINES : MOSAIC_ENGINES).has(engine);
+      if (!builtinOk && RESERVED.has(engine)) {
+        throw new Error("That engine id is reserved by a built-in theme.");
+      }
+    }
+    let engineFile = String(data.engineFile || "").trim().replace(/^.*[/\\]/, "");
+    if (engineFile && !/^[a-zA-Z0-9._-]{1,80}\.js$/.test(engineFile)) engineFile = "";
     const label = String(data.label || id).trim().slice(0, 80);
     const css = String(data.css || "");
     const html = String(data.html || "");
@@ -77,17 +122,22 @@
     if (looksUnsafe(css) || looksUnsafe(html)) {
       throw new Error("Theme contains disallowed script or event handlers.");
     }
-    if (data.kind === "message" && !html.trim()) {
-      throw new Error("Message themes need an html template.");
+    if (data.kind === "message" && !html.trim() && !engine) {
+      throw new Error("Message themes need an html template or an engine.");
     }
+    const engineDefaults = engineMessageDefaults(engine);
     const settings = {};
     const srcSettings = data.settings && typeof data.settings === "object" ? data.settings : {};
     ["primary", "secondary", "background", "motion"].forEach((key) => {
       const spec = srcSettings[key];
-      if (!spec || typeof spec !== "object") return;
-      const next = { label: String(spec.label || key).slice(0, 40) };
-      if (key === "motion") next.default = String(spec.default || "drift");
-      else if (isHex(spec.default)) next.default = spec.default.toLowerCase();
+      const inherited = engineDefaults && engineDefaults[key];
+      if ((!spec || typeof spec !== "object") && !inherited) return;
+      const next = {
+        label: String((spec && spec.label) || (inherited && inherited.label) || key).slice(0, 40),
+      };
+      const rawDefault = spec && spec.default != null ? spec.default : inherited && inherited.default;
+      if (key === "motion") next.default = String(rawDefault || "drift");
+      else if (isHex(rawDefault)) next.default = String(rawDefault).toLowerCase();
       else if (key === "primary") next.default = "#d52265";
       else if (key === "secondary") next.default = "#fec651";
       settings[key] = next;
@@ -102,27 +152,143 @@
           }))
           .filter((item) => item.box && item.text)
       : [];
+    const revealFallback =
+      data.revealMs != null
+        ? Number(data.revealMs)
+        : engineDefaults && engineDefaults.revealMs
+          ? Number(engineDefaults.revealMs)
+          : 1000;
     return {
       format: FORMAT,
       version: 1,
       kind: data.kind,
       id,
       label,
+      engine,
+      engineFile,
       css,
       html,
       fonts: /^https:\/\/fonts\.googleapis\.com\//.test(String(data.fonts || ""))
         ? String(data.fonts)
         : "",
       settings,
-      revealMs: Math.max(200, Math.min(4000, Number(data.revealMs) || 1000)),
+      revealMs: Math.max(200, Math.min(4000, revealFallback || 1000)),
       hideMs: Math.max(120, Math.min(2000, Number(data.hideMs) || 320)),
       layout: ["grid", "row", "scatter", "ribbon"].includes(data.layout) ? data.layout : "grid",
       cols: Math.max(1, Math.min(8, Number(data.cols) || 4)),
       rows: Math.max(1, Math.min(6, Number(data.rows) || 3)),
       count: Math.max(3, Math.min(24, Number(data.count) || 8)),
-      interval: Math.max(800, Math.min(12000, Number(data.interval) || 2800)),
+      interval:
+        data.interval != null
+          ? Math.max(800, Math.min(12000, Number(data.interval) || 2800))
+          : 0,
       fit,
     };
+  }
+
+  function engineMessageDefaults(engine) {
+    const rules = root.BGExtensionRules;
+    const meta = rules && rules.MESSAGE_THEME_META && rules.MESSAGE_THEME_META[engine];
+    if (!meta) return null;
+    const defaults = meta.defaults || {};
+    const labels = meta.labels || {};
+    const next = {};
+    ["primary", "secondary", "background", "motion"].forEach((key) => {
+      if (defaults[key] == null) return;
+      next[key] = { label: labels[key] || key, default: defaults[key] };
+    });
+    if (defaults.revealMs) next.revealMs = defaults.revealMs;
+    return next;
+  }
+
+  function registryEngine(kind, engine) {
+    const api = root.BGThemeEngines;
+    const def = api && typeof api.get === "function" ? api.get(engine) : null;
+    if (!def) return null;
+    if (def.kind && def.kind !== kind) return null;
+    return def;
+  }
+
+  function engineTheme(kind, engine) {
+    const registered = registryEngine(kind, engine);
+    if (registered) return registered;
+    if (kind === "message") {
+      return root.BGMessageThemes && root.BGMessageThemes.themes
+        ? root.BGMessageThemes.themes[engine]
+        : null;
+    }
+    return root.BGMosaicThemes && root.BGMosaicThemes.themes
+      ? root.BGMosaicThemes.themes[engine]
+      : null;
+  }
+
+  function looksLikeModule(source) {
+    return /^\s*import\s|^\s*export\s/m.test(String(source || ""));
+  }
+
+  function peekEngineMeta(source) {
+    const text = String(source || "");
+    if (!text.trim()) throw new Error("Engine file is empty.");
+    if (text.length > MAX_ENGINE_JS) throw new Error("engine.js is too large.");
+    if (looksLikeModule(text)) {
+      throw new Error("Engine must be a classic script, not a module. Do not use import/export.");
+    }
+    if (!/BGThemeEngines\s*\.\s*define\s*\(/.test(text)) {
+      throw new Error("Engine must call BGThemeEngines.define({ id, kind, ... }).");
+    }
+    const idMatch = text.match(/\bid\s*:\s*["']([a-z][a-z0-9-]{1,40})["']/);
+    const kindMatch = text.match(/\bkind\s*:\s*["'](message|mosaic)["']/);
+    if (!idMatch || !kindMatch) {
+      throw new Error('Engine must call BGThemeEngines.define({ id, kind, ... }).');
+    }
+    const id = idMatch[1];
+    if (RESERVED.has(id)) {
+      throw new Error("That engine id is reserved by a built-in theme.");
+    }
+    return { id, kind: kindMatch[1] };
+  }
+
+  function canCompileEngines() {
+    try {
+      return location.protocol !== "chrome-extension:";
+    } catch {
+      return true;
+    }
+  }
+
+  function compileSideloadSource(source) {
+    const meta = peekEngineMeta(source);
+    const api = root.BGThemeEngines;
+    if (!api || typeof api.define !== "function") {
+      throw new Error("Engine API is not loaded.");
+    }
+    if (!canCompileEngines()) {
+      throw new Error("Engine compile is skipped on extension pages.");
+    }
+    const fn = new Function("BGThemeEngines", String(source));
+    fn(api);
+    const def = api.get(meta.id);
+    if (!def || typeof def.mount !== "function") {
+      throw new Error("Engine define() did not register a mount function.");
+    }
+    if (def.kind && def.kind !== meta.kind) {
+      throw new Error("Engine kind does not match define().");
+    }
+    return def;
+  }
+
+  function registerSideloadEngines(records) {
+    const api = root.BGThemeEngines;
+    if (!api || !canCompileEngines()) return;
+    Object.keys(records || {}).forEach((id) => {
+      const rec = records[id];
+      if (!rec || !rec.source) return;
+      try {
+        compileSideloadSource(rec.source);
+      } catch (err) {
+        console.warn("[Dynamic Backgrounds] custom engine failed:", id, err && err.message);
+      }
+    });
   }
 
   const LAYOUT_STYLE = `
@@ -218,7 +384,69 @@
     registeredIds = { message: [], mosaic: [] };
   }
 
+  function compileFromEngine(pack, kind) {
+    const source = () => engineTheme(kind, pack.engine);
+    const fromRegistry = Boolean(registryEngine(kind, pack.engine));
+    if (kind === "message") {
+      return {
+        engine: pack.engine,
+        mount(themeRoot, settings) {
+          themeRoot.dataset.engine = pack.engine;
+          if (fromRegistry && pack.html) {
+            const helpers = root.BGMessageThemes || {};
+            const stage = helpers.ensureFitStage
+              ? helpers.ensureFitStage(themeRoot)
+              : themeRoot;
+            if (!stage.querySelector("[data-photo], [data-message], img")) {
+              stage.innerHTML = pack.html;
+            }
+          }
+          return source().mount(themeRoot, settings);
+        },
+        applySettings(themeRoot, state, settings) {
+          const def = source();
+          if (def && def.applySettings) def.applySettings(themeRoot, state, settings);
+        },
+        show(themeRoot, capture, state, settings) {
+          return source().show(themeRoot, capture, state, settings);
+        },
+        hide(themeRoot, state) {
+          return source().hide(themeRoot, state);
+        },
+        unmount(themeRoot, state) {
+          const def = source();
+          if (def && def.unmount) def.unmount(themeRoot, state);
+        },
+      };
+    }
+    return {
+      engine: pack.engine,
+      interval: pack.interval || (source() && source().interval) || 2500,
+      mount(mosaicRoot, pool, api) {
+        mosaicRoot.dataset.engine = pack.engine;
+        if (fromRegistry && pack.html) {
+          const wrap = document.createElement("div");
+          wrap.className = "dyn-custom-chrome";
+          wrap.innerHTML = pack.html;
+          mosaicRoot.appendChild(wrap);
+        }
+        return source().mount(mosaicRoot, pool, api);
+      },
+      tick(mosaicRoot, pool, state, api) {
+        const def = source();
+        if (def && def.tick) def.tick(mosaicRoot, pool, state, api);
+      },
+      unmount(mosaicRoot, state) {
+        const def = source();
+        if (def && def.unmount) def.unmount(mosaicRoot, state);
+      },
+    };
+  }
+
   function compileMessage(pack) {
+    if (pack.engine && engineTheme("message", pack.engine)) {
+      return compileFromEngine(pack, "message");
+    }
     const helpers = () => root.BGMessageThemes || {};
     return {
       mount(themeRoot) {
@@ -312,6 +540,9 @@
   }
 
   function compileMosaic(pack) {
+    if (pack.engine && engineTheme("mosaic", pack.engine)) {
+      return compileFromEngine(pack, "mosaic");
+    }
     const count =
       pack.layout === "grid" ? pack.cols * pack.rows : pack.count;
     return {
@@ -382,22 +613,63 @@
     });
     injectStyle(packs);
     injectFonts(packs);
+    notifyChange();
   }
 
   async function loadAndRegister() {
     const rules = root.BGExtensionRules;
-    if (!rules || typeof rules.loadCustomThemes !== "function") return [];
-    const packs = await rules.loadCustomThemes();
-    registerPacks(packs);
-    return packs;
+    try {
+      if (!rules || typeof rules.loadCustomThemes !== "function") return [];
+      const enginesReady = rules.loadCustomEngines
+        ? rules.loadCustomEngines()
+        : Promise.resolve({});
+      const [engines, packs] = await Promise.all([enginesReady, rules.loadCustomThemes()]);
+      registerSideloadEngines(engines);
+      registerPacks(packs);
+      return packs;
+    } finally {
+      markReady();
+    }
   }
 
-  async function importPack(raw) {
+  async function importPack(raw, engineSource) {
+    let meta = null;
+    if (engineSource) {
+      meta = peekEngineMeta(engineSource);
+    }
     const pack = parsePack(raw);
+    if (meta) {
+      if (meta.kind !== pack.kind) {
+        throw new Error("Engine kind does not match the theme JSON.");
+      }
+      if (pack.engine && pack.engine !== meta.id) {
+        throw new Error('JSON "engine" must match the engine file id.');
+      }
+      pack.engine = meta.id;
+    }
+    if (pack.engine && !engineTheme(pack.kind, pack.engine) && !engineSource) {
+      const builtin =
+        pack.kind === "message" ? MESSAGE_ENGINES.has(pack.engine) : MOSAIC_ENGINES.has(pack.engine);
+      if (!builtin) {
+        throw new Error("Unknown engine. Import the .js file with the JSON.");
+      }
+    }
     const rules = root.BGExtensionRules;
     const current = rules ? await rules.loadCustomThemes() : [];
     if (current.length >= MAX_PACKS && !current.some((item) => item.id === pack.id)) {
       throw new Error("Too many imported themes. Remove one first.");
+    }
+    if (engineSource && rules && rules.saveCustomEngines) {
+      const engines = await rules.loadCustomEngines();
+      engines[meta.id] = { id: meta.id, kind: meta.kind, source: String(engineSource) };
+      await rules.saveCustomEngines(engines);
+      if (canCompileEngines()) {
+        try {
+          compileSideloadSource(engineSource);
+        } catch {
+          /* content script compiles on the next load if this context cannot */
+        }
+      }
     }
     const next = current.filter((item) => item.id !== pack.id);
     next.push(pack);
@@ -409,19 +681,31 @@
   async function removePack(id) {
     const rules = root.BGExtensionRules;
     const current = rules ? await rules.loadCustomThemes() : [];
+    const removed = current.find((item) => item.id === id);
     const next = current.filter((item) => item.id !== id);
     if (rules) await rules.saveCustomThemes(next);
+    if (removed && removed.engine && rules && rules.loadCustomEngines) {
+      const stillUsed = next.some((item) => item.engine === removed.engine);
+      if (!stillUsed) {
+        const engines = await rules.loadCustomEngines();
+        if (engines[removed.engine]) {
+          delete engines[removed.engine];
+          if (root.BGThemeEngines && root.BGThemeEngines.unregister) {
+            root.BGThemeEngines.unregister(removed.engine);
+          }
+          await rules.saveCustomEngines(engines);
+        }
+      }
+    }
     registerPacks(next);
     return next;
   }
 
   try {
     chrome.storage.onChanged.addListener((changes, area) => {
-      if (area === "local" && changes.customThemes) {
-        const packs = Array.isArray(changes.customThemes.newValue)
-          ? changes.customThemes.newValue
-          : [];
-        registerPacks(packs);
+      if (area !== "local") return;
+      if (changes.customEngines || changes.customThemes) {
+        loadAndRegister().catch(() => {});
       }
     });
   } catch {
@@ -432,9 +716,21 @@
 
   root.BGCustomThemes = {
     FORMAT,
+    MESSAGE_ENGINES,
+    MOSAIC_ENGINES,
+    RESERVED,
+    MAX_PACKS,
+    MAX_CSS,
+    MAX_HTML,
+    MAX_ENGINE_JS,
     parsePack,
+    peekEngineMeta,
+    compileSideloadSource,
+    registerSideloadEngines,
     registerPacks,
     loadAndRegister,
+    whenReady,
+    onChange,
     importPack,
     removePack,
   };

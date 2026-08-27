@@ -1,0 +1,12 @@
+{
+  "format": "dynamic-backgrounds-theme",
+  "version": 1,
+  "kind": "mosaic",
+  "id": "example-orbit-swap",
+  "label": "Orbit Swap",
+  "engine": "example-orbit-swap",
+  "engineFile": "example-orbit-swap.js",
+  "interval": 2400,
+  "count": 6,
+  "css": "#dyn-mosaic-theme[data-theme=\"example-orbit-swap\"]{background:radial-gradient(70% 60% at 50% 50%,#2a1830,#120c14 70%)}#dyn-mosaic-theme[data-theme=\"example-orbit-swap\"] .orbit-stage{position:absolute;inset:0;container-type:size}#dyn-mosaic-theme[data-theme=\"example-orbit-swap\"] .orbit-ring{position:absolute;inset:0;animation:orbit-spin 48s linear infinite}#dyn-mosaic-theme[data-theme=\"example-orbit-swap\"] .dyn-card{position:absolute;width:16%;height:28%;margin:0;border-radius:14px;overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.45);outline:3px solid rgba(255,255,255,.85);transition:opacity .28s ease}#dyn-mosaic-theme[data-theme=\"example-orbit-swap\"] .dyn-card.is-swap{opacity:.15}#dyn-mosaic-theme[data-theme=\"example-orbit-swap\"] .dyn-card img{width:100%;height:100%;object-fit:cover}@keyframes orbit-spin{to{transform:rotate(360deg)}}"
+}
