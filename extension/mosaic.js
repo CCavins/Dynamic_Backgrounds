@@ -3,6 +3,8 @@
   const themeApi = globalThis.BGMosaicThemes;
   const handoff = globalThis.BGThemeHandoff;
   if (!rules || !themeApi || !handoff) return;
+  // Skip non-output pages entirely: no observers, no apply loop.
+  if (!rules.isOutputPage(location.href)) return;
 
   const OVERLAY_ID = "dyn-mosaic-theme";
   const STYLE_ID = "dyn-mosaic-theme-style";
@@ -220,6 +222,8 @@
   function startTick(interval) {
     stopTick();
     tickTimer = setInterval(() => {
+      // No point churning the DOM while the display isn't visible.
+      if (document.hidden) return;
       if (!active || pool.length < 1) return;
       const root = document.getElementById(OVERLAY_ID);
       if (!root || typeof active.def.tick !== "function") return;
@@ -238,6 +242,12 @@
     mountedTheme = "";
     mountedEmpty = true;
     lastShown = "";
+    // Reset feed state so retired/seen URLs can't accumulate forever on a
+    // long-running display cycling through many different mosaics.
+    liveSet.clear();
+    retiring.clear();
+    incoming.length = 0;
+    dealIndex = 0;
   }
 
   function mountTheme(id) {
@@ -281,11 +291,8 @@
   });
 
   async function apply() {
-    if (typeof rules.extensionAlive === "function" && !rules.extensionAlive()) {
-      stopTick();
-      observer.disconnect();
-      return;
-    }
+    // Keep theming with cached settings even after an extension reload kills
+    // the chrome APIs; only a page refresh swaps in the new script.
     const settings = await rules.loadSettings();
     handoff.applyCovers(settings);
     const theme = settings.enabled ? rules.normalizeMosaicTheme(settings.mosaicTheme) : "off";
@@ -362,6 +369,18 @@
   } catch {
     /* extension reloaded */
   }
+
+  // Mosaic layouts are computed at mount from the canvas size. When the
+  // window is resized, remount so every tile re-lays out proportionally to
+  // the new canvas (stage-based themes also self-fit via ResizeObserver).
+  let resizeRemountTimer = 0;
+  window.addEventListener("resize", () => {
+    if (resizeRemountTimer) clearTimeout(resizeRemountTimer);
+    resizeRemountTimer = setTimeout(() => {
+      resizeRemountTimer = 0;
+      if (active && mountedTheme) mountTheme(mountedTheme);
+    }, 250);
+  });
 
   apply().catch(() => {});
 })();

@@ -4,17 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dynamic Backgrounds</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <header>
     <div>
-      <h1>BACKGROUNDS</h1>
+      <h1>Backgrounds</h1>
       <p>Apply an iframe to matching output URLs.</p>
     </div>
     <label class="switch">
       <input type="checkbox" id="enabled" checked>
-      <span class="switch-ui" aria-hidden="true"></span>
+      <span class="switch-ui" aria-hidden="true">
+        <span class="switch-thumb">
+          <svg class="switch-x" viewBox="0 0 12 12" fill="none">
+            <path d="M3 3l6 6M9 3L3 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </span>
+      </span>
       <span class="switch-label" id="enabled-label">On</span>
     </label>
   </header>
@@ -69,7 +78,7 @@
     </div>
     <p class="help">A matching output URL always wins, even if Any output URL is blank.</p>
     <div id="rules"></div>
-    <button type="button" id="add-rule">Add output URL</button>
+    <button type="button" id="add-rule" class="v2-btn v2-btn-primary">Add output URL</button>
   </section>
 
   <template id="rule-template">
@@ -82,7 +91,7 @@
         <span>Iframe</span>
         <textarea class="iframe-html" rows="3" placeholder="Paste iframe or background URL"></textarea>
       </label>
-      <button type="button" class="remove-rule">Remove</button>
+      <button type="button" class="remove-rule v2-btn v2-btn-destructive">Remove</button>
     </article>
   </template>
 

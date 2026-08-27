@@ -3,6 +3,8 @@
   const themeApi = globalThis.BGMessageThemes;
   const handoff = globalThis.BGThemeHandoff;
   if (!rules || !themeApi || !handoff) return;
+  // Skip non-output pages entirely: no observers, no apply loop.
+  if (!rules.isOutputPage(location.href)) return;
 
   const OVERLAY_ID = "dyn-message-theme";
   const STYLE_ID = "dyn-message-theme-style";
@@ -156,11 +158,9 @@
   });
 
   async function apply() {
-    if (typeof rules.extensionAlive === "function" && !rules.extensionAlive()) {
-      teardownHard();
-      observer.disconnect();
-      return;
-    }
+    // If the extension was reloaded, chrome APIs are gone but the page keeps
+    // running this script. loadSettings falls back to the cached settings, so
+    // theming continues instead of dropping back to the stock Vixi look.
     const settings = await rules.loadSettings();
     handoff.applyCovers(settings);
     const theme = settings.enabled ? rules.normalizeMessageTheme(settings.messageTheme) : "off";
@@ -173,7 +173,10 @@
     }
 
     const kind = handoff.liveKind();
-    if (kind !== "message") return;
+    const mode = handoff.currentMode();
+    // Claim the screen when a message is live, and also when nothing is live
+    // yet (boot/idle) so the themed chrome shows instead of the stock layout.
+    if (kind !== "message" && !(kind === "" && (!mode || mode === "message"))) return;
 
     ensureStyle();
     ensureFonts();
@@ -181,6 +184,11 @@
 
     await handoff.activate("message", {
       prepare() {
+        // Mount the themed chrome before the outgoing overlay fades, so the
+        // fade reveals the theme's set piece instead of the stock template.
+        document.documentElement.classList.add("dyn-message-on");
+        const overlay = document.getElementById(OVERLAY_ID);
+        if (mountedTheme !== theme || !overlay) mountTheme(theme, themeSettings);
         return decodeImage(rules.messageCapture().src);
       },
       async reveal() {

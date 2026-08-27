@@ -1,0 +1,22 @@
+#!/bin/sh
+# Starts the real OBS.app so macOS permissions stay intact, and passes the
+# Chromium flags OBS 32 forwards into CEF (debug port + allow origins).
+OBS_APP="/Applications/OBS.app"
+PORT=9223
+
+if [ ! -d "$OBS_APP" ]; then
+  osascript -e 'display dialog "OBS.app was not found in /Applications." buttons {"OK"} default button 1 with icon stop'
+  exit 1
+fi
+
+if pgrep -x OBS >/dev/null; then
+  if lsof -nP -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1; then
+    open -a "$OBS_APP"
+    exit 0
+  fi
+  osascript -e 'display dialog "OBS is already running without the theming port.\n\n1. OBS menu → Quit OBS\n2. If Safe Mode appears, choose Run Normally\n3. Open Launch OBS Themed again — not the regular OBS icon." buttons {"OK"} default button 1'
+  exit 1
+fi
+
+open -a "$OBS_APP" --args --remote-debugging-port=$PORT --remote-allow-origins=*
+exit 0

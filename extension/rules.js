@@ -338,8 +338,26 @@
   }
 
   let lastGoodSettings = null;
+  let settingsFresh = false;
+  let watchingSettings = false;
+
+  function watchSettings() {
+    if (watchingSettings || !extensionAlive()) return;
+    try {
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local") settingsFresh = false;
+      });
+      watchingSettings = true;
+    } catch {
+      /* dead runtime; cached settings keep working */
+    }
+  }
 
   function loadSettings() {
+    watchSettings();
+    if (settingsFresh && lastGoodSettings) {
+      return Promise.resolve(lastGoodSettings);
+    }
     return new Promise((resolve) => {
       if (!extensionAlive()) {
         resolve(lastGoodSettings || normalizeSettings(DEFAULTS));
@@ -351,9 +369,9 @@
             resolve(lastGoodSettings || normalizeSettings(DEFAULTS));
             return;
           }
-          const next = normalizeSettings(stored);
-          lastGoodSettings = next;
-          resolve(next);
+          lastGoodSettings = normalizeSettings(stored);
+          settingsFresh = true;
+          resolve(lastGoodSettings);
         });
       } catch {
         resolve(lastGoodSettings || normalizeSettings(DEFAULTS));

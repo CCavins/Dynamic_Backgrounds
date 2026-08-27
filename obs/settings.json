@@ -1,0 +1,8 @@
+{
+  "enabled": true,
+  "messageTheme": "holo-card",
+  "mosaicTheme": "decks",
+  "messageThemeSettings": {},
+  "anyOutputIframeHtml": "",
+  "rules": []
+}

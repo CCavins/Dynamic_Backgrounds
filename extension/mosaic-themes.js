@@ -209,7 +209,8 @@ html.dyn-mosaic-on .v2-qr-tile {
 #dyn-mosaic-theme {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  /* Above the message overlay (z 5) so handoff fades reveal themed chrome. */
+  z-index: 6;
   pointer-events: none;
   box-sizing: border-box;
   overflow: hidden;

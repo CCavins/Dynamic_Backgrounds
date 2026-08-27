@@ -71,25 +71,33 @@
     return chain;
   }
 
+  // Bound every hook so a stuck promise can never freeze the handoff queue.
+  function withTimeout(promise, ms) {
+    return Promise.race([
+      Promise.resolve(promise).catch(() => {}),
+      new Promise((resolve) => setTimeout(resolve, ms)),
+    ]);
+  }
+
   function activate(kind, hooks) {
     const tasks = hooks || {};
     return enqueue(async () => {
       if (mode === kind) {
-        if (typeof tasks.reveal === "function") await tasks.reveal();
+        if (typeof tasks.reveal === "function") await withTimeout(tasks.reveal(), 12000);
         return;
       }
-      if (typeof tasks.prepare === "function") await tasks.prepare();
+      if (typeof tasks.prepare === "function") await withTimeout(tasks.prepare(), 6000);
       const outgoing = mode && actors[mode];
       if (outgoing && typeof outgoing.hide === "function") {
         try {
-          await outgoing.hide();
+          await withTimeout(outgoing.hide(), 2600);
         } catch {
           /* outgoing overlay may already be gone */
         }
       }
       const prev = mode;
       mode = kind;
-      if (typeof tasks.reveal === "function") await tasks.reveal();
+      if (typeof tasks.reveal === "function") await withTimeout(tasks.reveal(), 12000);
       const prevActor = prev && actors[prev];
       if (prevActor && typeof prevActor.teardown === "function") {
         try {

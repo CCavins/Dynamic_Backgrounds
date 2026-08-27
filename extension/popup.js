@@ -16,6 +16,93 @@
   let cachedSettings = null;
   let lastMessageTheme = "off";
 
+  const CHEVRON =
+    '<svg class="v2-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 9.5 12 15l5.5-5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const CHECK =
+    '<svg class="v2-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  function closeAllSelects(except) {
+    document.querySelectorAll(".v2-select.is-open").forEach((el) => {
+      if (el !== except) el.classList.remove("is-open");
+    });
+  }
+
+  function syncSelectUI(select) {
+    const wrap = select.closest(".v2-select");
+    if (!wrap) return;
+    const valueEl = wrap.querySelector(".v2-select-value");
+    const selected = select.options[select.selectedIndex];
+    if (valueEl) valueEl.textContent = selected ? selected.textContent : "";
+    wrap.querySelectorAll(".v2-select-option").forEach((btn) => {
+      btn.classList.toggle("is-selected", btn.dataset.value === select.value);
+    });
+  }
+
+  function rebuildSelectMenu(select) {
+    const wrap = select.closest(".v2-select");
+    if (!wrap) return;
+    const menu = wrap.querySelector(".v2-select-menu");
+    menu.replaceChildren();
+    [...select.options].forEach((opt) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "v2-select-option";
+      btn.dataset.value = opt.value;
+      btn.innerHTML = `<span>${opt.textContent}</span>${CHECK}`;
+      if (opt.value === select.value) btn.classList.add("is-selected");
+      btn.addEventListener("click", () => {
+        select.value = opt.value;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        wrap.classList.remove("is-open");
+        syncSelectUI(select);
+      });
+      menu.appendChild(btn);
+    });
+    syncSelectUI(select);
+  }
+
+  function enhanceSelect(select) {
+    if (!select) return;
+    if (select.closest(".v2-select")) {
+      rebuildSelectMenu(select);
+      return;
+    }
+    const labelSpan = select.parentElement && select.parentElement.querySelector(":scope > span");
+    const label = (select.dataset.label || (labelSpan && labelSpan.textContent) || "").replace(/:$/, "");
+    const wrap = document.createElement("div");
+    wrap.className = "v2-select";
+    select.before(wrap);
+    wrap.appendChild(select);
+    select.tabIndex = -1;
+    select.classList.add("v2-select-native");
+
+    const field = document.createElement("button");
+    field.type = "button";
+    field.className = "v2-select-field";
+    field.innerHTML =
+      (label ? `<span class="v2-select-label">${label}:</span>` : "") +
+      `<span class="v2-select-value"></span>${CHEVRON}`;
+    const menu = document.createElement("div");
+    menu.className = "v2-select-menu";
+    wrap.appendChild(field);
+    wrap.appendChild(menu);
+    field.addEventListener("click", (event) => {
+      event.preventDefault();
+      const open = wrap.classList.contains("is-open");
+      closeAllSelects();
+      wrap.classList.toggle("is-open", !open);
+    });
+    rebuildSelectMenu(select);
+    select.addEventListener("change", () => syncSelectUI(select));
+  }
+
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".v2-select")) closeAllSelects();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeAllSelects();
+  });
+
   function setEnabledLabel() {
     enabledLabel.textContent = enabledInput.checked ? "On" : "Off";
   }
@@ -49,8 +136,7 @@
     const row = document.createElement("label");
     row.className = "setting-row select";
     row.innerHTML =
-      `<span>Motion</span>` +
-      `<select class="theme-motion" data-key="motion">` +
+      `<select class="theme-motion" data-key="motion" data-label="Motion">` +
         `<option value="slow">Slow — wander</option>` +
         `<option value="drift">Drift — across the field</option>` +
         `<option value="fizz">Fizz — rise from below</option>` +
@@ -87,7 +173,7 @@
 
     const reset = document.createElement("button");
     reset.type = "button";
-    reset.className = "reset-theme";
+    reset.className = "reset-theme v2-btn v2-btn-secondary";
     reset.textContent = "Reset theme colors";
     reset.addEventListener("click", () => {
       if (!cachedSettings) cachedSettings = {};
@@ -119,6 +205,7 @@
     });
     messageThemeSettings.querySelectorAll(".theme-motion").forEach((input) => {
       input.addEventListener("change", persist);
+      enhanceSelect(input);
     });
 
     messageThemeSettings.hidden = false;
@@ -210,6 +297,8 @@
   });
 
   fillMessageThemeOptions();
+  enhanceSelect(mosaicTheme);
+  enhanceSelect(messageTheme);
 
   rulesApi.loadSettings().then((settings) => {
     cachedSettings = settings;
@@ -218,6 +307,8 @@
     mosaicTheme.value = settings.mosaicTheme;
     messageTheme.value = settings.messageTheme;
     lastMessageTheme = settings.messageTheme;
+    syncSelectUI(mosaicTheme);
+    syncSelectUI(messageTheme);
     renderThemeSettings(settings.messageTheme);
     anyOutput.value = settings.anyOutputIframeHtml;
     rulesRoot.replaceChildren();

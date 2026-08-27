@@ -51,14 +51,13 @@
   }
 
   async function apply() {
-    if (typeof rules.extensionAlive === "function" && !rules.extensionAlive()) {
-      observer.disconnect();
-      return;
-    }
+    // Cached settings keep the injected background alive across extension
+    // reloads; only a page refresh swaps in the new script.
     const settings = await rules.loadSettings();
     const src = rules.resolveIframeSrc(settings, location.href);
     if (!src) {
-      removeEmbed();
+      // Only pay for teardown when something was actually injected.
+      if (document.getElementById(IFRAME_ID)) removeEmbed();
       return;
     }
     injectEmbed(src);

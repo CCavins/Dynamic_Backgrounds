@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Theme test harness</title>
+<style>
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; position: relative; }
+  #bar { position: fixed; top: 4px; left: 4px; z-index: 99; opacity: .85; }
+  #bar button { font-size: 11px; }
+</style>
+</head>
+<body>
+<div id="dyn-message-theme"></div>
+<div id="bar"></div>
+<script src="extension/message-themes.js"></script>
+<script>
+(async () => {
+  const api = globalThis.BGMessageThemes;
+  const style = document.createElement("style");
+  style.textContent = api.STYLE;
+  document.head.appendChild(style);
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = api.FONTS;
+  document.head.appendChild(link);
+
+  const DEFAULTS = {
+    "led-scoreboard": { primary: "#ffb300", secondary: "#22ff55", revealMs: 1200 },
+    "neon-nightclub": { primary: "#35e0ff", secondary: "#ff3fa4", revealMs: 1400 },
+    "ultras-tifo": { primary: "#a2121f", secondary: "#ffffff", revealMs: 900 },
+    "holo-card": { primary: "#8b5cff", secondary: "#3de0ff", revealMs: 1200 },
+    "broadcast-tv": { primary: "#ff2d3a", secondary: "#f0c14b", revealMs: 1100 },
+    "liquid-glass": { primary: "#7ee8ff", secondary: "#4dffc3", background: "#061014", motion: "drift", revealMs: 1300 },
+    "parallax-drift": { primary: "#ff4d8d", secondary: "#7a86ff", revealMs: 1250 },
+  };
+
+  function mockPhoto() {
+    const c = document.createElement("canvas");
+    c.width = 900; c.height = 1200;
+    const g = c.getContext("2d");
+    const grad = g.createLinearGradient(0, 0, 900, 1200);
+    grad.addColorStop(0, "#e0603a");
+    grad.addColorStop(0.5, "#7a4fd0");
+    grad.addColorStop(1, "#2ab4a0");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 900, 1200);
+    g.fillStyle = "rgba(255,255,255,.85)";
+    for (let i = 0; i < 40; i++) {
+      g.beginPath();
+      g.arc(Math.random() * 900, Math.random() * 1200, 8 + Math.random() * 40, 0, 7);
+      g.fill();
+    }
+    g.fillStyle = "#111";
+    g.font = "120px sans-serif";
+    g.fillText("PHOTO", 250, 620);
+    return c.toDataURL("image/jpeg", 0.9);
+  }
+  const PHOTO = mockPhoto();
+
+  const params = new URLSearchParams(location.search);
+  const themeId = params.get("theme") || "holo-card";
+  const msg = params.has("msg") ? params.get("msg") : "We flew 2,000 miles for this and it was worth every second";
+  const name = params.has("name") ? params.get("name") : "Sam & Jo";
+
+  const root = document.getElementById("dyn-message-theme");
+  root.dataset.theme = themeId;
+  const settings = DEFAULTS[themeId];
+  const def = api.themes[themeId];
+  const state = def.mount(root, settings) || {};
+  if (def.applySettings) def.applySettings(root, state, settings);
+
+  window.__cycle = async (message, personName) => {
+    await def.hide(root, state, settings);
+    await def.show(root, { src: PHOTO, message, name: personName }, state, settings);
+  };
+  window.__hide = () => def.hide(root, state, settings);
+
+  const bar = document.getElementById("bar");
+  Object.keys(DEFAULTS).forEach((id) => {
+    const b = document.createElement("button");
+    b.textContent = id;
+    b.onclick = () => { location.search = "?theme=" + id; };
+    bar.appendChild(b);
+  });
+
+  await def.show(root, { src: PHOTO, message: msg, name }, state, settings);
+  document.title = "READY " + themeId;
+})();
+</script>
+</body>
+</html>
