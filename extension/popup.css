@@ -100,8 +100,35 @@ h2 {
 
 input,
 textarea,
-button {
+button,
+select {
   font: inherit;
+}
+
+.select-label {
+  display: block;
+  margin-top: 8px;
+}
+
+.select-label span {
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+select {
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px 9px;
+  color: #e8e8f0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+}
+
+select:focus {
+  outline: none;
+  border-color: rgba(180, 140, 255, 0.55);
 }
 
 input,

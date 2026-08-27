@@ -4,6 +4,7 @@
 
   const enabledInput = document.getElementById("enabled");
   const enabledLabel = document.getElementById("enabled-label");
+  const mosaicTheme = document.getElementById("mosaic-theme");
   const anyOutput = document.getElementById("any-output");
   const rulesRoot = document.getElementById("rules");
   const addRule = document.getElementById("add-rule");
@@ -37,6 +38,7 @@
     }));
     return {
       enabled: enabledInput.checked,
+      mosaicTheme: mosaicTheme.value,
       anyOutputIframeHtml: anyOutput.value,
       rules: rows,
     };
@@ -58,6 +60,7 @@
     setEnabledLabel();
     persist();
   });
+  mosaicTheme.addEventListener("change", persist);
   anyOutput.addEventListener("input", schedulePersist);
   addRule.addEventListener("click", () => {
     addRuleRow({});
@@ -66,6 +69,7 @@
   rulesApi.loadSettings().then((settings) => {
     enabledInput.checked = settings.enabled;
     setEnabledLabel();
+    mosaicTheme.value = settings.mosaicTheme;
     anyOutput.value = settings.anyOutputIframeHtml;
     rulesRoot.replaceChildren();
     if (settings.rules.length === 0) {

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Dynamic Backgrounds",
-  "version": "1.0.0",
-  "description": "Apply a Dynamic Backgrounds iframe to matching output URLs.",
+  "version": "1.3.6",
+  "description": "Apply a Dynamic Backgrounds iframe and mosaic themes to matching output URLs.",
   "action": {
     "default_popup": "popup.html",
     "default_title": "Dynamic Backgrounds",
@@ -17,7 +17,7 @@
   "content_scripts": [
     {
       "matches": ["*://*.thefamousgroup.com/*"],
-      "js": ["rules.js", "content.js"],
+      "js": ["rules.js", "content.js", "mosaic-themes.js", "mosaic.js"],
       "run_at": "document_idle"
     }
   ],

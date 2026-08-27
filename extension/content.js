@@ -52,6 +52,10 @@
   }
 
   async function apply() {
+    if (typeof rules.extensionAlive === "function" && !rules.extensionAlive()) {
+      observer.disconnect();
+      return;
+    }
     const settings = await rules.loadSettings();
     const src = rules.resolveIframeSrc(settings, location.href);
     if (!src) {
@@ -65,7 +69,7 @@
     if (applyTimer) clearTimeout(applyTimer);
     applyTimer = setTimeout(() => {
       applyTimer = 0;
-      apply();
+      apply().catch(() => {});
     }, 50);
   }
 
@@ -78,9 +82,13 @@
     subtree: true,
   });
 
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local") scheduleApply();
-  });
+  try {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === "local") scheduleApply();
+    });
+  } catch {
+    /* extension reloaded */
+  }
 
-  apply();
+  apply().catch(() => {});
 })();

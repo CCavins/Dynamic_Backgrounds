@@ -3,13 +3,34 @@
     enabled: "enabled",
     anyOutputIframeHtml: "anyOutputIframeHtml",
     rules: "rules",
+    mosaicTheme: "mosaicTheme",
   };
 
   const DEFAULTS = {
     enabled: true,
     anyOutputIframeHtml: "",
     rules: [],
+    mosaicTheme: "off",
   };
+
+  const MOSAIC_THEMES = [
+    "off",
+    "decks",
+    "spotlight",
+    "coverflow",
+    "fan",
+    "filmstrip",
+    "scatter",
+    "cascade",
+    "orbit",
+    "billboard",
+    "reels",
+    "polaroid",
+    "flipwall",
+    "livewall",
+    "cubes",
+    "pedestals",
+  ];
 
   function envKey(hostname) {
     const match = String(hostname || "").toLowerCase().match(/vixisuite(?:-[a-z0-9]+)?/);
@@ -69,12 +90,17 @@
     return "";
   }
 
+  function normalizeMosaicTheme(value) {
+    return MOSAIC_THEMES.includes(value) ? value : "off";
+  }
+
   function normalizeSettings(value) {
     const next = value || {};
     const rules = Array.isArray(next.rules) ? next.rules : [];
     return {
       enabled: next.enabled !== false,
       anyOutputIframeHtml: String(next.anyOutputIframeHtml || ""),
+      mosaicTheme: normalizeMosaicTheme(next.mosaicTheme),
       rules: rules
         .map((rule) => ({
           outputUrl: String(rule && rule.outputUrl ? rule.outputUrl : "").trim(),
@@ -102,31 +128,62 @@
     return "";
   }
 
+  function extensionAlive() {
+    try {
+      return Boolean(chrome.runtime && chrome.runtime.id);
+    } catch {
+      return false;
+    }
+  }
+
   function loadSettings() {
     return new Promise((resolve) => {
-      chrome.storage.local.get(DEFAULTS, (stored) => {
-        resolve(normalizeSettings(stored));
-      });
+      if (!extensionAlive()) {
+        resolve(normalizeSettings(DEFAULTS));
+        return;
+      }
+      try {
+        chrome.storage.local.get(DEFAULTS, (stored) => {
+          if (!extensionAlive() || (chrome.runtime.lastError && /invalidated/i.test(chrome.runtime.lastError.message || ""))) {
+            resolve(normalizeSettings(DEFAULTS));
+            return;
+          }
+          resolve(normalizeSettings(stored));
+        });
+      } catch {
+        resolve(normalizeSettings(DEFAULTS));
+      }
     });
   }
 
   function saveSettings(settings) {
     const next = normalizeSettings(settings);
     return new Promise((resolve) => {
-      chrome.storage.local.set(next, resolve);
+      if (!extensionAlive()) {
+        resolve();
+        return;
+      }
+      try {
+        chrome.storage.local.set(next, () => resolve());
+      } catch {
+        resolve();
+      }
     });
   }
 
   root.BGExtensionRules = {
     STORAGE_KEYS,
     DEFAULTS,
+    MOSAIC_THEMES,
     envKey,
     extractIds,
     isOutputPage,
     urlsMatch,
     parseIframeSrc,
+    normalizeMosaicTheme,
     normalizeSettings,
     resolveIframeSrc,
+    extensionAlive,
     loadSettings,
     saveSettings,
   };
