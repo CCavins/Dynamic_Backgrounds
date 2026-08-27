@@ -5,7 +5,6 @@
 
   const OVERLAY_ID = "dyn-mosaic-theme";
   const STYLE_ID = "dyn-mosaic-theme-style";
-  const WRAPPER_SELECTOR = ".v2-app-wrapper";
 
   let applyTimer = 0;
   let tickTimer = 0;
@@ -22,11 +21,10 @@
   function collectUrls() {
     const urls = [];
     const seenNow = new Set();
-    document.querySelectorAll(".v2-asset-tile img, .v2-mosaic-face img").forEach((img) => {
+    rules.mosaicImages().forEach((img) => {
       const src = img.currentSrc || img.src;
       if (!src || src.startsWith("data:")) return;
-      if (img.closest(".v2-qr-tile")) return;
-      if (img.classList.contains("v2-app-wrapper__bg-image")) return;
+      if (rules.isSkippedMosaicImage(img)) return;
       if (seenNow.has(src)) return;
       seenNow.add(src);
       urls.push(src);
@@ -161,14 +159,14 @@
   }
 
   function ensureOverlay() {
-    const wrapper = document.querySelector(WRAPPER_SELECTOR);
-    if (!wrapper) return null;
+    const host = rules.findOverlayHost();
+    if (!host) return null;
     let root = document.getElementById(OVERLAY_ID);
-    if (!root || root.parentElement !== wrapper) {
+    if (!root || root.parentElement !== host) {
       if (root) root.remove();
       root = document.createElement("div");
       root.id = OVERLAY_ID;
-      wrapper.appendChild(root);
+      host.appendChild(root);
     }
     return root;
   }
@@ -234,7 +232,7 @@
     }
     const settings = await rules.loadSettings();
     const theme = settings.enabled ? rules.normalizeMosaicTheme(settings.mosaicTheme) : "off";
-    const hasMosaic = Boolean(document.querySelector(".mosaic-tile-slot"));
+    const hasMosaic = rules.hasMosaic();
     const def = themeApi.themes[theme];
 
     if (theme === "off" || !def || !hasMosaic) {

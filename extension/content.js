@@ -3,20 +3,19 @@
   if (!rules) return;
 
   const IFRAME_ID = "dyn-bg-embed";
-  const WRAPPER_SELECTOR = ".v2-app-wrapper";
-  const BG_SELECTOR = ".v2-app-wrapper__bg-image";
   const IFRAME_STYLE =
     "position:absolute;inset:0;width:100%;height:100%;border:0;z-index:0;pointer-events:none;";
 
   let applyTimer = 0;
 
   function hideOriginalBackground(wrapper) {
-    const background = wrapper.querySelector(BG_SELECTOR);
-    if (background) background.style.setProperty("display", "none", "important");
+    rules.backgroundLayers(wrapper).forEach((background) => {
+      background.style.setProperty("display", "none", "important");
+    });
   }
 
   function restoreOriginalBackground() {
-    document.querySelectorAll(BG_SELECTOR).forEach((background) => {
+    rules.backgroundLayers().forEach((background) => {
       background.style.removeProperty("display");
     });
   }
@@ -28,7 +27,7 @@
   }
 
   function injectEmbed(src) {
-    const wrapper = document.querySelector(WRAPPER_SELECTOR);
+    const wrapper = rules.findWrapper();
     if (!wrapper) return false;
 
     hideOriginalBackground(wrapper);

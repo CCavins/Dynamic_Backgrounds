@@ -198,8 +198,13 @@
   }
 
   const STYLE = `
-html.dyn-mosaic-on .mosaic-tile-slot {
+html.dyn-mosaic-on .mosaic-tile-slot,
+html.dyn-mosaic-on .mosaic-asset {
   visibility: hidden !important;
+}
+html.dyn-mosaic-on .mosaic-layout > .asset-view,
+html.dyn-mosaic-on .v2-qr-tile {
+  z-index: 6 !important;
 }
 #dyn-mosaic-theme {
   position: absolute;

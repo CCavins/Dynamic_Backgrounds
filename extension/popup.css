@@ -195,3 +195,62 @@ button:hover {
   background: transparent;
   color: rgba(255, 255, 255, 0.45);
 }
+
+.theme-settings {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.setting-row {
+  display: grid;
+  grid-template-columns: 1fr 88px 32px;
+  gap: 6px;
+  align-items: center;
+}
+
+.setting-row + .setting-row {
+  margin-top: 8px;
+}
+
+.setting-row.select {
+  grid-template-columns: 64px 1fr;
+}
+
+.setting-row span {
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.setting-row input,
+.setting-row select {
+  width: 100%;
+  margin-top: 0;
+  padding: 6px 7px;
+}
+
+.setting-row input[type="color"] {
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.setting-row input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.setting-row input[type="color"]::-webkit-color-swatch {
+  border: 0;
+  border-radius: 4px;
+}
+
+.reset-theme {
+  margin-top: 10px;
+}

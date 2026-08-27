@@ -4,6 +4,8 @@
     anyOutputIframeHtml: "anyOutputIframeHtml",
     rules: "rules",
     mosaicTheme: "mosaicTheme",
+    messageTheme: "messageTheme",
+    messageThemeSettings: "messageThemeSettings",
   };
 
   const DEFAULTS = {
@@ -11,7 +13,62 @@
     anyOutputIframeHtml: "",
     rules: [],
     mosaicTheme: "off",
+    messageTheme: "off",
+    messageThemeSettings: {},
   };
+
+  const MOTION_MODES = ["slow", "drift", "fizz"];
+
+  const MESSAGE_THEME_META = {
+    "led-scoreboard": {
+      label: "LED Scoreboard",
+      labels: { primary: "Primary", secondary: "Secondary" },
+      defaults: { primary: "#ffb300", secondary: "#22ff55", revealMs: 1200 },
+    },
+    "neon-nightclub": {
+      label: "Neon Nightclub",
+      labels: { primary: "Primary", secondary: "Secondary" },
+      defaults: { primary: "#35e0ff", secondary: "#ff3fa4", revealMs: 1400 },
+    },
+    "ultras-tifo": {
+      label: "Ultras Tifo",
+      labels: { primary: "Primary", secondary: "Secondary" },
+      defaults: { primary: "#a2121f", secondary: "#ffffff", revealMs: 900 },
+    },
+    "holo-card": {
+      label: "Holo Card",
+      labels: { primary: "Primary", secondary: "Secondary" },
+      defaults: { primary: "#8b5cff", secondary: "#3de0ff", revealMs: 1200 },
+    },
+    "broadcast-tv": {
+      label: "Broadcast TV",
+      labels: { primary: "Primary", secondary: "Secondary" },
+      defaults: { primary: "#ff2d3a", secondary: "#f0c14b", revealMs: 1100 },
+    },
+    "liquid-glass": {
+      label: "Liquid Glass",
+      labels: {
+        primary: "Bubbles",
+        secondary: "Highlight",
+        background: "Background",
+        motion: "Motion",
+      },
+      defaults: {
+        primary: "#7ee8ff",
+        secondary: "#4dffc3",
+        background: "#061014",
+        motion: "drift",
+        revealMs: 1300,
+      },
+    },
+    "parallax-drift": {
+      label: "Parallax Drift",
+      labels: { primary: "Primary", secondary: "Secondary" },
+      defaults: { primary: "#ff4d8d", secondary: "#7a86ff", revealMs: 1250 },
+    },
+  };
+
+  const MESSAGE_THEMES = ["off", ...Object.keys(MESSAGE_THEME_META)];
 
   const MOSAIC_THEMES = [
     "off",
@@ -94,6 +151,54 @@
     return MOSAIC_THEMES.includes(value) ? value : "off";
   }
 
+  function normalizeMessageTheme(value) {
+    return MESSAGE_THEMES.includes(value) ? value : "off";
+  }
+
+  function isHexColor(value) {
+    return /^#[0-9a-fA-F]{6}$/.test(String(value || ""));
+  }
+
+  function normalizeOneThemeSettings(themeId, raw) {
+    const meta = MESSAGE_THEME_META[themeId];
+    if (!meta) return {};
+    const defaults = meta.defaults;
+    const src = raw && typeof raw === "object" ? raw : {};
+    const next = {
+      primary: isHexColor(src.primary) ? src.primary.toLowerCase() : defaults.primary,
+      secondary: isHexColor(src.secondary) ? src.secondary.toLowerCase() : defaults.secondary,
+    };
+    if (defaults.background) {
+      next.background = isHexColor(src.background)
+        ? src.background.toLowerCase()
+        : defaults.background;
+    }
+    if (defaults.motion) {
+      next.motion = MOTION_MODES.includes(src.motion) ? src.motion : defaults.motion;
+    }
+    return next;
+  }
+
+  function normalizeMessageThemeSettings(value) {
+    const src = value && typeof value === "object" ? value : {};
+    const next = {};
+    Object.keys(MESSAGE_THEME_META).forEach((id) => {
+      next[id] = normalizeOneThemeSettings(id, src[id]);
+    });
+    return next;
+  }
+
+  function resolveMessageThemeSettings(settings, themeId) {
+    const id = normalizeMessageTheme(themeId || (settings && settings.messageTheme));
+    if (id === "off") return null;
+    const meta = MESSAGE_THEME_META[id];
+    const stored = settings && settings.messageThemeSettings && settings.messageThemeSettings[id];
+    return {
+      ...normalizeOneThemeSettings(id, stored),
+      revealMs: meta && meta.defaults ? meta.defaults.revealMs : 1000,
+    };
+  }
+
   function normalizeSettings(value) {
     const next = value || {};
     const rules = Array.isArray(next.rules) ? next.rules : [];
@@ -101,6 +206,8 @@
       enabled: next.enabled !== false,
       anyOutputIframeHtml: String(next.anyOutputIframeHtml || ""),
       mosaicTheme: normalizeMosaicTheme(next.mosaicTheme),
+      messageTheme: normalizeMessageTheme(next.messageTheme),
+      messageThemeSettings: normalizeMessageThemeSettings(next.messageThemeSettings),
       rules: rules
         .map((rule) => ({
           outputUrl: String(rule && rule.outputUrl ? rule.outputUrl : "").trim(),
@@ -126,6 +233,68 @@
     }
 
     return "";
+  }
+
+  function findWrapper() {
+    return document.querySelector(".v2-app-wrapper") || document.querySelector(".output-wrapper");
+  }
+
+  function findOverlayHost() {
+    return (
+      document.querySelector(".v2-app-wrapper") ||
+      document.querySelector(".mosaic-layout") ||
+      document.querySelector(".output-wrapper")
+    );
+  }
+
+  function hasMosaic() {
+    return Boolean(document.querySelector(".mosaic-tile-slot, .mosaic-layout, .mosaic-asset"));
+  }
+
+  function hasMessage() {
+    return Boolean(document.querySelector(".capture-content-layer, .message-layer, .message-content-text"));
+  }
+
+  function messageCapture() {
+    const img = document.querySelector(".capture-content-layer img");
+    const src = img && (img.currentSrc || img.src) ? img.currentSrc || img.src : "";
+    if (src && src.startsWith("data:")) return { src: "", message: "", name: "" };
+    const texts = [...document.querySelectorAll(".message-layer .message-content-text, .message-content-text")];
+    return {
+      src: src && !src.startsWith("data:") ? src : "",
+      message: texts[0] ? String(texts[0].textContent || "").trim() : "",
+      name: texts[1] ? String(texts[1].textContent || "").trim() : "",
+    };
+  }
+
+  function mosaicImages() {
+    return document.querySelectorAll(".v2-asset-tile img, .v2-mosaic-face img, .mosaic-asset img");
+  }
+
+  function backgroundLayers(root) {
+    const found = [];
+    const scope = root || document;
+    scope.querySelectorAll(".v2-app-wrapper__bg-image").forEach((el) => found.push(el));
+    const wrapper =
+      root && root.classList && root.classList.contains("output-wrapper")
+        ? root
+        : (root && root.querySelector ? root.querySelector(".output-wrapper") : null) ||
+          document.querySelector(".output-wrapper");
+    if (wrapper) {
+      [...wrapper.children].forEach((child) => {
+        if (child.classList.contains("asset-view")) found.push(child);
+      });
+    }
+    return found;
+  }
+
+  function isSkippedMosaicImage(img) {
+    if (!img || !img.closest) return true;
+    if (img.closest(".v2-qr-tile, .qr-tile")) return true;
+    if (img.classList.contains("v2-app-wrapper__bg-image")) return true;
+    if (img.closest(".output-wrapper > .asset-view")) return true;
+    if (img.closest(".mosaic-layout > .asset-view")) return true;
+    return false;
   }
 
   function extensionAlive() {
@@ -175,14 +344,29 @@
     STORAGE_KEYS,
     DEFAULTS,
     MOSAIC_THEMES,
+    MESSAGE_THEMES,
+    MESSAGE_THEME_META,
+    MOTION_MODES,
     envKey,
     extractIds,
     isOutputPage,
     urlsMatch,
     parseIframeSrc,
     normalizeMosaicTheme,
+    normalizeMessageTheme,
+    normalizeOneThemeSettings,
+    normalizeMessageThemeSettings,
+    resolveMessageThemeSettings,
     normalizeSettings,
     resolveIframeSrc,
+    findWrapper,
+    findOverlayHost,
+    hasMosaic,
+    hasMessage,
+    messageCapture,
+    mosaicImages,
+    backgroundLayers,
+    isSkippedMosaicImage,
     extensionAlive,
     loadSettings,
     saveSettings,
