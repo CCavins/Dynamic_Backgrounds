@@ -29,8 +29,51 @@
   </header>
 
   <section>
+    <h2>Stage</h2>
+    <p class="help">Force a canvas ratio. The stage grows until it hits a window edge, then letterboxes the other axis. Auto still follows the window. Vixi’s background is hidden while a theme is on.</p>
+    <label class="select-label">
+      <span>Aspect</span>
+      <select id="stage-aspect">
+        <option value="auto">Auto — match the window</option>
+        <option value="16:9">16:9 landscape</option>
+        <option value="9:16">9:16 portrait</option>
+        <option value="4:3">4:3 landscape</option>
+        <option value="3:4">3:4 portrait</option>
+        <option value="3:2">3:2 landscape</option>
+        <option value="2:3">2:3 portrait</option>
+        <option value="1:1">1:1 square</option>
+        <option value="5:4">5:4 landscape</option>
+        <option value="4:5">4:5 portrait</option>
+        <option value="21:9">21:9 ultrawide</option>
+        <option value="9:21">9:21 tall</option>
+        <option value="custom">Custom — set width : height</option>
+      </select>
+    </label>
+    <div id="stage-ratio-row" class="ratio-row" hidden>
+      <label>
+        <span>Width</span>
+        <input id="stage-ratio-w" type="number" min="1" max="9999" step="any" inputmode="decimal" value="16">
+      </label>
+      <span class="ratio-sep" aria-hidden="true">:</span>
+      <label>
+        <span>Height</span>
+        <input id="stage-ratio-h" type="number" min="1" max="9999" step="any" inputmode="decimal" value="9">
+      </label>
+    </div>
+    <label class="check-row">
+      <input type="checkbox" id="show-qr">
+      <span>Show QR code</span>
+    </label>
+    <label class="check-row">
+      <input type="checkbox" id="show-logo">
+      <span>Show logo</span>
+    </label>
+    <p class="help">Both stay hidden unless you turn them on. The theme decides where they sit and how big they are.</p>
+  </section>
+
+  <section>
     <h2>Mosaic theme</h2>
-    <p class="help">Uses the live mosaic photos and restyles the grid. Off keeps Vixi’s layout. The QR code stays.</p>
+    <p class="help">Uses the live mosaic photos and restyles the grid. Off keeps Vixi’s layout.</p>
     <label class="select-label">
       <span>Theme</span>
       <select id="mosaic-theme">
@@ -41,7 +84,7 @@
 
   <section>
     <h2>Message theme</h2>
-    <p class="help">Uses the live capture photo and caption. Off keeps Vixi’s layout. The QR code stays.</p>
+    <p class="help">Uses the live capture photo and caption. Off keeps Vixi’s layout.</p>
     <label class="select-label">
       <span>Theme</span>
       <select id="message-theme">

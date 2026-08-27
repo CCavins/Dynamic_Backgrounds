@@ -5,8 +5,14 @@
 <title>Custom theme preview</title>
 <style>
   html, body { margin: 0; height: 100%; background: #1b1b1b; color: #fff; font-family: Inter, sans-serif; }
-  #bar { position: fixed; top: 12px; left: 12px; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px; max-width: 70%; }
+  #bar { position: fixed; top: 12px; left: 12px; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px; max-width: 78%; }
   #bar button { min-height: 36px; padding: 6px 12px; border: 0; border-radius: 8px; background: #d52265; color: #fff; font: 500 13px Inter, sans-serif; cursor: pointer; }
+  #bar button.aspect { background: #333; }
+  #bar button.aspect.is-on { background: #fec651; color: #1b1b1b; }
+  #bar .aspect-custom { display: flex; align-items: center; gap: 6px; background: #333; border-radius: 8px; padding: 0 8px; min-height: 36px; }
+  #bar .aspect-custom input { width: 52px; height: 28px; border: 0; border-radius: 6px; background: #1b1b1b; color: #fff; text-align: center; font: 500 13px Inter, sans-serif; }
+  #bar .aspect-custom.is-on { background: #fec651; color: #1b1b1b; }
+  #bar .aspect-custom.is-on input { background: #fff; color: #1b1b1b; }
   #dyn-message-theme, #dyn-mosaic-theme { position: absolute; inset: 0; }
   #dyn-mosaic-theme { display: none; }
   body.mosaic #dyn-message-theme { display: none; }
@@ -76,9 +82,12 @@
   const messageRoot = document.getElementById("dyn-message-theme");
   const mosaicRoot = document.getElementById("dyn-mosaic-theme");
   const bar = document.getElementById("bar");
+  const rules = globalThis.BGExtensionRules;
   let messageState = null;
   let mosaicState = null;
   let mosaicTimer = 0;
+  let stageMode = "auto";
+  let currentShow = null;
 
   function settingsFor(pack) {
     const out = { revealMs: pack.revealMs || 1000 };
@@ -88,7 +97,16 @@
     return out;
   }
 
+  function applyAspect() {
+    if (rules && rules.setStageAspect) rules.setStageAspect(stageMode);
+    if (rules && rules.applyStageFrame) {
+      rules.applyStageFrame(mosaicRoot, stageMode);
+      rules.applyStageFrame(messageRoot, stageMode);
+    }
+  }
+
   function showPack(pack) {
+    currentShow = () => showPack(pack);
     if (mosaicTimer) {
       clearInterval(mosaicTimer);
       mosaicTimer = 0;
@@ -107,7 +125,9 @@
       mosaicRoot.dataset.theme = pack.id;
       if (pack.engine) mosaicRoot.dataset.engine = pack.engine;
       else delete mosaicRoot.dataset.engine;
+      applyAspect();
       const def = mosaicApi.themes[pack.id];
+      if (!def) return;
       const api = {
         nextUrl() { return photos[Math.floor(Math.random() * photos.length)]; },
       };
@@ -118,6 +138,7 @@
       }
       return;
     }
+    applyAspect();
     if (messageState && messageApi.themes[messageState.id] && messageApi.themes[messageState.id].unmount) {
       messageApi.themes[messageState.id].unmount(messageRoot, messageState.state);
     }
@@ -127,6 +148,7 @@
     else delete messageRoot.dataset.engine;
     messageRoot.replaceChildren();
     const def = messageApi.themes[pack.id];
+    if (!def) return;
     const settings = settingsFor(pack);
     const state = def.mount(messageRoot, settings);
     messageState = { id: pack.id, state };
@@ -138,12 +160,85 @@
     }, state, settings);
   }
 
-  files.forEach(([, label], i) => {
+  function addBtn(label, onClick, className) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.textContent = label;
-    btn.onclick = () => showPack(packs[i]);
+    if (className) btn.className = className;
+    btn.onclick = onClick;
     bar.appendChild(btn);
+    return btn;
+  }
+
+  const aspectBtns = {};
+  const customWrap = document.createElement("div");
+  customWrap.className = "aspect-custom";
+  const customW = document.createElement("input");
+  const customH = document.createElement("input");
+  customW.type = customH.type = "number";
+  customW.min = customH.min = "1";
+  customW.step = customH.step = "any";
+  customW.value = "16";
+  customH.value = "9";
+  customW.title = "Width";
+  customH.title = "Height";
+  customWrap.append(customW, document.createTextNode(":"), customH);
+  function markAspect(mode) {
+    Object.keys(aspectBtns).forEach((key) => {
+      aspectBtns[key].classList.toggle("is-on", key === mode);
+    });
+    customWrap.classList.toggle("is-on", mode === "custom");
+  }
+  function applyCustomAspect() {
+    const next = rules && rules.normalizeStageAspect
+      ? rules.normalizeStageAspect(customW.value + ":" + customH.value)
+      : "auto";
+    if (next === "auto") return;
+    stageMode = next;
+    markAspect("custom");
+    if (currentShow) currentShow();
+  }
+  ["auto", "16:9", "9:16", "4:3", "1:1", "21:9"].forEach((mode) => {
+    aspectBtns[mode] = addBtn(mode === "auto" ? "Auto" : mode, () => {
+      stageMode = mode;
+      markAspect(mode);
+      if (mode !== "auto" && rules && rules.parseStageAspect) {
+        const parsed = rules.parseStageAspect(mode);
+        if (parsed && parsed.mode !== "auto") {
+          customW.value = parsed.aw;
+          customH.value = parsed.ah;
+        }
+      }
+      if (currentShow) currentShow();
+    }, "aspect");
+  });
+  bar.appendChild(customWrap);
+  customW.addEventListener("change", applyCustomAspect);
+  customH.addEventListener("change", applyCustomAspect);
+  aspectBtns.auto.classList.add("is-on");
+
+  files.forEach(([, label], i) => {
+    addBtn(label, () => showPack(packs[i]));
+  });
+
+  [
+    ["LED (built-in)", "message", "led-scoreboard"],
+    ["Broadcast (built-in)", "message", "broadcast-tv"],
+    ["Decks (built-in)", "mosaic", "decks"],
+    ["Flipwall (built-in)", "mosaic", "flipwall"],
+  ].forEach(([label, kind, id]) => {
+    addBtn(label, () => {
+      if (kind === "mosaic") {
+        showPack({ kind: "mosaic", id, engine: "", interval: mosaicApi.themes[id] && mosaicApi.themes[id].interval });
+        return;
+      }
+      const fake = { kind: "message", id, engine: "", settings: {}, revealMs: 1000 };
+      showPack(fake);
+    });
+  });
+
+  window.addEventListener("resize", () => {
+    if (currentShow) currentShow();
   });
   showPack(packs[0]);
 })();

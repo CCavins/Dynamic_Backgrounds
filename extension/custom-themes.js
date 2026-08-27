@@ -313,14 +313,27 @@
   gap: 16px;
   padding: 0 28px;
 }
+#dyn-mosaic-theme.dyn-layout-grid .dyn-card,
+#dyn-mosaic-theme.dyn-layout-row .dyn-card,
+#dyn-mosaic-theme.dyn-layout-ribbon .dyn-card,
+#dyn-mosaic-theme.dyn-layout-scatter .dyn-card {
+  aspect-ratio: 2 / 3;
+  height: auto;
+}
+#dyn-mosaic-theme.dyn-layout-grid .dyn-card {
+  width: auto;
+  max-width: 100%;
+  max-height: 100%;
+  justify-self: center;
+  align-self: center;
+}
 #dyn-mosaic-theme.dyn-layout-row .dyn-card {
   flex: 0 0 18%;
-  height: 58%;
+  width: 18%;
 }
 #dyn-mosaic-theme.dyn-layout-scatter .dyn-card {
   position: absolute;
   width: 18%;
-  height: 28%;
 }
 #dyn-mosaic-theme.dyn-layout-ribbon .dyn-custom-cards {
   display: flex;
@@ -331,7 +344,6 @@
 }
 #dyn-mosaic-theme.dyn-layout-ribbon .dyn-card {
   width: 16%;
-  height: 52%;
   flex: 0 0 16%;
 }
 #dyn-mosaic-theme.dyn-custom-mosaic .dyn-card {
@@ -339,6 +351,25 @@
 }
 #dyn-mosaic-theme.dyn-custom-mosaic .dyn-card.is-swap {
   opacity: 0.2;
+}
+#dyn-mosaic-theme.dyn-portrait.dyn-layout-row .dyn-custom-cards {
+  flex-direction: column;
+  justify-content: center;
+}
+#dyn-mosaic-theme.dyn-portrait.dyn-layout-row .dyn-card {
+  flex: 0 0 auto;
+  width: 42%;
+}
+#dyn-mosaic-theme.dyn-portrait.dyn-layout-ribbon .dyn-custom-cards {
+  flex-direction: column;
+  transform: rotate(-6deg) scale(1.04);
+}
+#dyn-mosaic-theme.dyn-portrait.dyn-layout-ribbon .dyn-card {
+  width: 42%;
+  flex: 0 0 auto;
+}
+#dyn-mosaic-theme.dyn-portrait.dyn-layout-scatter .dyn-card {
+  width: 32%;
 }
 `;
 

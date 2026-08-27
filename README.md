@@ -59,6 +59,8 @@ The popup has a master **On / Off** switch:
 
 Tokens and extra query params on an output URL are ignored when matching. Staging and production stay separate.
 
+The popup **Stage** control resizes the output canvas to a chosen ratio (16:9, 9:16, 4:3, 1:1, 21:9, or any width:height). Auto still follows the window. Themes restack for portrait without flipping photo crops. QR and logo stay hidden unless you turn them on; the theme then places them.
+
 If you change files in `extension/`, rebuild the zip from the repo root:
 
 ```bash

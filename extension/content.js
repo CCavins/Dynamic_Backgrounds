@@ -54,6 +54,12 @@
     // Cached settings keep the injected background alive across extension
     // reloads; only a page refresh swaps in the new script.
     const settings = await rules.loadSettings();
+    if (rules.themeReplacesBackground && rules.themeReplacesBackground(settings)) {
+      hideOriginalBackground(rules.findWrapper());
+      const iframe = document.getElementById(IFRAME_ID);
+      if (iframe) iframe.remove();
+      return;
+    }
     const src = rules.resolveIframeSrc(settings, location.href);
     if (!src) {
       // Only pay for teardown when something was actually injected.

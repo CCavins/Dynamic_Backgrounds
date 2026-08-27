@@ -19,7 +19,8 @@ html.dyn-message-on .message-layer {
 html.dyn-message-on .v2-qr-tile,
 html.dyn-message-on .qr-tile,
 html.dyn-message-on .mosaic-layout > .asset-view {
-  z-index: 6 !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
 }
 #dyn-message-theme {
   position: absolute;
@@ -2076,10 +2077,10 @@ html.dyn-message-on .mosaic-layout > .asset-view {
 }
 
 /* ================================================================
-   PORTRAIT CANVAS (1080x1920): restack photo above copy.
-   The originals are landscape-designed; these overrides keep every
-   element inside the portrait design space. (cq units are already
-   container-relative and are not converted.)
+   PORTRAIT CANVAS: restack when the stage is taller than wide
+   (auto on a tall window, or any portrait ratio).
+   Photo-above-copy for most themes; liquid-glass and broadcast-tv
+   put the banner on top and the photo in the lower half.
    ================================================================ */
 #dyn-message-theme.dyn-portrait[data-theme="led-scoreboard"] .content { flex-direction: column; }
 #dyn-message-theme.dyn-portrait[data-theme="led-scoreboard"] .photo-panel { width: 100%; height: 40%; }
@@ -2100,11 +2101,11 @@ html.dyn-message-on .mosaic-layout > .asset-view {
 }
 #dyn-message-theme.dyn-portrait[data-theme="holo-card"] .copy.no-msg .name-fit { height: 18cqh; }
 #dyn-message-theme.dyn-portrait[data-theme="liquid-glass"] .layout {
-  justify-content: center; align-items: flex-start; padding-top: 5cqh;
+  justify-content: flex-end; align-items: flex-end; padding-top: 0; padding-bottom: 5cqh;
 }
-#dyn-message-theme.dyn-portrait[data-theme="liquid-glass"] .slab { height: 46cqh; }
+#dyn-message-theme.dyn-portrait[data-theme="liquid-glass"] .slab { height: 52cqh; }
 #dyn-message-theme.dyn-portrait[data-theme="liquid-glass"] .copy {
-  left: 7cqw; right: 7cqw; width: auto; top: 74%; height: 40cqh;
+  left: 7cqw; right: 7cqw; width: auto; top: 6%; height: 28cqh;
 }
 #dyn-message-theme.dyn-portrait[data-theme="parallax-drift"] .hero {
   height: 42cqh; left: calc(50cqw - 15.75cqh); top: 26%;
@@ -2112,6 +2113,26 @@ html.dyn-message-on .mosaic-layout > .asset-view {
 #dyn-message-theme.dyn-portrait[data-theme="parallax-drift"] .plaque,
 #dyn-message-theme.dyn-portrait[data-theme="parallax-drift"] .haze {
   left: 8cqw; right: 8cqw; top: 73%; height: 40cqh;
+}
+#dyn-message-theme.dyn-portrait[data-theme="broadcast-tv"] .tv {
+  width: min(94cqw, calc(94cqh * 0.68));
+  height: min(94cqh, calc(94cqw / 0.68));
+}
+#dyn-message-theme.dyn-portrait[data-theme="broadcast-tv"] .set {
+  flex-direction: column;
+}
+#dyn-message-theme.dyn-portrait[data-theme="broadcast-tv"] .crt {
+  width: 100%;
+  height: auto;
+  flex: 1 1 auto;
+  aspect-ratio: 3 / 4;
+}
+#dyn-message-theme.dyn-portrait[data-theme="broadcast-tv"] .news {
+  left: 6%;
+  right: 6%;
+  top: 5%;
+  bottom: auto;
+  max-height: 26%;
 }
 `;
 
@@ -2121,6 +2142,10 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   const STYLE = RAW_STYLE
     .replace(/(\d*\.?\d+)vh\b/g, "$1cqh")
     .replace(/(\d*\.?\d+)vw\b/g, "$1cqw")
+    .replace(
+      /#dyn-message-theme\.dyn-portrait\[data-theme="([^"]+)"\]/g,
+      '#dyn-message-theme.dyn-portrait:is([data-theme="$1"], [data-engine="$1"])'
+    )
     .replace(
       /#dyn-message-theme\[data-theme="([^"]+)"\]/g,
       '#dyn-message-theme:is([data-theme="$1"], [data-engine="$1"])'
@@ -2157,9 +2182,10 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   }
 
   // ---------------- Design-space stage ----------------
-  // The Vixi canvas is 1920x1080 (or 1080x1920). Everything renders at that
-  // fixed size and the stage is scale()-transformed to fit the window, so
-  // text, photo and chrome shrink or grow together.
+  // The Vixi canvas uses a design space on the long edge (1920 for 16:9,
+  // 1080x1920 for 9:16, or the same long edge at any custom ratio).
+  // Everything renders at that size and the stage is scale()-transformed
+  // to fill the canvas, so text, photo and chrome shrink or grow together.
 
   let stageScale = 1;
   let currentThemeRoot = null;
@@ -2170,13 +2196,28 @@ html.dyn-message-on .mosaic-layout > .asset-view {
     const rect = themeRoot.getBoundingClientRect();
     const rw = rect.width || window.innerWidth || 1920;
     const rh = rect.height || window.innerHeight || 1080;
-    const dw = rw >= rh ? 1920 : 1080;
-    const dh = rw >= rh ? 1080 : 1920;
+    const rules = root.BGExtensionRules;
+    const size =
+      rules && typeof rules.resolveStageSize === "function"
+        ? rules.resolveStageSize({ clientWidth: rw, clientHeight: rh })
+        : {
+            dw: rw >= rh ? 1920 : 1080,
+            dh: rw >= rh ? 1080 : 1920,
+            portrait: rh > rw,
+          };
+    const dw = size.dw;
+    const dh = size.dh;
     const flipped = stage.dataset.dw && stage.dataset.dw !== String(dw);
     stage.dataset.dw = String(dw);
     stage.style.width = dw + "px";
     stage.style.height = dh + "px";
-    themeRoot.classList.toggle("dyn-portrait", dh > dw);
+    themeRoot.classList.toggle("dyn-portrait", Boolean(size.portrait));
+    themeRoot.dataset.aspect =
+      rules && typeof rules.stageAspectToken === "function"
+        ? rules.stageAspectToken(size)
+        : size.portrait
+          ? "9-16"
+          : "16-9";
     const s = Math.min(rw / dw, rh / dh);
     stageScale = s;
     stage.style.left = ((rw - dw * s) / 2).toFixed(2) + "px";

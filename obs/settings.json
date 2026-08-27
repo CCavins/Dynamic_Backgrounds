@@ -3,6 +3,9 @@
   "messageTheme": "holo-card",
   "mosaicTheme": "decks",
   "messageThemeSettings": {},
+  "stageAspect": "auto",
+  "showQr": false,
+  "showLogo": false,
   "anyOutputIframeHtml": "",
   "rules": []
 }

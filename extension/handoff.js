@@ -14,11 +14,36 @@
     "html.dyn-cover-mosaic .mosaic-image{" +
       "visibility:hidden!important;" +
     "}" +
+    "html.dyn-theme-on .v2-qr-tile," +
+    "html.dyn-theme-on .qr-tile," +
+    "html.dyn-theme-on .v2-logo," +
+    "html.dyn-theme-on .v2-logo-tile," +
+    "html.dyn-theme-on .event-logo," +
+    "html.dyn-theme-on .logo-tile," +
+    "html.dyn-theme-on .mosaic-layout > .asset-view," +
+    "html.dyn-theme-on .v2-app-wrapper__bg-image," +
+    "html.dyn-theme-on .output-wrapper > .asset-view," +
+    "html.dyn-theme-on #dyn-bg-embed{" +
+      "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
+    "}" +
+    "html.dyn-stage-forced,html.dyn-stage-forced body,html.dyn-stage-forced .output-page{" +
+      "background:#000!important;overflow:hidden!important;" +
+    "}" +
+    "html.dyn-stage-forced .output-wrapper," +
+    "html.dyn-stage-forced .v2-app-wrapper{" +
+      "max-width:none!important;max-height:none!important;" +
+    "}" +
     "#" + HOST_ID + "{" +
-      "position:absolute;inset:0;z-index:0;pointer-events:none;" +
+      "position:absolute;inset:0;z-index:10;pointer-events:none;" +
     "}" +
     "#dyn-mosaic-theme{transition:opacity .42s ease;}" +
-    "#dyn-mosaic-theme.is-leaving{opacity:0;}";
+    "#dyn-mosaic-theme.is-leaving{opacity:0;}" +
+    ".dyn-brand-chrome{position:absolute;inset:0;z-index:40;pointer-events:none;}" +
+    ".dyn-brand-logo{position:absolute;top:3.2%;left:3.2%;width:min(14%,180px);height:auto;}" +
+    ".dyn-brand-qr{position:absolute;right:3.2%;bottom:3.2%;width:min(12%,160px);aspect-ratio:1;}" +
+    ".dyn-portrait .dyn-brand-logo{width:min(28%,200px);}" +
+    ".dyn-portrait .dyn-brand-qr{width:min(22%,180px);bottom:4%;}" +
+    "[data-qr][hidden],[data-logo][hidden]{display:none!important;}";
 
   const actors = { message: null, mosaic: null };
   let mode = "";
@@ -50,6 +75,14 @@
       "dyn-cover-mosaic",
       Boolean(enabled && s.mosaicTheme && s.mosaicTheme !== "off")
     );
+    const themeOn = Boolean(
+      enabled &&
+        ((s.messageTheme && s.messageTheme !== "off") || (s.mosaicTheme && s.mosaicTheme !== "off"))
+    );
+    html.classList.toggle("dyn-theme-on", themeOn);
+    if (themeOn && rules.applyOutputCanvas) rules.applyOutputCanvas(s.stageAspect);
+    else if (rules.resetOutputCanvas) rules.resetOutputCanvas();
+    if (themeOn && rules.silenceReplacedMedia) rules.silenceReplacedMedia();
   }
 
   function liveKind() {

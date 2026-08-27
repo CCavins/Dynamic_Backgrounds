@@ -12,6 +12,7 @@
 
   let applyTimer = 0;
   let mountedTheme = "";
+  let mountedAspect = "";
   let active = null;
   let lastKey = "";
   let lastSettingsKey = "";
@@ -60,6 +61,7 @@
         host.appendChild(root);
       }
     }
+    if (typeof rules.applyStageFrame === "function") rules.applyStageFrame(root);
     return root;
   }
 
@@ -71,6 +73,7 @@
     if (root) root.replaceChildren();
     active = null;
     mountedTheme = "";
+    mountedAspect = "";
     lastKey = "";
     lastSettingsKey = "";
   }
@@ -90,8 +93,10 @@
     }
     active = { id, def, state };
     mountedTheme = id;
+    mountedAspect = rules.currentStageAspect ? rules.currentStageAspect() : "auto";
     lastSettingsKey = settingsKey(id, themeSettings);
     lastThemeSettings = themeSettings;
+    if (typeof rules.ensureBrandChrome === "function") rules.ensureBrandChrome(root);
     return true;
   }
 
@@ -181,6 +186,9 @@
     handoff.applyCovers(settings);
     const theme = settings.enabled ? rules.normalizeMessageTheme(settings.messageTheme) : "off";
     const themeSettings = rules.resolveMessageThemeSettings(settings, theme);
+    const aspect = rules.normalizeStageAspect
+      ? rules.normalizeStageAspect(settings.stageAspect)
+      : "auto";
     const def = themeApi.themes[theme];
 
     if (theme === "off" || !def) {
@@ -204,19 +212,24 @@
         // fade reveals the theme's set piece instead of the stock template.
         document.documentElement.classList.add("dyn-message-on");
         const overlay = document.getElementById(OVERLAY_ID);
-        if (mountedTheme !== theme || !overlay) mountTheme(theme, themeSettings);
+        if (mountedTheme !== theme || mountedAspect !== aspect || !overlay) {
+          mountTheme(theme, themeSettings);
+        }
         return decodeImage(rules.messageCapture().src);
       },
       async reveal() {
         document.documentElement.classList.add("dyn-message-on");
         const overlay = document.getElementById(OVERLAY_ID);
-        if (mountedTheme !== theme || !overlay) {
+        if (mountedTheme !== theme || mountedAspect !== aspect || !overlay) {
           if (!mountTheme(theme, themeSettings)) return;
         } else if (lastSettingsKey !== settingsKey(theme, themeSettings)) {
           lastSettingsKey = settingsKey(theme, themeSettings);
           if (typeof active.def.applySettings === "function") {
             active.def.applySettings(overlay, active.state, themeSettings);
           }
+        }
+        if (overlay && typeof rules.ensureBrandChrome === "function") {
+          rules.ensureBrandChrome(overlay);
         }
 
         const capture = rules.messageCapture();

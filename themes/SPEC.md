@@ -147,7 +147,9 @@ Scope every rule:
 - Message: `#dyn-message-theme[data-theme="your-id"]`
 - Mosaic: `#dyn-mosaic-theme[data-theme="your-id"]`
 
-The message overlay mounts a `.dyn-fit-stage` at **1920×1080** or **1080×1920** (portrait when the overlay is taller than wide) and `scale()`s it to the window. Prefer `cqh` / `cqw` so chrome tracks the stage. The root gets `dyn-portrait` in portrait.
+The popup **Stage → Aspect** setting resizes Vixi’s output canvas to a chosen ratio (`16:9`, `9:16`, `4:3`, `1:1`, `21:9`, or any `W:H`). The canvas contain-fits the window — it grows until it touches a pair of edges, then letterboxes the other axis. `auto` follows the window. Message themes still draw in a `.dyn-fit-stage` at a 1920-long-edge design size and `scale()` it to fill that canvas. Prefer `cqh` / `cqw`. The root gets `dyn-portrait` when height > width, and `data-aspect` (`16-9`, `9-16`, `4-3`, …).
+
+Vixi’s background, QR, and logo are hidden while a theme is on. **Show QR code** / **Show logo** in the popup put them back only if the theme has a slot (or the default corner chrome). Mosaic cards stay **2:3**; portrait restacks placement, it does not flip the crop to 3:2.
 
 Root classes the runtime toggles:
 
@@ -156,7 +158,11 @@ Root classes the runtime toggles:
 - `no-photo` — capture has no image
 - `no-copy` — no message and no name
 - `no-name` — no name
-- `dyn-portrait` — portrait stage
+- `dyn-portrait` — stage is taller than wide (auto on a tall window, or any portrait ratio)
+- `data-aspect` — `16-9`, `9-16`, or the forced ratio (`4-3`, `1-1`, `21-9`, …)
+- `dyn-show-qr` / `dyn-show-logo` — popup toggles are on
+
+Add portrait overrides under `#dyn-message-theme.dyn-portrait[data-theme="your-id"]` (or the mosaic equivalent). Photo-above-copy and banner-above-photo both work; pick the one that fits the theme.
 
 Variables set from settings: `--primary`, `--secondary`, `--background`, `--reveal-ms`.
 
@@ -167,6 +173,10 @@ Put these on elements the JSON-only compiler (or your engine) should fill:
 - `data-photo` on the image (or the first `img` is also collected)
 - `data-message` on the caption node
 - `data-name` on the name node (can appear more than once)
+- `data-qr` on the box that should receive Vixi’s QR when **Show QR code** is on
+- `data-logo` on the box that should receive Vixi’s logo when **Show logo** is on
+
+If you omit `data-qr` / `data-logo`, the runtime uses a default corner chrome (logo top-left, QR bottom-right). Style those slots for size and placement. Leave them out of the layout only if the theme should never show brand marks.
 
 For JSON-only message themes, `html` is required and is written into `.dyn-fit-stage`.
 

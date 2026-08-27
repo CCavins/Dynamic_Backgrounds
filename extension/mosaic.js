@@ -13,6 +13,7 @@
   let tickTimer = 0;
   let dealIndex = 0;
   let mountedTheme = "";
+  let mountedAspect = "";
   let mountedEmpty = true;
   let active = null;
   const liveSet = new Set();
@@ -174,6 +175,7 @@
       }
     }
     root.classList.remove("is-leaving");
+    if (typeof rules.applyStageFrame === "function") rules.applyStageFrame(root);
     return root;
   }
 
@@ -240,6 +242,7 @@
     if (root) root.replaceChildren();
     active = null;
     mountedTheme = "";
+    mountedAspect = "";
     mountedEmpty = true;
     lastShown = "";
     // Reset feed state so retired/seen URLs can't accumulate forever on a
@@ -262,6 +265,7 @@
     const state = def.mount(root, pool, makeApi()) || {};
     active = { id, def, state };
     mountedTheme = id;
+    mountedAspect = rules.currentStageAspect ? rules.currentStageAspect() : "auto";
     mountedEmpty = pool.length === 0;
     startTick(def.interval);
     return true;
@@ -309,6 +313,9 @@
     const settings = await rules.loadSettings();
     handoff.applyCovers(settings);
     const theme = settings.enabled ? rules.normalizeMosaicTheme(settings.mosaicTheme) : "off";
+    const aspect = rules.normalizeStageAspect
+      ? rules.normalizeStageAspect(settings.stageAspect)
+      : "auto";
     const def = themeApi.themes[theme];
 
     if (theme === "off" || !def) {
@@ -329,18 +336,20 @@
         document.documentElement.classList.add("dyn-mosaic-on");
         const { added, removed } = syncFeed();
         const overlay = document.getElementById(OVERLAY_ID);
-        if (mountedTheme !== theme || !overlay) {
+        if (mountedTheme !== theme || mountedAspect !== aspect || !overlay) {
           mountTheme(theme);
-          return;
-        }
-        if (pool.length && mountedEmpty) {
+        } else if (pool.length && mountedEmpty) {
           mountTheme(theme);
-          return;
         }
+        const live = document.getElementById(OVERLAY_ID);
+        if (live && typeof rules.ensureBrandChrome === "function") {
+          rules.ensureBrandChrome(live);
+        }
+        if (!live || !active) return;
         if (active && (added.length || removed.length) && typeof active.def.tick === "function") {
           const bursts = Math.min(Math.max(added.length, removed.length ? 1 : 0), 3);
           for (let i = 0; i < bursts; i += 1) {
-            active.def.tick(overlay, pool, active.state, makeApi());
+            active.def.tick(live, pool, active.state, makeApi());
           }
         }
       },

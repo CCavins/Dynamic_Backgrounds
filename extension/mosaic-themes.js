@@ -203,8 +203,10 @@ html.dyn-mosaic-on .mosaic-asset {
   visibility: hidden !important;
 }
 html.dyn-mosaic-on .mosaic-layout > .asset-view,
-html.dyn-mosaic-on .v2-qr-tile {
-  z-index: 6 !important;
+html.dyn-mosaic-on .v2-qr-tile,
+html.dyn-mosaic-on .qr-tile {
+  visibility: hidden !important;
+  opacity: 0 !important;
 }
 #dyn-mosaic-theme {
   position: absolute;
@@ -214,6 +216,7 @@ html.dyn-mosaic-on .v2-qr-tile {
   pointer-events: none;
   box-sizing: border-box;
   overflow: hidden;
+  container-type: size;
 }
 #dyn-mosaic-theme .dyn-card {
   position: relative;
@@ -903,10 +906,113 @@ html.dyn-mosaic-on .v2-qr-tile {
   border-radius: 0;
   overflow: visible;
 }
+
+#dyn-mosaic-theme.dyn-portrait[data-theme="decks"] {
+  flex-wrap: wrap;
+  align-content: center;
+  gap: 5% 8%;
+  padding: 10% 8% 16%;
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="decks"] .dyn-pile {
+  width: min(38cqw, 320px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="spotlight"] {
+  padding: 6% 6% 14%;
+  gap: 4%;
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="spotlight"] .dyn-hero {
+  width: min(72cqw, 520px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="spotlight"] .dyn-strip {
+  width: min(88cqw, 720px);
+  flex-wrap: wrap;
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="spotlight"] .dyn-strip .dyn-card {
+  height: min(14cqh, 160px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="coverflow"] .dyn-stage {
+  height: min(72cqh, 980px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="coverflow"] .dyn-card {
+  width: min(48cqw, 360px);
+  margin-left: calc(min(48cqw, 360px) / -2);
+  margin-top: calc(min(48cqw, 360px) * -0.75);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="fan"] .dyn-fan {
+  width: min(86cqw, 640px);
+  height: min(58cqh, 880px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="fan"] .dyn-card {
+  width: min(46cqw, 340px);
+  margin-left: calc(min(46cqw, 340px) / -2);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="filmstrip"] {
+  padding: 0 0 12%;
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="filmstrip"] .dyn-card {
+  flex: 0 0 min(58cqw, 360px);
+  width: min(58cqw, 360px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="scatter"] .dyn-card {
+  width: min(38cqw, 230px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="cascade"] {
+  flex-wrap: wrap;
+  gap: 6%;
+  padding: 8% 8% 14%;
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="cascade"] .dyn-col {
+  width: min(38cqw, 300px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="orbit"] .dyn-orbit {
+  width: min(88cqw, 820px);
+  height: min(52cqh, 820px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="orbit"] .dyn-card {
+  width: min(32cqw, 260px);
+  margin-left: calc(min(32cqw, 260px) / -2);
+  margin-top: calc(min(32cqw, 260px) * -0.75);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="billboard"] .dyn-billboard {
+  width: min(78cqw, 520px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="reels"] {
+  flex-direction: column;
+  gap: 4%;
+  padding: 8% 8% 14%;
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="reels"] .dyn-reel {
+  width: min(58cqw, 340px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="flipwall"] .dyn-flip-grid {
+  grid-template-columns: repeat(4, 264px);
+  grid-template-rows: repeat(7, 261px);
+}
 `.replace(
+    /#dyn-mosaic-theme\.dyn-portrait\[data-theme="([^"]+)"\]/g,
+    '#dyn-mosaic-theme.dyn-portrait:is([data-theme="$1"], [data-engine="$1"])'
+  )
+  .replace(
     /#dyn-mosaic-theme\[data-theme="([^"]+)"\]/g,
     '#dyn-mosaic-theme:is([data-theme="$1"], [data-engine="$1"])'
-  );
+  )
+  .replace(/(\d*\.?\d+)vh\b/g, "$1cqh")
+  .replace(/(\d*\.?\d+)vw\b/g, "$1cqw");
+
+  function stageSize(parent) {
+    const rules = root.BGExtensionRules;
+    if (rules && typeof rules.resolveStageSize === "function") {
+      return rules.resolveStageSize(parent);
+    }
+    const rw = (parent && parent.clientWidth) || window.innerWidth || 1920;
+    const rh = (parent && parent.clientHeight) || window.innerHeight || 1080;
+    const portrait = rh > rw;
+    return {
+      dw: portrait ? 1080 : 1920,
+      dh: portrait ? 1920 : 1080,
+      portrait,
+    };
+  }
 
   const SCATTER_SLOTS = [
     { x: 8, y: 6, r: -14 },
@@ -917,6 +1023,17 @@ html.dyn-mosaic-on .v2-qr-tile {
     { x: 66, y: 38, r: 13 },
     { x: 18, y: 62, r: -9 },
     { x: 50, y: 58, r: 6 },
+  ];
+
+  const SCATTER_SLOTS_PORTRAIT = [
+    { x: 10, y: 4, r: -12 },
+    { x: 52, y: 6, r: 8 },
+    { x: 14, y: 24, r: 10 },
+    { x: 56, y: 28, r: -6 },
+    { x: 8, y: 46, r: -8 },
+    { x: 50, y: 50, r: 12 },
+    { x: 16, y: 68, r: 6 },
+    { x: 54, y: 72, r: -10 },
   ];
 
   function layoutCoverflow(cards, center) {
@@ -960,7 +1077,7 @@ html.dyn-mosaic-on .v2-qr-tile {
   function layoutOrbit(cards, angle) {
     const n = cards.length;
     const step = 360 / Math.max(n, 1);
-    const radius = "min(28vh, 240px)";
+    const radius = "min(28cqh, 240px)";
     cards.forEach((card, i) => {
       const deg = angle + i * step;
       const wrapped = ((deg % 360) + 360) % 360;
@@ -1306,7 +1423,9 @@ html.dyn-mosaic-on .v2-qr-tile {
         const stepOf = (track) => {
           const card = track.querySelector(".dyn-card");
           if (!card) return 0;
-          const gap = parseFloat(window.getComputedStyle(track).gap) || window.innerWidth * 0.024;
+          const gap =
+            parseFloat(window.getComputedStyle(track).gap) ||
+            (root.clientWidth || window.innerWidth) * 0.024;
           return card.getBoundingClientRect().width + gap;
         };
         state.track.appendChild(makeCard(src));
@@ -1330,8 +1449,9 @@ html.dyn-mosaic-on .v2-qr-tile {
     scatter: {
       interval: TICK,
       mount(root, pool) {
-        const urls = fill(pool, SCATTER_SLOTS.length);
-        const cards = SCATTER_SLOTS.map((slot, i) => {
+        const slots = stageSize(root).portrait ? SCATTER_SLOTS_PORTRAIT : SCATTER_SLOTS;
+        const urls = fill(pool, slots.length);
+        const cards = slots.map((slot, i) => {
           const card = makeCard(urls[i] || "");
           card.style.left = slot.x + "%";
           card.style.top = slot.y + "%";
@@ -1344,7 +1464,7 @@ html.dyn-mosaic-on .v2-qr-tile {
         const focus = 0;
         cards[focus].classList.add("is-focus");
         cards[focus].style.transform = "translate(-4%, -6%) rotate(-2deg)";
-        return { cards, focus, wait: SCATTER_SLOTS.map(() => 0) };
+        return { cards, focus, wait: slots.map(() => 0) };
       },
       tick(root, pool, state, api) {
         if (!state.cards.length) return;
@@ -1377,11 +1497,12 @@ html.dyn-mosaic-on .v2-qr-tile {
     cascade: {
       interval: TICK,
       mount(root, pool) {
+        const colCount = stageSize(root).portrait ? 2 : 3;
         const cols = [];
-        const urls = [[], [], []];
-        const taken = fill(pool, 6);
+        const urls = Array.from({ length: colCount }, () => []);
+        const taken = fill(pool, colCount * 2);
         let n = 0;
-        for (let c = 0; c < 3; c += 1) {
+        for (let c = 0; c < colCount; c += 1) {
           const col = document.createElement("div");
           col.className = "dyn-col";
           for (let r = 0; r < 2; r += 1) {
@@ -1394,10 +1515,10 @@ html.dyn-mosaic-on .v2-qr-tile {
           root.appendChild(col);
           cols.push(col);
         }
-        return { cols, urls, wait: [0, 0, 0], busy: {} };
+        return { cols, urls, wait: Array.from({ length: colCount }, () => 0), busy: {} };
       },
       tick(root, pool, state, api) {
-        const colIndex = pickFairTurn(state, 3, state.busy);
+        const colIndex = pickFairTurn(state, state.cols.length, state.busy);
         if (colIndex < 0) return;
         const src = api.nextUrl(state.urls[colIndex]);
         if (!src) return;
@@ -1681,8 +1802,10 @@ html.dyn-mosaic-on .v2-qr-tile {
     flipwall: {
       interval: 60000,
       mount(root, pool) {
-        const cols = 7;
-        const rows = 4;
+        const size = stageSize(root);
+        const portrait = size.portrait;
+        const cols = portrait ? 4 : 7;
+        const rows = portrait ? 7 : 4;
         const count = cols * rows;
         const stage = document.createElement("div");
         stage.className = "dyn-flip-stage";
@@ -1711,7 +1834,7 @@ html.dyn-mosaic-on .v2-qr-tile {
         stage.appendChild(grid);
         root.appendChild(stage);
         const state = { tiles, cols, rows, lastCorner: -1, timers: [], stopped: false, poolRef: pool };
-        watchStage(state, stage, 1920, 1080, root);
+        watchStage(state, stage, size.dw, size.dh, root);
         const corners = [
           { oc: 0, or: 0 },
           { oc: cols - 1, or: 0 },
@@ -2382,17 +2505,20 @@ html.dyn-mosaic-on .v2-qr-tile {
       mount(root, pool) {
         const field = document.createElement("div");
         field.className = "dyn-cube-field";
-        const count = 24;
+        const portrait = stageSize(root).portrait;
+        const colsN = portrait ? 4 : 6;
+        const rowsN = portrait ? 6 : 4;
+        const count = colsN * rowsN;
         const urls = fill(pool, count * 2);
         const cubes = [];
         for (let i = 0; i < count; i += 1) {
-          const col = i % 6;
-          const row = Math.floor(i / 6);
+          const col = i % colsN;
+          const row = Math.floor(i / colsN);
           const cube = document.createElement("div");
           cube.className = "dyn-cube";
-          cube.style.setProperty("--half", "min(4.8vw, 58px)");
-          cube.style.setProperty("--cx", (6 + col * 15 + (Math.random() * 5 - 2.5)).toFixed(1) + "%");
-          cube.style.setProperty("--cy", (8 + row * 22 + (Math.random() * 6 - 3)).toFixed(1) + "%");
+          cube.style.setProperty("--half", "min(4.8cqw, 58px)");
+          cube.style.setProperty("--cx", ((portrait ? 10 : 6) + col * (portrait ? 22 : 15) + (Math.random() * 5 - 2.5)).toFixed(1) + "%");
+          cube.style.setProperty("--cy", ((portrait ? 6 : 8) + row * (portrait ? 15 : 22) + (Math.random() * 6 - 3)).toFixed(1) + "%");
           cube.style.setProperty("--cz", (Math.random() * 280 - 120).toFixed(0) + "px");
           const rx = Math.random() * 16 - 6;
           const ry = Math.random() * 40 - 16;
@@ -2448,23 +2574,25 @@ html.dyn-mosaic-on .v2-qr-tile {
     pedestals: {
       interval: 60000,
       mount(root, pool) {
+        const size = stageSize(root);
         const DEPTH = 1800;
         const REST_Z = -DEPTH / 2;
-        const W = 360;
-        const H = 540;
-        const COLS = 4;
-        const ROWS = 2;
-        const SHIFT_X = 300;
+        const COLS = size.portrait ? 2 : 4;
+        const ROWS = size.portrait ? 4 : 2;
+        const fit = Math.min((size.dw * 0.86) / (COLS * 360), (size.dh * 0.86) / (ROWS * 540));
+        const W = Math.round(360 * fit);
+        const H = Math.round(540 * fit);
+        const SHIFT_X = size.portrait ? 40 : 300;
         const stage = document.createElement("div");
         stage.className = "dyn-ped-stage";
         const wall = document.createElement("div");
         wall.className = "dyn-ped-wall";
-        const urls = fill(pool, 8);
+        const urls = fill(pool, COLS * ROWS);
         const peds = [];
         const totalW = COLS * W;
         const totalH = ROWS * H;
-        const startX = (1920 - totalW) / 2 + SHIFT_X;
-        const startY = (1080 - totalH) / 2;
+        const startX = (size.dw - totalW) / 2 + SHIFT_X;
+        const startY = (size.dh - totalH) / 2;
         let i = 0;
         for (let r = 0; r < ROWS; r += 1) {
           for (let c = 0; c < COLS; c += 1) {
@@ -2520,7 +2648,7 @@ html.dyn-mosaic-on .v2-qr-tile {
           state.swapOrder[a] = state.swapOrder[b];
           state.swapOrder[b] = tmp;
         }
-        watchStage(state, stage, 1920, 1080, root);
+        watchStage(state, stage, size.dw, size.dh, root);
         const OUT_MS = 1500;
         const IN_MS = 1800;
         const DIVE_DEPTH = 2850;

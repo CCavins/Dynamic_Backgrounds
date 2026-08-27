@@ -7,6 +7,12 @@
   const enabledLabel = document.getElementById("enabled-label");
   const mosaicTheme = document.getElementById("mosaic-theme");
   const messageTheme = document.getElementById("message-theme");
+  const stageAspect = document.getElementById("stage-aspect");
+  const stageRatioRow = document.getElementById("stage-ratio-row");
+  const stageRatioW = document.getElementById("stage-ratio-w");
+  const stageRatioH = document.getElementById("stage-ratio-h");
+  const showQr = document.getElementById("show-qr");
+  const showLogo = document.getElementById("show-logo");
   const messageThemeSettings = document.getElementById("message-theme-settings");
   const anyOutput = document.getElementById("any-output");
   const rulesRoot = document.getElementById("rules");
@@ -321,6 +327,9 @@
     if (theme !== "off") themeSettings[theme] = readThemeForm(theme);
     return {
       enabled: enabledInput.checked,
+      stageAspect: readStageAspect(),
+      showQr: Boolean(showQr && showQr.checked),
+      showLogo: Boolean(showLogo && showLogo.checked),
       mosaicTheme: mosaicTheme.value,
       messageTheme: theme,
       messageThemeSettings: themeSettings,
@@ -348,6 +357,80 @@
     persist();
   });
   mosaicTheme.addEventListener("change", persist);
+  function readStageAspect() {
+    if (!stageAspect || stageAspect.value === "auto") return "auto";
+    if (stageAspect.value !== "custom") return stageAspect.value;
+    const raw =
+      String((stageRatioW && stageRatioW.value) || "").trim() +
+      ":" +
+      String((stageRatioH && stageRatioH.value) || "").trim();
+    const next = rulesApi.normalizeStageAspect(raw);
+    if (next !== "auto") return next;
+    return (cachedSettings && cachedSettings.stageAspect) || "16:9";
+  }
+
+  function fillRatioFields(mode) {
+    if (!stageRatioW || !stageRatioH) return;
+    const parsed = rulesApi.parseStageAspect ? rulesApi.parseStageAspect(mode) : null;
+    if (!parsed || parsed.mode === "auto") {
+      stageRatioW.value = "16";
+      stageRatioH.value = "9";
+      return;
+    }
+    stageRatioW.value = String(parsed.aw);
+    stageRatioH.value = String(parsed.ah);
+  }
+
+  function syncStageAspectUI(mode) {
+    if (!stageAspect) return;
+    const next = rulesApi.normalizeStageAspect(mode);
+    const preset = rulesApi.presetForAspect ? rulesApi.presetForAspect(next) : next;
+    stageAspect.value = preset === "auto" ? "auto" : preset;
+    if (![...stageAspect.options].some((opt) => opt.value === stageAspect.value)) {
+      stageAspect.value = "custom";
+    }
+    fillRatioFields(next === "auto" ? "16:9" : next);
+    if (stageRatioRow) stageRatioRow.hidden = next === "auto";
+    syncSelectUI(stageAspect);
+  }
+
+  if (stageAspect) {
+    enhanceSelect(stageAspect);
+    stageAspect.addEventListener("change", () => {
+      if (stageAspect.value === "auto") {
+        if (stageRatioRow) stageRatioRow.hidden = true;
+      } else {
+        if (stageRatioRow) stageRatioRow.hidden = false;
+        if (stageAspect.value !== "custom") fillRatioFields(stageAspect.value);
+        else if (!stageRatioW.value || !stageRatioH.value) fillRatioFields("16:9");
+      }
+      persist();
+    });
+  }
+  if (stageRatioW) {
+    stageRatioW.addEventListener("input", () => {
+      if (stageAspect) {
+        const next = readStageAspect();
+        const preset = rulesApi.presetForAspect ? rulesApi.presetForAspect(next) : "custom";
+        stageAspect.value = preset;
+        syncSelectUI(stageAspect);
+      }
+      schedulePersist();
+    });
+  }
+  if (stageRatioH) {
+    stageRatioH.addEventListener("input", () => {
+      if (stageAspect) {
+        const next = readStageAspect();
+        const preset = rulesApi.presetForAspect ? rulesApi.presetForAspect(next) : "custom";
+        stageAspect.value = preset;
+        syncSelectUI(stageAspect);
+      }
+      schedulePersist();
+    });
+  }
+  if (showQr) showQr.addEventListener("change", persist);
+  if (showLogo) showLogo.addEventListener("change", persist);
   messageTheme.addEventListener("change", () => {
     stashCurrentThemeForm();
     lastMessageTheme = messageTheme.value;
@@ -432,6 +515,12 @@
     setEnabledLabel();
     mosaicTheme.value = settings.mosaicTheme;
     messageTheme.value = settings.messageTheme;
+    if (stageAspect) {
+      enhanceSelect(stageAspect);
+      syncStageAspectUI(settings.stageAspect || "auto");
+    }
+    if (showQr) showQr.checked = Boolean(settings.showQr);
+    if (showLogo) showLogo.checked = Boolean(settings.showLogo);
     lastMessageTheme = settings.messageTheme;
     syncSelectUI(mosaicTheme);
     syncSelectUI(messageTheme);

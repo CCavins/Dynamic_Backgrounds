@@ -27,7 +27,8 @@ The spec lists every field, clamp, reserved id, reject rule, and engine hook.
 3. Under **Imported themes**, click **Import theme.json + engine.js**.
 4. Choose one JSON, or a JSON plus its `engine.js`.
 5. Select the imported theme in **Message theme** or **Mosaic theme**.
-6. Open a Vixi output page.
+6. Under **Stage**, pick a canvas ratio (or Custom width:height). Turn **Show QR code** / **Show logo** on only if the theme should place them.
+7. Open a Vixi output page.
 
 A pack that includes JS runs on matching output pages. Only import engines you wrote or trust. The popup warns the first time.
 

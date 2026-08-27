@@ -16,6 +16,14 @@
     "html.dyn-cover-mosaic .mosaic-asset," +
     "html.dyn-cover-mosaic .mosaic-image{" +
       "visibility:hidden!important;" +
+    "}" +
+    "html.dyn-cover-message .v2-qr-tile," +
+    "html.dyn-cover-message .qr-tile," +
+    "html.dyn-cover-mosaic .v2-qr-tile," +
+    "html.dyn-cover-mosaic .qr-tile," +
+    "html.dyn-cover-message .mosaic-layout > .asset-view," +
+    "html.dyn-cover-mosaic .mosaic-layout > .asset-view{" +
+      "visibility:hidden!important;opacity:0!important;" +
     "}";
 
   if (!document.getElementById(STYLE_ID)) {
