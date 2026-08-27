@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dynamic Backgrounds",
-  "version": "1.4.1",
+  "version": "1.4.5",
   "description": "Apply a Dynamic Backgrounds iframe, mosaic themes, and message themes to matching output URLs.",
   "action": {
     "default_popup": "popup.html",
@@ -17,7 +17,7 @@
   "content_scripts": [
     {
       "matches": ["*://*.thefamousgroup.com/*"],
-      "js": ["rules.js", "content.js", "mosaic-themes.js", "mosaic.js", "message-themes.js", "message.js"],
+      "js": ["rules.js", "handoff.js", "content.js", "mosaic-themes.js", "mosaic.js", "message-themes.js", "message.js"],
       "run_at": "document_idle"
     }
   ],

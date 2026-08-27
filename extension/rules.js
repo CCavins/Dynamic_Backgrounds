@@ -240,19 +240,51 @@
   }
 
   function findOverlayHost() {
-    return (
+    const wrapper =
       document.querySelector(".v2-app-wrapper") ||
-      document.querySelector(".mosaic-layout") ||
-      document.querySelector(".output-wrapper")
-    );
+      document.querySelector(".output-wrapper") ||
+      document.querySelector(".output-page");
+    if (!wrapper) return document.querySelector(".mosaic-layout");
+
+    const hostId = (root.BGThemeHandoff && root.BGThemeHandoff.HOST_ID) || "dyn-theme-host";
+    let host = document.getElementById(hostId);
+    const app =
+      wrapper.querySelector(":scope > .output-app") || wrapper.querySelector(".output-app");
+    if (!host || host.parentElement !== wrapper) {
+      if (host) host.remove();
+      host = document.createElement("div");
+      host.id = hostId;
+      host.setAttribute("aria-hidden", "true");
+      if (app && app.parentElement === wrapper) wrapper.insertBefore(host, app);
+      else wrapper.appendChild(host);
+    } else if (
+      app &&
+      app.parentElement === wrapper &&
+      host.compareDocumentPosition(app) & Node.DOCUMENT_POSITION_PRECEDING
+    ) {
+      wrapper.insertBefore(host, app);
+    }
+    return host;
   }
 
   function hasMosaic() {
-    return Boolean(document.querySelector(".mosaic-tile-slot, .mosaic-layout, .mosaic-asset"));
+    return mosaicContentCount() > 0;
   }
 
   function hasMessage() {
-    return Boolean(document.querySelector(".capture-content-layer, .message-layer, .message-content-text"));
+    const cap = messageCapture();
+    return Boolean(cap.src || cap.message || cap.name);
+  }
+
+  function mosaicContentCount() {
+    let count = 0;
+    mosaicImages().forEach((img) => {
+      const src = img.currentSrc || img.src;
+      if (!src || src.startsWith("data:")) return;
+      if (isSkippedMosaicImage(img)) return;
+      count += 1;
+    });
+    return count;
   }
 
   function messageCapture() {
@@ -305,22 +337,26 @@
     }
   }
 
+  let lastGoodSettings = null;
+
   function loadSettings() {
     return new Promise((resolve) => {
       if (!extensionAlive()) {
-        resolve(normalizeSettings(DEFAULTS));
+        resolve(lastGoodSettings || normalizeSettings(DEFAULTS));
         return;
       }
       try {
         chrome.storage.local.get(DEFAULTS, (stored) => {
           if (!extensionAlive() || (chrome.runtime.lastError && /invalidated/i.test(chrome.runtime.lastError.message || ""))) {
-            resolve(normalizeSettings(DEFAULTS));
+            resolve(lastGoodSettings || normalizeSettings(DEFAULTS));
             return;
           }
-          resolve(normalizeSettings(stored));
+          const next = normalizeSettings(stored);
+          lastGoodSettings = next;
+          resolve(next);
         });
       } catch {
-        resolve(normalizeSettings(DEFAULTS));
+        resolve(lastGoodSettings || normalizeSettings(DEFAULTS));
       }
     });
   }
@@ -363,6 +399,7 @@
     findOverlayHost,
     hasMosaic,
     hasMessage,
+    mosaicContentCount,
     messageCapture,
     mosaicImages,
     backgroundLayers,

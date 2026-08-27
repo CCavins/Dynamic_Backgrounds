@@ -1,7 +1,8 @@
 (() => {
   const rules = globalThis.BGExtensionRules;
   const themeApi = globalThis.BGMessageThemes;
-  if (!rules || !themeApi) return;
+  const handoff = globalThis.BGThemeHandoff;
+  if (!rules || !themeApi || !handoff) return;
 
   const OVERLAY_ID = "dyn-message-theme";
   const STYLE_ID = "dyn-message-theme-style";
@@ -12,6 +13,7 @@
   let active = null;
   let lastKey = "";
   let lastSettingsKey = "";
+  let lastThemeSettings = null;
   let cycle = 0;
 
   function captureKey(capture) {
@@ -49,10 +51,12 @@
     if (!host) return null;
     let root = document.getElementById(OVERLAY_ID);
     if (!root || root.parentElement !== host) {
-      if (root) root.remove();
-      root = document.createElement("div");
-      root.id = OVERLAY_ID;
-      host.appendChild(root);
+      if (root) host.appendChild(root);
+      else {
+        root = document.createElement("div");
+        root.id = OVERLAY_ID;
+        host.appendChild(root);
+      }
     }
     return root;
   }
@@ -83,16 +87,45 @@
     active = { id, def, state };
     mountedTheme = id;
     lastSettingsKey = settingsKey(id, themeSettings);
+    lastThemeSettings = themeSettings;
     return true;
   }
 
-  function teardown() {
+  function teardownSoft() {
     unmountTheme();
     document.documentElement.classList.remove("dyn-message-on");
     const root = document.getElementById(OVERLAY_ID);
     if (root) root.remove();
+  }
+
+  function teardownHard() {
+    teardownSoft();
     const style = document.getElementById(STYLE_ID);
     if (style) style.remove();
+    handoff.clearMode("message");
+  }
+
+  function decodeImage(src) {
+    if (!src) return Promise.resolve();
+    return new Promise((resolve) => {
+      const img = new Image();
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      img.onload = () => {
+        if (typeof img.decode === "function") {
+          img.decode().then(done).catch(done);
+        } else {
+          done();
+        }
+      };
+      img.onerror = done;
+      img.src = src;
+      setTimeout(done, 1100);
+    });
   }
 
   async function present(capture, themeSettings, shouldHide) {
@@ -100,53 +133,77 @@
     const token = ++cycle;
     const root = document.getElementById(OVERLAY_ID);
     if (!root) return;
+    await decodeImage(capture.src);
+    if (token !== cycle) return;
+    const latest = rules.messageCapture();
+    const next = latest.src || latest.message || latest.name ? latest : capture;
     if (shouldHide && typeof active.def.hide === "function") {
       await active.def.hide(root, active.state, themeSettings);
     }
     if (token !== cycle) return;
     if (typeof active.def.show === "function") {
-      await active.def.show(root, capture, active.state, themeSettings);
+      await active.def.show(root, next, active.state, themeSettings);
     }
   }
 
+  handoff.register("message", {
+    hide() {
+      const root = document.getElementById(OVERLAY_ID);
+      if (!active || !root || typeof active.def.hide !== "function") return Promise.resolve();
+      return active.def.hide(root, active.state, lastThemeSettings);
+    },
+    teardown: teardownSoft,
+  });
+
   async function apply() {
     if (typeof rules.extensionAlive === "function" && !rules.extensionAlive()) {
-      teardown();
+      teardownHard();
       observer.disconnect();
       return;
     }
     const settings = await rules.loadSettings();
+    handoff.applyCovers(settings);
     const theme = settings.enabled ? rules.normalizeMessageTheme(settings.messageTheme) : "off";
     const themeSettings = rules.resolveMessageThemeSettings(settings, theme);
-    const hasMessage = rules.hasMessage();
     const def = themeApi.themes[theme];
 
-    if (theme === "off" || !def || !hasMessage) {
-      teardown();
+    if (theme === "off" || !def) {
+      teardownHard();
       return;
     }
 
+    const kind = handoff.liveKind();
+    if (kind !== "message") return;
+
     ensureStyle();
     ensureFonts();
-    document.documentElement.classList.add("dyn-message-on");
+    lastThemeSettings = themeSettings;
 
-    const overlay = document.getElementById(OVERLAY_ID);
-    if (mountedTheme !== theme || !overlay) {
-      mountTheme(theme, themeSettings);
-    } else if (lastSettingsKey !== settingsKey(theme, themeSettings)) {
-      lastSettingsKey = settingsKey(theme, themeSettings);
-      if (typeof active.def.applySettings === "function") {
-        active.def.applySettings(overlay, active.state, themeSettings);
-      }
-    }
+    await handoff.activate("message", {
+      prepare() {
+        return decodeImage(rules.messageCapture().src);
+      },
+      async reveal() {
+        document.documentElement.classList.add("dyn-message-on");
+        const overlay = document.getElementById(OVERLAY_ID);
+        if (mountedTheme !== theme || !overlay) {
+          if (!mountTheme(theme, themeSettings)) return;
+        } else if (lastSettingsKey !== settingsKey(theme, themeSettings)) {
+          lastSettingsKey = settingsKey(theme, themeSettings);
+          if (typeof active.def.applySettings === "function") {
+            active.def.applySettings(overlay, active.state, themeSettings);
+          }
+        }
 
-    const capture = rules.messageCapture();
-    const key = captureKey(capture);
-    if (!capture.src && !capture.message && !capture.name) return;
-    if (key === lastKey) return;
-    const shouldHide = Boolean(lastKey);
-    lastKey = key;
-    present(capture, themeSettings, shouldHide).catch(() => {});
+        const capture = rules.messageCapture();
+        if (!capture.src && !capture.message && !capture.name) return;
+        const key = captureKey(capture);
+        if (key === lastKey) return;
+        const shouldHide = Boolean(lastKey);
+        lastKey = key;
+        await present(capture, themeSettings, shouldHide);
+      },
+    });
   }
 
   function scheduleApply() {
@@ -154,15 +211,17 @@
     applyTimer = setTimeout(() => {
       applyTimer = 0;
       apply().catch(() => {});
-    }, 40);
+    }, 90);
   }
 
   const observer = new MutationObserver((records) => {
     const relevant = records.some((record) => {
       const target = record.target;
       if (!target) return true;
-      if (target.id === OVERLAY_ID) return false;
-      if (typeof target.closest === "function" && target.closest("#" + OVERLAY_ID)) return false;
+      if (target.id === OVERLAY_ID || target.id === handoff.HOST_ID) return false;
+      if (typeof target.closest === "function" && target.closest("#" + OVERLAY_ID + ", #" + handoff.HOST_ID)) {
+        return false;
+      }
       return true;
     });
     if (relevant) scheduleApply();

@@ -3,6 +3,7 @@
 html.dyn-message-on .capture-content-layer,
 html.dyn-message-on .message-layer {
   visibility: hidden !important;
+  opacity: 0 !important;
 }
 html.dyn-message-on .v2-qr-tile,
 html.dyn-message-on .qr-tile,
@@ -16,6 +17,7 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   pointer-events: none;
   box-sizing: border-box;
   overflow: hidden;
+  background: #05050c;
 }
 #dyn-message-theme,
 #dyn-message-theme * { box-sizing: border-box; }
@@ -80,7 +82,7 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   opacity: 0; transform-origin: bottom;
 }
 #dyn-message-theme[data-theme="led-scoreboard"].on .led-photo {
-  opacity: 1; animation: dynLedIn var(--reveal-ms) both ease;
+  animation: dynLedFlicker calc(var(--reveal-ms) * .85) steps(1, end) forwards;
 }
 #dyn-message-theme[data-theme="led-scoreboard"].on .led-msg {
   opacity: 1; animation: dynLedWipe calc(var(--reveal-ms) * .75) steps(14,end) both;
@@ -90,11 +92,28 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   opacity: 1; animation: dynLedWipe calc(var(--reveal-ms) * .5) steps(10,end) both;
   animation-delay: calc(var(--reveal-ms) * .55);
 }
-#dyn-message-theme[data-theme="led-scoreboard"].on .led-tick { opacity: 1; animation: dynTick 1.6s ease-in-out var(--tdel,0s) infinite alternate; }
-#dyn-message-theme[data-theme="led-scoreboard"].off .led-photo,
-#dyn-message-theme[data-theme="led-scoreboard"].off .led-msg,
-#dyn-message-theme[data-theme="led-scoreboard"].off .led-name { opacity: 0 !important; animation: none !important; }
-@keyframes dynLedIn { from { opacity: 0; filter: brightness(3); } to { opacity: 1; filter: none; } }
+#dyn-message-theme[data-theme="led-scoreboard"].on .led-tick,
+#dyn-message-theme[data-theme="led-scoreboard"].ticks-live .led-tick {
+  opacity: 1; animation: dynTick 1.6s ease-in-out var(--tdel,0s) infinite alternate;
+}
+#dyn-message-theme[data-theme="led-scoreboard"].on.off .led-photo,
+#dyn-message-theme[data-theme="led-scoreboard"].on.off .led-msg,
+#dyn-message-theme[data-theme="led-scoreboard"].on.off .led-name {
+  animation: none !important;
+  transition: opacity 0.2s steps(3, end), filter 0.2s linear !important;
+  opacity: 0 !important;
+  filter: brightness(3);
+}
+@keyframes dynLedFlicker {
+  0% { opacity: 0; }
+  12% { opacity: 0.55; }
+  20% { opacity: 0.08; }
+  34% { opacity: 0.85; }
+  44% { opacity: 0.25; }
+  58% { opacity: 1; }
+  70% { opacity: 0.75; }
+  100% { opacity: 1; }
+}
 @keyframes dynLedWipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 @keyframes dynTick { to { transform: scaleY(var(--ts,.72)); } }
 
@@ -118,11 +137,12 @@ html.dyn-message-on .mosaic-layout > .asset-view {
 }
 #dyn-message-theme[data-theme="neon-nightclub"] .neon-photo {
   position: absolute; left: 7vw; top: 50%; height: 78vh; aspect-ratio: 3/4;
-  transform: translateY(-50%); opacity: 0;
+  transform: translateY(-50%);
 }
 #dyn-message-theme[data-theme="neon-nightclub"] .neon-photo img {
   position: absolute; inset: 13%; width: calc(100% - 26%); height: calc(100% - 26%);
   object-fit: cover; border-radius: 2vw; display: block;
+  opacity: 0;
 }
 #dyn-message-theme[data-theme="neon-nightclub"] .neon-frame {
   position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible;
@@ -136,6 +156,7 @@ html.dyn-message-on .mosaic-layout > .asset-view {
 #dyn-message-theme[data-theme="neon-nightclub"] .neon-frame .hot { stroke: #fff; stroke-width: 1.1; opacity: .85; }
 #dyn-message-theme[data-theme="neon-nightclub"] .neon-frame .trace:nth-child(-n+2) { color: var(--primary); }
 #dyn-message-theme[data-theme="neon-nightclub"] .neon-frame .trace:nth-child(n+3) { color: var(--secondary); }
+#dyn-message-theme[data-theme="neon-nightclub"] .neon-frame .trace { opacity: 0; }
 #dyn-message-theme[data-theme="neon-nightclub"] .neon-copy {
   position: absolute; right: 6vw; top: 50%; width: min(42vw,760px); height: 72vh;
   transform: translateY(-50%); display: flex; flex-direction: column; opacity: 0;
@@ -155,13 +176,51 @@ html.dyn-message-on .mosaic-layout > .asset-view {
 }
 #dyn-message-theme[data-theme="neon-nightclub"] .neon-copy.gone,
 #dyn-message-theme[data-theme="neon-nightclub"] .neon-name.hidden { display: none; }
-#dyn-message-theme[data-theme="neon-nightclub"].on .neon-photo { opacity: 1; animation: dynRise var(--reveal-ms) both cubic-bezier(.18,1,.28,1); }
-#dyn-message-theme[data-theme="neon-nightclub"].on .neon-copy { opacity: 1; animation: dynRise calc(var(--reveal-ms) * .7) calc(var(--reveal-ms) * .2) both; }
-#dyn-message-theme[data-theme="neon-nightclub"].off .neon-photo,
-#dyn-message-theme[data-theme="neon-nightclub"].off .neon-copy { opacity: 0 !important; animation: none !important; }
+#dyn-message-theme[data-theme="neon-nightclub"].on .neon-frame .trace,
+#dyn-message-theme[data-theme="neon-nightclub"].on .neon-copy {
+  opacity: 1; animation: dynStrike var(--reveal-ms) both;
+}
+#dyn-message-theme[data-theme="neon-nightclub"].on .neon-frame .trace:nth-child(1) { animation-delay: 0ms; }
+#dyn-message-theme[data-theme="neon-nightclub"].on .neon-frame .trace:nth-child(2) { animation-delay: calc(var(--reveal-ms) * .04); }
+#dyn-message-theme[data-theme="neon-nightclub"].on .neon-frame .trace:nth-child(3) { animation-delay: calc(var(--reveal-ms) * .08); }
+#dyn-message-theme[data-theme="neon-nightclub"].on .neon-frame .trace:nth-child(4) { animation-delay: calc(var(--reveal-ms) * .12); }
+#dyn-message-theme[data-theme="neon-nightclub"].on .neon-copy { animation-delay: calc(var(--reveal-ms) * .1); }
+#dyn-message-theme[data-theme="neon-nightclub"].on .neon-photo img {
+  opacity: 1; animation: dynPhotoIn calc(var(--reveal-ms) * .5) calc(var(--reveal-ms) * .35) both ease;
+}
+#dyn-message-theme[data-theme="neon-nightclub"].on.off .neon-frame .trace,
+#dyn-message-theme[data-theme="neon-nightclub"].on.off .neon-copy {
+  animation: dynFlickOff calc(var(--reveal-ms) * .55) both;
+}
+#dyn-message-theme[data-theme="neon-nightclub"].on.off .neon-photo img {
+  animation: dynPhotoOff calc(var(--reveal-ms) * .44) both ease;
+}
+@keyframes dynStrike {
+  0%, 6% { opacity: 0; }
+  7% { opacity: 1; }
+  9% { opacity: .12; }
+  14% { opacity: 1; }
+  16% { opacity: .2; }
+  24% { opacity: .95; }
+  28% { opacity: .25; }
+  38% { opacity: 1; }
+  46% { opacity: .82; }
+  55%, 100% { opacity: 1; }
+}
+@keyframes dynPhotoIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dynFlickOff {
+  0% { opacity: 1; }
+  12% { opacity: .15; }
+  22% { opacity: .85; }
+  34% { opacity: .1; }
+  46% { opacity: .5; }
+  58% { opacity: .08; }
+  74% { opacity: .18; }
+  100% { opacity: 0; }
+}
+@keyframes dynPhotoOff { from { opacity: 1; } to { opacity: 0; } }
 @keyframes dynSweep { from { transform: rotate(var(--a)); } to { transform: rotate(calc(var(--a) + 8deg)); } }
 @keyframes dynFog { from { transform: translateX(-4%); } to { transform: translateX(4%); } }
-@keyframes dynRise { from { opacity: 0; transform: translateY(-46%) scale(.96); } to { opacity: 1; } }
 
 /* -------- Ultras Tifo -------- */
 #dyn-message-theme[data-theme="ultras-tifo"] .dyn-stage {
@@ -174,11 +233,14 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   background: color-mix(in srgb, var(--primary) 88%, #1a0608);
   box-shadow: 0 3vh 6vh rgba(0,0,0,.55);
   clip-path: polygon(1% 2%, 99% 0, 100% 98%, 0 100%);
-  display: flex; gap: 3vw; padding: 4vh 3vw; opacity: 0;
+  display: flex; gap: 3vw; padding: 4vh 3vw;
+  opacity: 0;
 }
 #dyn-message-theme[data-theme="ultras-tifo"] .tifo-photo {
   flex: none; width: 28vw; height: 100%; overflow: hidden;
   box-shadow: 0 0 0 8px #0a0807;
+  background: #16100f;
+  transform: rotate(-2deg);
 }
 #dyn-message-theme[data-theme="ultras-tifo"] .tifo-photo img {
   width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(1.1) contrast(1.08);
@@ -204,9 +266,46 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   background: radial-gradient(closest-side, rgba(225,220,214,.35), transparent 70%);
   filter: blur(20px); opacity: .5;
 }
-#dyn-message-theme[data-theme="ultras-tifo"].on .tifo-banner { opacity: 1; animation: dynTifoIn var(--reveal-ms) both cubic-bezier(.2,.9,.2,1); }
-#dyn-message-theme[data-theme="ultras-tifo"].off .tifo-banner { opacity: 0 !important; animation: none !important; }
-@keyframes dynTifoIn { from { opacity: 0; transform: translateY(4vh) rotate(-.6deg); } to { opacity: 1; transform: none; } }
+#dyn-message-theme[data-theme="ultras-tifo"].on .tifo-banner {
+  animation: dynTifoIn calc(var(--reveal-ms) * .24) cubic-bezier(.2,1.4,.4,1) both;
+}
+#dyn-message-theme[data-theme="ultras-tifo"].on .tifo-photo {
+  animation: dynTifoSlap calc(var(--reveal-ms) * .3) calc(var(--reveal-ms) * .08) cubic-bezier(.25,1.5,.45,1) both;
+}
+#dyn-message-theme[data-theme="ultras-tifo"].on .tifo-line {
+  animation: dynTifoStamp calc(var(--reveal-ms) * .2) cubic-bezier(.2,1.6,.4,1) both;
+}
+#dyn-message-theme[data-theme="ultras-tifo"].on .tifo-line:nth-child(1) { animation-delay: calc(var(--reveal-ms) * .32); }
+#dyn-message-theme[data-theme="ultras-tifo"].on .tifo-line:nth-child(2) { animation-delay: calc(var(--reveal-ms) * .40); }
+#dyn-message-theme[data-theme="ultras-tifo"].on .tifo-line:nth-child(3) { animation-delay: calc(var(--reveal-ms) * .48); }
+#dyn-message-theme[data-theme="ultras-tifo"].on .tifo-line:nth-child(4) { animation-delay: calc(var(--reveal-ms) * .56); }
+#dyn-message-theme[data-theme="ultras-tifo"].on .tifo-name {
+  animation: dynTifoName calc(var(--reveal-ms) * .2) calc(var(--reveal-ms) * .78) cubic-bezier(.2,1.3,.5,1) both;
+}
+#dyn-message-theme[data-theme="ultras-tifo"].on.off .tifo-banner {
+  animation: dynTifoWhip min(520ms, calc(var(--reveal-ms) * .55)) cubic-bezier(.6,-.15,.85,.4) both;
+}
+@keyframes dynTifoIn { from { opacity: 0; transform: scale(0.955); } to { opacity: 1; transform: scale(1); } }
+@keyframes dynTifoWhip {
+  0% { transform: translateX(0) rotate(0) skewX(0); opacity: 1; }
+  18% { transform: translateX(2.5%) rotate(0.6deg) skewX(-1deg); opacity: 1; }
+  100% { transform: translateX(-142%) rotate(-7deg) skewX(9deg); opacity: 0.3; }
+}
+@keyframes dynTifoSlap {
+  0% { opacity: 0; transform: rotate(-9deg) scale(1.65); }
+  62% { opacity: 1; transform: rotate(-1.2deg) scale(0.965); }
+  82% { transform: rotate(-2.4deg) scale(1.02); }
+  100% { opacity: 1; transform: rotate(-2deg) scale(1); }
+}
+@keyframes dynTifoStamp {
+  0% { opacity: 0; transform: rotate(calc(var(--rot, 0deg) + 3deg)) scale(1.9); }
+  70% { opacity: 1; transform: rotate(var(--rot, 0deg)) scale(0.97); }
+  100% { opacity: 1; transform: rotate(var(--rot, 0deg)) scale(1); }
+}
+@keyframes dynTifoName {
+  0% { opacity: 0; transform: translateX(-0.45em) scaleX(1.35); }
+  100% { opacity: 1; transform: none; }
+}
 
 /* -------- Holo Card -------- */
 #dyn-message-theme[data-theme="holo-card"] .dyn-stage {
@@ -226,7 +325,9 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   position: absolute; inset: 0; border-radius: 1.4vw; overflow: hidden; background: #08070c;
   box-shadow: 0 3vh 7vh rgba(0,0,0,.55), 0 0 4vw color-mix(in srgb, var(--primary) 28%, transparent);
 }
-#dyn-message-theme[data-theme="holo-card"] .holo-well img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#dyn-message-theme[data-theme="holo-card"] .holo-well img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
 #dyn-message-theme[data-theme="holo-card"] .holo-foil {
   position: absolute; inset: 0; pointer-events: none; mix-blend-mode: color-dodge; opacity: .55;
   background: conic-gradient(from 140deg, var(--primary), var(--secondary), #fff, var(--primary));
@@ -252,13 +353,37 @@ html.dyn-message-on .mosaic-layout > .asset-view {
 }
 #dyn-message-theme[data-theme="holo-card"] .holo-copy.gone,
 #dyn-message-theme[data-theme="holo-card"] .holo-name.hidden { display: none; }
-#dyn-message-theme[data-theme="holo-card"].on .holo-card { opacity: 1; animation: dynHoloIn var(--reveal-ms) both; }
-#dyn-message-theme[data-theme="holo-card"].on .holo-copy { opacity: 1; animation: dynRise calc(var(--reveal-ms) * .7) calc(var(--reveal-ms) * .18) both; }
-#dyn-message-theme[data-theme="holo-card"].off .holo-card,
-#dyn-message-theme[data-theme="holo-card"].off .holo-copy { opacity: 0 !important; animation: none !important; }
+#dyn-message-theme[data-theme="holo-card"].on .holo-card {
+  opacity: 1;
+  animation: dynHoloIn var(--reveal-ms) cubic-bezier(.18,1.12,.28,1) both;
+}
+#dyn-message-theme[data-theme="holo-card"].on .holo-copy {
+  opacity: 1;
+  animation: dynHoloCopyIn calc(var(--reveal-ms) * .72) calc(var(--reveal-ms) * .28) cubic-bezier(.2,.9,.3,1) both;
+}
+#dyn-message-theme[data-theme="holo-card"].on.off .holo-card {
+  animation: dynHoloOut calc(var(--reveal-ms) * .55) cubic-bezier(.6,.05,.85,.4) both;
+}
+#dyn-message-theme[data-theme="holo-card"].on.off .holo-copy {
+  animation: dynCopyOut calc(var(--reveal-ms) * .4) both;
+}
 @keyframes dynFoil { to { transform: rotate(20deg) scale(1.2); } }
 @keyframes dynSheen { to { background-position: 100% 50%; } }
-@keyframes dynHoloIn { from { opacity: 0; transform: perspective(1400px) rotateY(28deg) translateX(-3vw); } to { opacity: 1; transform: perspective(1400px) rotateY(12deg); } }
+@keyframes dynHoloIn {
+  0% { opacity: 0; transform: perspective(1400px) rotateY(48deg) rotateX(10deg) translate3d(6vw, 4vh, -140px) scale(0.84); filter: brightness(1.8); }
+  62% { opacity: 1; filter: brightness(1.15); }
+  100% { opacity: 1; transform: perspective(1400px) rotateY(12deg); filter: none; }
+}
+@keyframes dynHoloCopyIn {
+  from { opacity: 0; transform: translateX(3.2vw); filter: blur(8px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes dynHoloOut {
+  0% { opacity: 1; transform: perspective(1400px) rotateY(12deg) scale(1); filter: brightness(1); }
+  28% { filter: brightness(1.6); }
+  100% { opacity: 0; transform: perspective(1400px) rotateY(-62deg) translateX(-8vw) scale(0.88); filter: brightness(2.2); }
+}
+@keyframes dynCopyOut { to { opacity: 0; transform: translateX(-2.4vw); filter: blur(6px); } }
 
 /* -------- Broadcast TV -------- */
 #dyn-message-theme[data-theme="broadcast-tv"] .dyn-stage {
@@ -271,7 +396,8 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   width: min(96vw, calc(96vh * 1.8)); height: min(96vh, calc(96vw / 1.8));
   border-radius: 2.4vh; display: flex; padding: 2vh; gap: 3vh;
   background: radial-gradient(circle at 100% 0, #d8d19d, #77533d, #2d313b);
-  box-shadow: 0 0 0 1.4vh #2d313b, 0 0 4vh 1.2vh #000; opacity: 0;
+  box-shadow: 0 0 0 1.4vh #2d313b, 0 0 4vh 1.2vh #000;
+  opacity: 1;
 }
 #dyn-message-theme[data-theme="broadcast-tv"] .tv-crt {
   flex: none; height: 100%; aspect-ratio: 4/3; border-radius: 3.2vh;
@@ -285,7 +411,7 @@ html.dyn-message-on .mosaic-layout > .asset-view {
 #dyn-message-theme[data-theme="broadcast-tv"] .tv-side {
   flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end;
 }
-#dyn-message-theme[data-theme="broadcast-tv"] .tv-news { display: flex; flex-direction: column; max-height: 42%; }
+#dyn-message-theme[data-theme="broadcast-tv"] .tv-news { display: flex; flex-direction: column; max-height: 42%; opacity: 1; }
 #dyn-message-theme[data-theme="broadcast-tv"] .tv-rule { height: 0.6vh; background: linear-gradient(90deg, var(--primary), var(--secondary)); }
 #dyn-message-theme[data-theme="broadcast-tv"] .tv-head {
   padding: 1vh 1.2vh; background: linear-gradient(90deg, rgba(10,12,18,.92), rgba(10,12,18,.7));
@@ -306,9 +432,20 @@ html.dyn-message-on .mosaic-layout > .asset-view {
 #dyn-message-theme[data-theme="broadcast-tv"] .tv-news.gone,
 #dyn-message-theme[data-theme="broadcast-tv"] .tv-head.hidden,
 #dyn-message-theme[data-theme="broadcast-tv"] .tv-slug.hidden { display: none; }
-#dyn-message-theme[data-theme="broadcast-tv"].on .tv { opacity: 1; animation: dynTvIn var(--reveal-ms) both; }
-#dyn-message-theme[data-theme="broadcast-tv"].off .tv { opacity: 0 !important; animation: none !important; }
-@keyframes dynTvIn { from { opacity: 0; transform: translateY(1vh) scale(.985); } to { opacity: 1; transform: none; } }
+#dyn-message-theme[data-theme="broadcast-tv"] .tv-crt img,
+#dyn-message-theme[data-theme="broadcast-tv"] .tv-head span,
+#dyn-message-theme[data-theme="broadcast-tv"] .tv-slug span { opacity: 0; }
+#dyn-message-theme[data-theme="broadcast-tv"].on .tv-crt img { opacity: 1; animation: dynTvIn calc(var(--reveal-ms) * .7) both; }
+#dyn-message-theme[data-theme="broadcast-tv"].on .tv-head span,
+#dyn-message-theme[data-theme="broadcast-tv"].on .tv-slug span {
+  opacity: 1; animation: dynTvIn calc(var(--reveal-ms) * .55) calc(var(--reveal-ms) * .15) both;
+}
+#dyn-message-theme[data-theme="broadcast-tv"].on.off .tv-crt img,
+#dyn-message-theme[data-theme="broadcast-tv"].on.off .tv-head span,
+#dyn-message-theme[data-theme="broadcast-tv"].on.off .tv-slug span {
+  animation: dynPhotoOff calc(var(--reveal-ms) * .38) both ease;
+}
+@keyframes dynTvIn { from { opacity: 0; filter: contrast(2) saturate(0); } to { opacity: 1; filter: none; } }
 
 /* -------- Liquid Glass -------- */
 #dyn-message-theme[data-theme="liquid-glass"] .dyn-stage {
@@ -365,10 +502,31 @@ html.dyn-message-on .mosaic-layout > .asset-view {
 #dyn-message-theme[data-theme="liquid-glass"][data-motion="slow"] .liq-bubble { animation-duration: 18s; }
 #dyn-message-theme[data-theme="liquid-glass"][data-motion="drift"] .liq-bubble { animation-duration: 10s; }
 #dyn-message-theme[data-theme="liquid-glass"][data-motion="fizz"] .liq-bubble { animation-name: dynFizz; animation-duration: 4.2s; }
-#dyn-message-theme[data-theme="liquid-glass"].on .liq-slab { opacity: 1; animation: dynRise var(--reveal-ms) both; }
-#dyn-message-theme[data-theme="liquid-glass"].on .liq-copy { opacity: 1; animation: dynRise calc(var(--reveal-ms) * .68) calc(var(--reveal-ms) * .24) both; }
-#dyn-message-theme[data-theme="liquid-glass"].off .liq-slab,
-#dyn-message-theme[data-theme="liquid-glass"].off .liq-copy { opacity: 0 !important; animation: none !important; }
+#dyn-message-theme[data-theme="liquid-glass"].on .liq-slab {
+  animation: dynLiqRise var(--reveal-ms) cubic-bezier(.18,1.02,.28,1) both;
+}
+#dyn-message-theme[data-theme="liquid-glass"].on .liq-copy {
+  opacity: 1;
+  animation: dynLiqCopyIn calc(var(--reveal-ms) * .68) calc(var(--reveal-ms) * .24) cubic-bezier(.2,.9,.22,1) both;
+}
+#dyn-message-theme[data-theme="liquid-glass"].on.off .liq-slab {
+  animation: dynSinkOut calc(var(--reveal-ms) * .48) cubic-bezier(.55,.05,.8,.3) both;
+}
+#dyn-message-theme[data-theme="liquid-glass"].on.off .liq-copy {
+  animation: dynLiqCopyOut calc(var(--reveal-ms) * .42) both;
+}
+@keyframes dynLiqRise {
+  from { opacity: 0; transform: translateY(6vh); filter: blur(8px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes dynLiqCopyIn {
+  from { opacity: 0; transform: translateY(-50%) translateX(2.4vw); filter: blur(7px); }
+  to { opacity: 1; transform: translateY(-50%); filter: none; }
+}
+@keyframes dynLiqCopyOut {
+  to { opacity: 0; transform: translateY(-50%) translateX(-1.4vw); filter: blur(6px); }
+}
+@keyframes dynSinkOut { to { opacity: 0; transform: translateY(5vh); filter: blur(6px); } }
 @keyframes dynBubble { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(var(--dx,2vw), var(--dy,-3vh)) scale(1.15); } }
 @keyframes dynFizz { from { transform: translateY(8vh) scale(.7); opacity: 0; } to { transform: translateY(-10vh) scale(1.1); opacity: 0; } }
 
@@ -420,11 +578,49 @@ html.dyn-message-on .mosaic-layout > .asset-view {
 }
 #dyn-message-theme[data-theme="parallax-drift"] .para-copy.gone,
 #dyn-message-theme[data-theme="parallax-drift"] .para-name.hidden { display: none; }
-#dyn-message-theme[data-theme="parallax-drift"].on .para-hero { opacity: 1; animation: dynRise var(--reveal-ms) both; }
-#dyn-message-theme[data-theme="parallax-drift"].on .para-copy { opacity: 1; animation: dynRise calc(var(--reveal-ms) * .7) calc(var(--reveal-ms) * .2) both; }
-#dyn-message-theme[data-theme="parallax-drift"].on .para-ghost { opacity: var(--op,.18); animation: dynGhost 22s ease-in-out infinite alternate; }
-#dyn-message-theme[data-theme="parallax-drift"].off .para-hero,
-#dyn-message-theme[data-theme="parallax-drift"].off .para-copy { opacity: 0 !important; animation: none !important; }
+#dyn-message-theme[data-theme="parallax-drift"].on .para-hero {
+  animation: dynHeroIn var(--reveal-ms) cubic-bezier(.2,.72,.22,1) both;
+}
+#dyn-message-theme[data-theme="parallax-drift"].on .para-copy {
+  opacity: 1;
+  animation: dynPlaqueIn calc(var(--reveal-ms) * .82) calc(var(--reveal-ms) * .1) cubic-bezier(.2,.72,.22,1) both;
+}
+#dyn-message-theme[data-theme="parallax-drift"].on .para-ghost {
+  opacity: var(--op,.18);
+  animation:
+    dynGhostIn calc(var(--reveal-ms) * .8) calc(var(--reveal-ms) * .1) both ease,
+    dynGhost 22s ease-in-out calc(var(--reveal-ms) * .9) infinite alternate;
+}
+#dyn-message-theme[data-theme="parallax-drift"].on.off .para-hero {
+  animation: dynHeroOut calc(var(--reveal-ms) * .5) cubic-bezier(.6,.05,.85,.35) both;
+}
+#dyn-message-theme[data-theme="parallax-drift"].on.off .para-copy {
+  animation: dynPlaqueOut calc(var(--reveal-ms) * .4) both;
+}
+#dyn-message-theme[data-theme="parallax-drift"].on.off .para-ghost {
+  animation: dynGhostOut 360ms both;
+}
+@keyframes dynHeroIn {
+  0% { opacity: 0; transform: translateY(-50%) rotateY(46deg) rotateX(8deg) translate3d(-8vw, 2vh, -90px) scale(0.9); }
+  72% { opacity: 1; transform: translateY(-50%) rotateY(20deg) rotateX(4.4deg); }
+  100% { opacity: 1; transform: translateY(-50%) rotateY(18deg) rotateX(4deg); }
+}
+@keyframes dynHeroOut {
+  from { opacity: 1; transform: translateY(-50%) rotateY(18deg) rotateX(4deg); }
+  to { opacity: 0; transform: translateY(-50%) rotateY(-40deg) rotateX(2deg) translate3d(7vw, 0, -40px) scale(0.92); }
+}
+@keyframes dynPlaqueIn {
+  0% { opacity: 0; transform: translateY(-50%) translateX(3vw); filter: blur(8px); }
+  100% { opacity: 1; transform: translateY(-50%); filter: none; }
+}
+@keyframes dynPlaqueOut {
+  to { opacity: 0; transform: translateY(-50%) translateX(-2vw); filter: blur(6px); }
+}
+@keyframes dynGhostIn {
+  from { opacity: 0; filter: blur(12px); }
+  to { opacity: var(--op,.18); filter: blur(2px); }
+}
+@keyframes dynGhostOut { to { opacity: 0; filter: blur(14px); } }
 @keyframes dynBand { from { transform: translateX(-12%); } to { transform: translateX(12%); } }
 @keyframes dynGhost { to { transform: translate3d(calc(var(--x) + 4vw), calc(var(--y) - 2vh), var(--z)) rotateY(calc(var(--ry,-18deg) + 8deg)); } }
 `;
@@ -677,13 +873,38 @@ html.dyn-message-on .mosaic-layout > .asset-view {
     return balanceLines(words, Math.min(maxLines, words.length));
   }
 
-  function commonShowPrep(root) {
-    root.classList.remove("on", "off");
+  function whenDecoded(img) {
+    if (!img || !img.getAttribute("src")) return Promise.resolve();
+    if (img.complete && img.naturalWidth) {
+      return img.decode ? img.decode().catch(() => {}) : Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      const done = () => resolve();
+      img.addEventListener("load", done, { once: true });
+      img.addEventListener("error", done, { once: true });
+      setTimeout(done, 900);
+    });
   }
 
-  function hideTheme(root, revealMs) {
+  function commonShowPrep(root) {
+    root.classList.remove("on", "off", "idle", "held");
+  }
+
+  async function finishShow(root, images) {
+    await Promise.all((images || []).filter(Boolean).map(whenDecoded));
+    void root.offsetWidth;
+    root.classList.add("on");
+  }
+
+  function hideTheme(root, revealMs, opts) {
+    if (!root.classList.contains("on")) return Promise.resolve();
+    const factor = opts && opts.factor != null ? opts.factor : 0.5;
+    const min = opts && opts.min != null ? opts.min : 220;
+    root.classList.remove("idle", "held");
     root.classList.add("off");
-    return wait(Math.max(180, Math.round((Number(revealMs) || 1000) * 0.42)));
+    return wait(Math.max(min, Math.round((Number(revealMs) || 1000) * factor))).then(() => {
+      root.classList.remove("on", "off", "idle", "held");
+    });
   }
 
   const PHOTO_RECT = { x: 92, y: 92, w: 516, h: 816, r: 54 };
@@ -711,6 +932,7 @@ html.dyn-message-on .mosaic-layout > .asset-view {
           t.style.setProperty("--tdel", (Math.random() * -3).toFixed(2) + "s");
           ticks.appendChild(t);
         }
+        root.classList.add("ticks-live");
         return {
           photo: root.querySelector(".led-photo img"),
           nameRow: root.querySelector(".led-name"),
@@ -735,13 +957,13 @@ html.dyn-message-on .mosaic-layout > .asset-view {
         state.msgText = capture.message || "";
         state.nameText = capture.name || "";
         state.nameRow.classList.toggle("hidden", !capture.name);
-        await wait(30);
+        await whenDecoded(state.photo);
         renderMatrix(state.msgCanvas, root, state.msgText, 4, (settings && settings.primary) || state.primary);
         renderMatrix(state.nameCanvas, root, state.nameText, 1, (settings && settings.primary) || state.primary);
-        root.classList.add("on");
+        await finishShow(root);
       },
       hide(root, state, settings) {
-        return hideTheme(root, settings && settings.revealMs);
+        return hideTheme(root, settings && settings.revealMs, { min: 220, factor: 0.2 });
       },
       unmount() {},
     },
@@ -790,13 +1012,13 @@ html.dyn-message-on .mosaic-layout > .asset-view {
             return `<g class="trace"><path class="tr glow2" d="${d}"/><path class="tr glow1" d="${d}"/><path class="tr core" d="${d}"/><path class="tr hot" d="${d}"/></g>`;
           })
           .join("");
-        await wait(20);
+        await whenDecoded(state.photo);
         if (hasMsg) fitText(state.msgFit, state.msg, 220, 28);
         if (hasName) fitText(state.name, state.name, 92, 22);
-        root.classList.add("on");
+        await finishShow(root);
       },
       hide(root, state, settings) {
-        return hideTheme(root, settings && settings.revealMs);
+        return hideTheme(root, settings && settings.revealMs, { min: 680, factor: 0.55 });
       },
       unmount() {},
     },
@@ -835,13 +1057,13 @@ html.dyn-message-on .mosaic-layout > .asset-view {
           el.textContent = txt;
           state.lines.appendChild(el);
         });
-        await wait(20);
+        await whenDecoded(state.photo);
         [...state.lines.children].forEach((el) => fitText(el, el, lines.length === 1 ? 220 : 140, 26));
         if (capture.name) fitText(state.name, state.name, 96, 22);
-        root.classList.add("on");
+        await finishShow(root);
       },
       hide(root, state, settings) {
-        return hideTheme(root, settings && settings.revealMs);
+        return hideTheme(root, settings && settings.revealMs, { min: 420, factor: 0.55 });
       },
       unmount() {},
     },
@@ -873,13 +1095,13 @@ html.dyn-message-on .mosaic-layout > .asset-view {
         const hasName = !!capture.name;
         state.copy.classList.toggle("gone", !hasMsg && !hasName);
         state.name.classList.toggle("hidden", !hasName);
-        await wait(20);
+        await whenDecoded(state.photo);
         if (hasMsg) fitText(state.msgFit, state.msg, 240, 32);
         if (hasName) fitText(state.name, state.name, 72, 20);
-        root.classList.add("on");
+        await finishShow(root);
       },
       hide(root, state, settings) {
-        return hideTheme(root, settings && settings.revealMs);
+        return hideTheme(root, settings && settings.revealMs, { min: 360, factor: 0.55 });
       },
       unmount() {},
     },
@@ -917,13 +1139,13 @@ html.dyn-message-on .mosaic-layout > .asset-view {
         state.news.classList.toggle("gone", !hasMsg && !hasName);
         state.head.classList.toggle("hidden", !hasMsg);
         state.slug.classList.toggle("hidden", !hasName);
-        await wait(20);
+        await whenDecoded(state.photo);
         if (hasMsg) fitText(state.head, state.headSpan, 72, 18);
         if (hasName) fitText(state.slug, state.slugSpan, 28, 14);
-        root.classList.add("on");
+        await finishShow(root);
       },
       hide(root, state, settings) {
-        return hideTheme(root, settings && settings.revealMs);
+        return hideTheme(root, settings && settings.revealMs, { min: 320, factor: 0.38 });
       },
       unmount() {},
     },
@@ -968,13 +1190,13 @@ html.dyn-message-on .mosaic-layout > .asset-view {
         const hasName = !!capture.name;
         state.copy.classList.toggle("gone", !hasMsg && !hasName);
         state.name.classList.toggle("hidden", !hasName);
-        await wait(20);
+        await whenDecoded(state.photo);
         if (hasMsg) fitText(state.msgFit, state.msg, 220, 28);
         if (hasName) fitText(state.name, state.name, 64, 18);
-        root.classList.add("on");
+        await finishShow(root);
       },
       hide(root, state, settings) {
-        return hideTheme(root, settings && settings.revealMs);
+        return hideTheme(root, settings && settings.revealMs, { min: 360, factor: 0.48 });
       },
       unmount() {},
     },
@@ -1023,13 +1245,13 @@ html.dyn-message-on .mosaic-layout > .asset-view {
         const hasName = !!capture.name;
         state.copy.classList.toggle("gone", !hasMsg && !hasName);
         state.name.classList.toggle("hidden", !hasName);
-        await wait(20);
+        await whenDecoded(state.photo);
         if (hasMsg) fitText(state.msgFit, state.msg, 240, 32);
         if (hasName) fitText(state.name, state.name, 72, 20);
-        root.classList.add("on");
+        await finishShow(root, [state.photo, ...state.ghosts]);
       },
       hide(root, state, settings) {
-        return hideTheme(root, settings && settings.revealMs);
+        return hideTheme(root, settings && settings.revealMs, { min: 360, factor: 0.5 });
       },
       unmount() {},
     },

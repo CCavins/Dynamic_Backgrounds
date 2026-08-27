@@ -1,7 +1,8 @@
 (() => {
   const rules = globalThis.BGExtensionRules;
   const themeApi = globalThis.BGMosaicThemes;
-  if (!rules || !themeApi) return;
+  const handoff = globalThis.BGThemeHandoff;
+  if (!rules || !themeApi || !handoff) return;
 
   const OVERLAY_ID = "dyn-mosaic-theme";
   const STYLE_ID = "dyn-mosaic-theme-style";
@@ -163,12 +164,50 @@
     if (!host) return null;
     let root = document.getElementById(OVERLAY_ID);
     if (!root || root.parentElement !== host) {
-      if (root) root.remove();
-      root = document.createElement("div");
-      root.id = OVERLAY_ID;
-      host.appendChild(root);
+      if (root) host.appendChild(root);
+      else {
+        root = document.createElement("div");
+        root.id = OVERLAY_ID;
+        host.appendChild(root);
+      }
     }
+    root.classList.remove("is-leaving");
     return root;
+  }
+
+  function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  function decodeUrl(src) {
+    if (!src) return Promise.resolve();
+    return new Promise((resolve) => {
+      const img = new Image();
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      img.onload = () => {
+        if (typeof img.decode === "function") img.decode().then(done).catch(done);
+        else done();
+      };
+      img.onerror = done;
+      img.src = src;
+      setTimeout(done, 1200);
+    });
+  }
+
+  function decodeUrls(urls) {
+    const unique = [];
+    const seen = new Set();
+    (urls || []).forEach((src) => {
+      if (!src || seen.has(src)) return;
+      seen.add(src);
+      unique.push(src);
+    });
+    return Promise.all(unique.slice(0, 16).map(decodeUrl));
   }
 
   function stopTick() {
@@ -197,6 +236,7 @@
     if (root) root.replaceChildren();
     active = null;
     mountedTheme = "";
+    mountedEmpty = true;
     lastShown = "";
   }
 
@@ -215,14 +255,30 @@
     return true;
   }
 
-  function teardown() {
+  function teardownSoft() {
     unmountTheme();
     document.documentElement.classList.remove("dyn-mosaic-on");
     const root = document.getElementById(OVERLAY_ID);
     if (root) root.remove();
+  }
+
+  function teardownHard() {
+    teardownSoft();
     const style = document.getElementById(STYLE_ID);
     if (style) style.remove();
+    handoff.clearMode("mosaic");
   }
+
+  handoff.register("mosaic", {
+    hide() {
+      stopTick();
+      const root = document.getElementById(OVERLAY_ID);
+      if (!root) return Promise.resolve();
+      root.classList.add("is-leaving");
+      return wait(420);
+    },
+    teardown: teardownSoft,
+  });
 
   async function apply() {
     if (typeof rules.extensionAlive === "function" && !rules.extensionAlive()) {
@@ -231,36 +287,44 @@
       return;
     }
     const settings = await rules.loadSettings();
+    handoff.applyCovers(settings);
     const theme = settings.enabled ? rules.normalizeMosaicTheme(settings.mosaicTheme) : "off";
-    const hasMosaic = rules.hasMosaic();
     const def = themeApi.themes[theme];
 
-    if (theme === "off" || !def || !hasMosaic) {
-      teardown();
+    if (theme === "off" || !def) {
+      teardownHard();
       return;
     }
 
-    ensureStyle();
-    document.documentElement.classList.add("dyn-mosaic-on");
-    const { added, removed } = syncFeed();
+    const kind = handoff.liveKind();
+    if (kind !== "mosaic") return;
 
-    const overlay = document.getElementById(OVERLAY_ID);
-    if (mountedTheme !== theme || !overlay) {
-      mountTheme(theme);
-      return;
-    }
-
-    if (pool.length && mountedEmpty) {
-      mountTheme(theme);
-      return;
-    }
-
-    if (active && (added.length || removed.length) && typeof active.def.tick === "function") {
-      const bursts = Math.min(Math.max(added.length, removed.length ? 1 : 0), 3);
-      for (let i = 0; i < bursts; i += 1) {
-        active.def.tick(overlay, pool, active.state, makeApi());
-      }
-    }
+    await handoff.activate("mosaic", {
+      prepare() {
+        syncFeed();
+        return decodeUrls(pool);
+      },
+      async reveal() {
+        ensureStyle();
+        document.documentElement.classList.add("dyn-mosaic-on");
+        const { added, removed } = syncFeed();
+        const overlay = document.getElementById(OVERLAY_ID);
+        if (mountedTheme !== theme || !overlay) {
+          mountTheme(theme);
+          return;
+        }
+        if (pool.length && mountedEmpty) {
+          mountTheme(theme);
+          return;
+        }
+        if (active && (added.length || removed.length) && typeof active.def.tick === "function") {
+          const bursts = Math.min(Math.max(added.length, removed.length ? 1 : 0), 3);
+          for (let i = 0; i < bursts; i += 1) {
+            active.def.tick(overlay, pool, active.state, makeApi());
+          }
+        }
+      },
+    });
   }
 
   function scheduleApply() {
@@ -275,8 +339,10 @@
     const relevant = records.some((record) => {
       const target = record.target;
       if (!target) return true;
-      if (target.id === OVERLAY_ID) return false;
-      if (typeof target.closest === "function" && target.closest("#" + OVERLAY_ID)) return false;
+      if (target.id === OVERLAY_ID || target.id === handoff.HOST_ID) return false;
+      if (typeof target.closest === "function" && target.closest("#" + OVERLAY_ID + ", #" + handoff.HOST_ID)) {
+        return false;
+      }
       return true;
     });
     if (relevant) scheduleApply();
