@@ -6,6 +6,7 @@
     mosaicTheme: "mosaicTheme",
     messageTheme: "messageTheme",
     messageThemeSettings: "messageThemeSettings",
+    customThemes: "customThemes",
   };
 
   const DEFAULTS = {
@@ -70,24 +71,25 @@
 
   const MESSAGE_THEMES = ["off", ...Object.keys(MESSAGE_THEME_META)];
 
-  const MOSAIC_THEMES = [
-    "off",
-    "decks",
-    "spotlight",
-    "coverflow",
-    "fan",
-    "filmstrip",
-    "scatter",
-    "cascade",
-    "orbit",
-    "billboard",
-    "reels",
-    "polaroid",
-    "flipwall",
-    "livewall",
-    "cubes",
-    "pedestals",
-  ];
+  const MOSAIC_THEME_META = {
+    decks: { label: "Card decks" },
+    spotlight: { label: "Spotlight" },
+    coverflow: { label: "Coverflow" },
+    fan: { label: "Fan" },
+    filmstrip: { label: "Filmstrip" },
+    scatter: { label: "Scatter" },
+    cascade: { label: "Cascade" },
+    orbit: { label: "Orbit" },
+    billboard: { label: "Billboard" },
+    reels: { label: "Reels" },
+    polaroid: { label: "Polaroid wall" },
+    flipwall: { label: "3D flip wall" },
+    livewall: { label: "Live mosaic" },
+    cubes: { label: "Cube field" },
+    pedestals: { label: "Pedestals" },
+  };
+
+  const MOSAIC_THEMES = ["off", ...Object.keys(MOSAIC_THEME_META)];
 
   function envKey(hostname) {
     const match = String(hostname || "").toLowerCase().match(/vixisuite(?:-[a-z0-9]+)?/);
@@ -147,12 +149,62 @@
     return "";
   }
 
+  let customMessageMeta = {};
+  let customMosaicMeta = {};
+  let lastGoodCustomThemes = [];
+
+  function messageThemeMetaAll() {
+    return { ...MESSAGE_THEME_META, ...customMessageMeta };
+  }
+
+  function mosaicThemeMetaAll() {
+    return { ...MOSAIC_THEME_META, ...customMosaicMeta };
+  }
+
+  function isKnownMessageTheme(value) {
+    return value === "off" || Boolean(messageThemeMetaAll()[value]);
+  }
+
+  function isKnownMosaicTheme(value) {
+    return value === "off" || Boolean(mosaicThemeMetaAll()[value]);
+  }
+
+  function applyCustomThemeMeta(packs) {
+    customMessageMeta = {};
+    customMosaicMeta = {};
+    (Array.isArray(packs) ? packs : []).forEach((pack) => {
+      if (!pack || !pack.id) return;
+      const meta = {
+        label: pack.label || pack.id,
+        custom: true,
+        labels: {},
+        defaults: { revealMs: Number(pack.revealMs) || 1000 },
+      };
+      const settings = pack.settings && typeof pack.settings === "object" ? pack.settings : {};
+      ["primary", "secondary", "background"].forEach((key) => {
+        const spec = settings[key];
+        if (!spec) return;
+        meta.labels[key] = spec.label || key;
+        if (spec.default) meta.defaults[key] = spec.default;
+      });
+      if (settings.motion && settings.motion.default) {
+        meta.labels.motion = settings.motion.label || "Motion";
+        meta.defaults.motion = settings.motion.default;
+      }
+      if (!meta.defaults.primary) meta.defaults.primary = "#d52265";
+      if (!meta.defaults.secondary) meta.defaults.secondary = "#fec651";
+      if (pack.kind === "message") customMessageMeta[pack.id] = meta;
+      if (pack.kind === "mosaic") customMosaicMeta[pack.id] = { label: meta.label, custom: true };
+    });
+    lastGoodCustomThemes = Array.isArray(packs) ? packs.slice() : [];
+  }
+
   function normalizeMosaicTheme(value) {
-    return MOSAIC_THEMES.includes(value) ? value : "off";
+    return isKnownMosaicTheme(value) ? value : "off";
   }
 
   function normalizeMessageTheme(value) {
-    return MESSAGE_THEMES.includes(value) ? value : "off";
+    return isKnownMessageTheme(value) ? value : "off";
   }
 
   function isHexColor(value) {
@@ -160,7 +212,7 @@
   }
 
   function normalizeOneThemeSettings(themeId, raw) {
-    const meta = MESSAGE_THEME_META[themeId];
+    const meta = messageThemeMetaAll()[themeId];
     if (!meta) return {};
     const defaults = meta.defaults;
     const src = raw && typeof raw === "object" ? raw : {};
@@ -182,7 +234,7 @@
   function normalizeMessageThemeSettings(value) {
     const src = value && typeof value === "object" ? value : {};
     const next = {};
-    Object.keys(MESSAGE_THEME_META).forEach((id) => {
+    Object.keys(messageThemeMetaAll()).forEach((id) => {
       next[id] = normalizeOneThemeSettings(id, src[id]);
     });
     return next;
@@ -191,7 +243,7 @@
   function resolveMessageThemeSettings(settings, themeId) {
     const id = normalizeMessageTheme(themeId || (settings && settings.messageTheme));
     if (id === "off") return null;
-    const meta = MESSAGE_THEME_META[id];
+    const meta = messageThemeMetaAll()[id];
     const stored = settings && settings.messageThemeSettings && settings.messageThemeSettings[id];
     return {
       ...normalizeOneThemeSettings(id, stored),
@@ -394,13 +446,53 @@
     });
   }
 
+  function loadCustomThemes() {
+    return new Promise((resolve) => {
+      if (!extensionAlive()) {
+        resolve(lastGoodCustomThemes.slice());
+        return;
+      }
+      try {
+        chrome.storage.local.get({ customThemes: [] }, (stored) => {
+          const packs = Array.isArray(stored.customThemes) ? stored.customThemes : [];
+          applyCustomThemeMeta(packs);
+          resolve(packs);
+        });
+      } catch {
+        resolve(lastGoodCustomThemes.slice());
+      }
+    });
+  }
+
+  function saveCustomThemes(packs) {
+    const next = Array.isArray(packs) ? packs : [];
+    applyCustomThemeMeta(next);
+    return new Promise((resolve) => {
+      if (!extensionAlive()) {
+        resolve();
+        return;
+      }
+      try {
+        chrome.storage.local.set({ customThemes: next }, () => resolve());
+      } catch {
+        resolve();
+      }
+    });
+  }
+
   root.BGExtensionRules = {
     STORAGE_KEYS,
     DEFAULTS,
     MOSAIC_THEMES,
+    MOSAIC_THEME_META,
     MESSAGE_THEMES,
     MESSAGE_THEME_META,
     MOTION_MODES,
+    messageThemeMetaAll,
+    mosaicThemeMetaAll,
+    applyCustomThemeMeta,
+    loadCustomThemes,
+    saveCustomThemes,
     envKey,
     extractIds,
     isOutputPage,

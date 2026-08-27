@@ -418,3 +418,38 @@ textarea {
 .reset-theme {
   width: 100%;
 }
+
+.custom-theme-list {
+  margin-top: var(--v2-xs);
+}
+
+.custom-theme-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v2-xs);
+  margin-top: var(--v2-xs);
+  padding: var(--v2-xs) var(--v2-s);
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius);
+  background: var(--v2-surface);
+  font-size: 12px;
+}
+
+.custom-theme-row .v2-btn {
+  margin-top: 0;
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.import-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+#import-status {
+  min-height: 1.4em;
+}

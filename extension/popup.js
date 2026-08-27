@@ -1,5 +1,6 @@
 (() => {
   const rulesApi = globalThis.BGExtensionRules;
+  const customApi = globalThis.BGCustomThemes;
   if (!rulesApi) return;
 
   const enabledInput = document.getElementById("enabled");
@@ -11,6 +12,9 @@
   const rulesRoot = document.getElementById("rules");
   const addRule = document.getElementById("add-rule");
   const template = document.getElementById("rule-template");
+  const customList = document.getElementById("custom-themes");
+  const importInput = document.getElementById("import-theme");
+  const importStatus = document.getElementById("import-status");
 
   let persistTimer = 0;
   let cachedSettings = null;
@@ -107,18 +111,72 @@
     enabledLabel.textContent = enabledInput.checked ? "On" : "Off";
   }
 
-  function fillMessageThemeOptions() {
-    const meta = rulesApi.MESSAGE_THEME_META || {};
-    messageTheme.replaceChildren();
-    const off = document.createElement("option");
-    off.value = "off";
-    off.textContent = "Off";
-    messageTheme.appendChild(off);
+  function addThemeOption(select, id, label) {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = label;
+    select.appendChild(option);
+  }
+
+  function fillMosaicThemeOptions() {
+    const current = mosaicTheme.value;
+    mosaicTheme.replaceChildren();
+    addThemeOption(mosaicTheme, "off", "Off");
+    const meta = rulesApi.mosaicThemeMetaAll ? rulesApi.mosaicThemeMetaAll() : rulesApi.MOSAIC_THEME_META || {};
     Object.keys(meta).forEach((id) => {
-      const option = document.createElement("option");
-      option.value = id;
-      option.textContent = meta[id].label || id;
-      messageTheme.appendChild(option);
+      addThemeOption(mosaicTheme, id, meta[id].custom ? (meta[id].label || id) + " (imported)" : meta[id].label || id);
+    });
+    if ([...mosaicTheme.options].some((opt) => opt.value === current)) mosaicTheme.value = current;
+    enhanceSelect(mosaicTheme);
+  }
+
+  function fillMessageThemeOptions() {
+    const current = messageTheme.value;
+    const meta = rulesApi.messageThemeMetaAll ? rulesApi.messageThemeMetaAll() : rulesApi.MESSAGE_THEME_META || {};
+    messageTheme.replaceChildren();
+    addThemeOption(messageTheme, "off", "Off");
+    Object.keys(meta).forEach((id) => {
+      addThemeOption(messageTheme, id, meta[id].custom ? (meta[id].label || id) + " (imported)" : meta[id].label || id);
+    });
+    if ([...messageTheme.options].some((opt) => opt.value === current)) messageTheme.value = current;
+    enhanceSelect(messageTheme);
+  }
+
+  function renderCustomList(packs) {
+    if (!customList) return;
+    customList.replaceChildren();
+    if (!packs.length) {
+      const empty = document.createElement("p");
+      empty.className = "help";
+      empty.textContent = "No imported themes yet.";
+      customList.appendChild(empty);
+      return;
+    }
+    packs.forEach((pack) => {
+      const row = document.createElement("div");
+      row.className = "custom-theme-row";
+      const name = document.createElement("span");
+      name.textContent = pack.label + " · " + pack.kind;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "v2-btn v2-btn-destructive";
+      remove.textContent = "Remove";
+      remove.addEventListener("click", async () => {
+        if (!customApi) return;
+        const next = await customApi.removePack(pack.id);
+        if (messageTheme.value === pack.id) messageTheme.value = "off";
+        if (mosaicTheme.value === pack.id) mosaicTheme.value = "off";
+        fillMosaicThemeOptions();
+        fillMessageThemeOptions();
+        syncSelectUI(mosaicTheme);
+        syncSelectUI(messageTheme);
+        renderCustomList(next);
+        persist();
+        if (importStatus) importStatus.textContent = "Removed " + pack.label + ".";
+      });
+      row.appendChild(name);
+      row.appendChild(remove);
+      customList.appendChild(row);
     });
   }
 
@@ -152,7 +210,8 @@
 
   function renderThemeSettings(id) {
     messageThemeSettings.replaceChildren();
-    const meta = rulesApi.MESSAGE_THEME_META && rulesApi.MESSAGE_THEME_META[id];
+    const allMeta = rulesApi.messageThemeMetaAll ? rulesApi.messageThemeMetaAll() : rulesApi.MESSAGE_THEME_META || {};
+    const meta = allMeta[id];
     if (!meta) {
       messageThemeSettings.hidden = true;
       return;
@@ -296,11 +355,42 @@
     addRuleRow({});
   });
 
-  fillMessageThemeOptions();
-  enhanceSelect(mosaicTheme);
-  enhanceSelect(messageTheme);
+  if (importInput && customApi) {
+    importInput.addEventListener("change", async () => {
+      const file = importInput.files && importInput.files[0];
+      importInput.value = "";
+      if (!file) return;
+      try {
+        const pack = await customApi.importPack(await file.text());
+        fillMosaicThemeOptions();
+        fillMessageThemeOptions();
+        if (pack.kind === "message") {
+          messageTheme.value = pack.id;
+          lastMessageTheme = pack.id;
+          renderThemeSettings(pack.id);
+        } else {
+          mosaicTheme.value = pack.id;
+        }
+        syncSelectUI(mosaicTheme);
+        syncSelectUI(messageTheme);
+        persist();
+        const packs = await rulesApi.loadCustomThemes();
+        renderCustomList(packs);
+        if (importStatus) importStatus.textContent = "Imported " + pack.label + ".";
+      } catch (err) {
+        if (importStatus) importStatus.textContent = err && err.message ? err.message : "Import failed.";
+      }
+    });
+  }
 
-  rulesApi.loadSettings().then((settings) => {
+  Promise.all([
+    rulesApi.loadCustomThemes ? rulesApi.loadCustomThemes() : Promise.resolve([]),
+    rulesApi.loadSettings(),
+  ]).then(([packs, settings]) => {
+    if (rulesApi.applyCustomThemeMeta) rulesApi.applyCustomThemeMeta(packs);
+    if (customApi && customApi.registerPacks) customApi.registerPacks(packs);
+    fillMosaicThemeOptions();
+    fillMessageThemeOptions();
     cachedSettings = settings;
     enabledInput.checked = settings.enabled;
     setEnabledLabel();
@@ -312,10 +402,8 @@
     renderThemeSettings(settings.messageTheme);
     anyOutput.value = settings.anyOutputIframeHtml;
     rulesRoot.replaceChildren();
-    if (settings.rules.length === 0) {
-      addRuleRow({});
-      return;
-    }
-    settings.rules.forEach(addRuleRow);
+    if (settings.rules.length === 0) addRuleRow({});
+    else settings.rules.forEach(addRuleRow);
+    renderCustomList(packs);
   });
 })();

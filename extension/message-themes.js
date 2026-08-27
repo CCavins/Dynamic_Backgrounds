@@ -3875,5 +3875,16 @@ html.dyn-message-on .mosaic-layout > .asset-view {
     state.raf = requestAnimationFrame(frame);
   }
 
-  root.BGMessageThemes = { STYLE, FONTS, themes, fitText: fitPx };
+  root.BGMessageThemes = {
+    STYLE,
+    FONTS,
+    themes,
+    fitText: fitPx,
+    ensureFitStage,
+    applyVars,
+    commonShowPrep,
+    finishShow,
+    hideTheme,
+    whenDecoded,
+  };
 })(typeof globalThis !== "undefined" ? globalThis : window);

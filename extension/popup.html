@@ -35,21 +35,6 @@
       <span>Theme</span>
       <select id="mosaic-theme">
         <option value="off">Off</option>
-        <option value="decks">Card decks</option>
-        <option value="spotlight">Spotlight</option>
-        <option value="coverflow">Coverflow</option>
-        <option value="fan">Fan</option>
-        <option value="filmstrip">Filmstrip</option>
-        <option value="scatter">Scatter</option>
-        <option value="cascade">Cascade</option>
-        <option value="orbit">Orbit</option>
-        <option value="billboard">Billboard</option>
-        <option value="reels">Reels</option>
-        <option value="polaroid">Polaroid wall</option>
-        <option value="flipwall">3D flip wall</option>
-        <option value="livewall">Live mosaic</option>
-        <option value="cubes">Cube field</option>
-        <option value="pedestals">Pedestals</option>
       </select>
     </label>
   </section>
@@ -81,6 +66,17 @@
     <button type="button" id="add-rule" class="v2-btn v2-btn-primary">Add output URL</button>
   </section>
 
+  <section>
+    <h2>Imported themes</h2>
+    <p class="help">Sideload a message or mosaic theme JSON file. See themes/README.md.</p>
+    <div id="custom-themes" class="custom-theme-list"></div>
+    <label class="v2-btn v2-btn-secondary import-btn">
+      Import theme.json
+      <input type="file" id="import-theme" accept="application/json,.json" hidden>
+    </label>
+    <p class="help" id="import-status"></p>
+  </section>
+
   <template id="rule-template">
     <article class="rule">
       <label>
@@ -96,6 +92,7 @@
   </template>
 
   <script src="rules.js"></script>
+  <script src="custom-themes.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

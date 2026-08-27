@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Custom theme preview</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #1b1b1b; color: #fff; font-family: Inter, sans-serif; }
+  #bar { position: fixed; top: 12px; left: 12px; z-index: 20; display: flex; gap: 8px; }
+  #bar button { min-height: 36px; padding: 6px 12px; border: 0; border-radius: 8px; background: #d52265; color: #fff; font: 500 13px Inter, sans-serif; cursor: pointer; }
+  #dyn-message-theme, #dyn-mosaic-theme { position: absolute; inset: 0; }
+  #dyn-mosaic-theme { display: none; }
+  body.mosaic #dyn-message-theme { display: none; }
+  body.mosaic #dyn-mosaic-theme { display: block; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <button type="button" id="show-stamp">Stamp message</button>
+  <button type="button" id="show-ribbon">Ribbon mosaic</button>
+</div>
+<div id="dyn-message-theme"></div>
+<div id="dyn-mosaic-theme"></div>
+<script src="../extension/message-themes.js"></script>
+<script src="../extension/mosaic-themes.js"></script>
+<script src="../extension/custom-themes.js"></script>
+<script>
+(async () => {
+  const messageApi = globalThis.BGMessageThemes;
+  const customApi = globalThis.BGCustomThemes;
+  const style = document.createElement("style");
+  style.textContent = messageApi.STYLE;
+  document.head.appendChild(style);
+  const fonts = document.createElement("link");
+  fonts.rel = "stylesheet";
+  fonts.href = messageApi.FONTS;
+  document.head.appendChild(fonts);
+
+  const [stamp, ribbon] = await Promise.all([
+    fetch("example-stamp.json").then((r) => r.json()),
+    fetch("example-ribbon.json").then((r) => r.json()),
+  ]);
+  const packs = [customApi.parsePack(stamp), customApi.parsePack(ribbon)];
+  customApi.registerPacks(packs);
+
+  function mockPhoto(seed) {
+    const c = document.createElement("canvas");
+    c.width = 720; c.height = 960;
+    const g = c.getContext("2d");
+    const a = [210, 60 + seed * 20, 90];
+    const b = [40, 80, 160 + seed * 8];
+    const grad = g.createLinearGradient(0, 0, 720, 960);
+    grad.addColorStop(0, `rgb(${a})`);
+    grad.addColorStop(1, `rgb(${b})`);
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 720, 960);
+    g.fillStyle = "rgba(255,255,255,.2)";
+    g.beginPath();
+    g.arc(360, 380, 140, 0, 7);
+    g.fill();
+    return c.toDataURL("image/jpeg", 0.85);
+  }
+
+  const photos = Array.from({ length: 8 }, (_, i) => mockPhoto(i));
+  const messageRoot = document.getElementById("dyn-message-theme");
+  const mosaicRoot = document.getElementById("dyn-mosaic-theme");
+  let messageState = null;
+
+  function showStamp() {
+    document.body.classList.remove("mosaic");
+    messageRoot.dataset.theme = "example-stamp";
+    messageRoot.replaceChildren();
+    const def = messageApi.themes["example-stamp"];
+    const settings = { primary: "#d52265", secondary: "#f4ead8", revealMs: 900 };
+    messageState = def.mount(messageRoot, settings);
+    def.applySettings(messageRoot, messageState, settings);
+    def.show(messageRoot, {
+      src: photos[0],
+      message: "Wish you were here — the lights went on and the whole room went quiet.",
+      name: "Sam & Jo",
+    }, messageState, settings);
+  }
+
+  function showRibbon() {
+    document.body.classList.add("mosaic");
+    mosaicRoot.dataset.theme = "example-ribbon";
+    mosaicRoot.replaceChildren();
+    const def = globalThis.BGMosaicThemes.themes["example-ribbon"];
+    def.mount(mosaicRoot, photos, {
+      nextUrl() { return photos[Math.floor(Math.random() * photos.length)]; },
+    });
+  }
+
+  document.getElementById("show-stamp").onclick = showStamp;
+  document.getElementById("show-ribbon").onclick = showRibbon;
+  showStamp();
+})();
+</script>
+</body>
+</html>
