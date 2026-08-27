@@ -58,13 +58,20 @@
             border-color: rgba(255, 255, 255, 0.3);
             color: rgba(255, 255, 255, 0.8);
         }
-        .hint kbd {
+        .hint kbd,
+        .hint .ver {
             font: inherit;
             font-size: 9px;
             padding: 2px 7px;
             border: 1px solid rgba(255, 255, 255, 0.25);
             border-radius: 4px;
             color: rgba(255, 255, 255, 0.75);
+        }
+        .hint .ver {
+            border-radius: 999px;
+            letter-spacing: 0.8px;
+            color: rgba(220, 200, 255, 0.9);
+            border-color: rgba(180, 140, 255, 0.4);
         }
         .grid {
             display: grid;
@@ -139,7 +146,7 @@
             <p>A collection of animated, customizable background scenes.</p>
             <div class="hints">
                 <span class="hint">PRESS <kbd>SPACE</kbd> ON ANY BACKGROUND TO OPEN SETTINGS</span>
-                <a class="hint" href="extension.zip" download>DOWNLOAD CHROME EXTENSION</a>
+                <a class="hint" href="extension.zip" download>DOWNLOAD CHROME EXTENSION <span class="ver" id="ext-version">1.4.1</span></a>
             </div>
         </header>
 
@@ -270,6 +277,14 @@
         }, { rootMargin: '120px' });
 
         document.querySelectorAll('.preview video').forEach((video) => observer.observe(video));
+
+        fetch('extension/manifest.json')
+            .then((res) => res.json())
+            .then((manifest) => {
+                const el = document.getElementById('ext-version');
+                if (el && manifest && manifest.version) el.textContent = manifest.version;
+            })
+            .catch(() => {});
     </script>
 </body>
 </html>

@@ -7,6 +7,8 @@ alwaysApply: true
 
 After any change that is more than a tiny fix (new theme, layout/animation work, behavior change, or several files), bump `version` in `extension/manifest.json`.
 
+Also update the fallback version on the gallery download button in `index.html` (`#ext-version`). The page reads `extension/manifest.json` at runtime, but the fallback should match so the number is right before that fetch lands.
+
 - Patch (`1.3.0` → `1.3.1`): bug fixes, small polish, copy
 - Minor (`1.3.0` → `1.4.0`): new themes or user-visible features
 - Skip the bump for one-line typos, comments, or formatting-only edits
