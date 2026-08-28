@@ -500,7 +500,11 @@
             !overlay ||
             hostMisplaced ||
             (pool.length && mountedEmpty) ||
-            (pool.length && overlayNeedsPhotos());
+            (pool.length && overlayNeedsPhotos()) ||
+            ((theme === "cubes" || theme === "depthfield") &&
+              globalThis.THREE &&
+              globalThis.BGTileField &&
+              (!active || !active.state || active.state.waiting || (active.state.field && active.state.field.stopped)));
           if (needMount && !mountTheme(theme)) watchSettle();
           const live = document.getElementById(OVERLAY_ID);
           if (live && typeof rules.ensureBrandChrome === "function") {

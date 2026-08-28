@@ -64,8 +64,8 @@
   }
 
   function makeCoverSquareCanvas(img, maxSize) {
-    const srcW = img.width || 1;
-    const srcH = img.height || 1;
+    const srcW = img.width || img.naturalWidth || 1;
+    const srcH = img.height || img.naturalHeight || 1;
     const out = Math.max(1, Math.min(maxSize, Math.max(srcW, srcH)));
     const scale = Math.max(out / srcW, out / srcH);
     const dw = srcW * scale;
@@ -77,7 +77,45 @@
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, out, out);
     ctx.drawImage(img, (out - dw) / 2, (out - dh) / 2, dw, dh);
+    // Vixi's <img> tags already cached these files without CORS. A tainted
+    // canvas throws in texSubImage2D every frame; skip rather than upload.
+    try {
+      ctx.getImageData(0, 0, 1, 1);
+    } catch {
+      return null;
+    }
     return canvas;
+  }
+
+  function loadImageFromBlob(url) {
+    const abs = (() => {
+      try {
+        return new URL(url, location.href).href;
+      } catch {
+        return url;
+      }
+    })();
+    return fetch(abs, { mode: "cors", credentials: "omit", cache: "reload" })
+      .then((res) => {
+        if (!res.ok) throw new Error("fetch");
+        return res.blob();
+      })
+      .then(
+        (blob) =>
+          new Promise((resolve, reject) => {
+            const obj = URL.createObjectURL(blob);
+            const img = new Image();
+            img.onload = () => {
+              URL.revokeObjectURL(obj);
+              resolve(img);
+            };
+            img.onerror = () => {
+              URL.revokeObjectURL(obj);
+              reject(new Error("blob"));
+            };
+            img.src = obj;
+          })
+      );
   }
 
   function createScene(host, pool, preset) {
@@ -536,6 +574,30 @@ uniform float uImageMix;`
       tiles.push(tile);
     }
 
+    function paintTexture(image, el) {
+      const texture = image.texture;
+      if (!texture) return;
+      const canvas = makeCoverSquareCanvas(el, MAX_TEX_SIZE);
+      if (!canvas) return;
+      texture.image = canvas;
+      texture.needsUpdate = true;
+      tiles.forEach((tile) => {
+        tile.faceSlots.forEach((slot) => {
+          if (slot.imageId !== image.id || !slot.faceTexture) return;
+          slot.faceTexture.image = canvas;
+          slot.faceTexture.needsUpdate = true;
+          if (slot.material) {
+            slot.material.map = slot.faceTexture;
+            slot.material.needsUpdate = true;
+          }
+        });
+      });
+    }
+
+    function loadTextureSource(url) {
+      return loadImageFromBlob(url);
+    }
+
     function ensureImageTexture(image) {
       if (image.texture) return image.texture;
       const texture = new THREE.Texture();
@@ -548,24 +610,7 @@ uniform float uImageMix;`
       texture.wrapT = THREE.ClampToEdgeWrapping;
       texture.flipY = true;
       image.texture = texture;
-      const img = new Image();
-      img.onload = () => {
-        texture.image = makeCoverSquareCanvas(img, MAX_TEX_SIZE);
-        texture.needsUpdate = true;
-        tiles.forEach((tile) => {
-          tile.faceSlots.forEach((slot) => {
-            if (slot.imageId === image.id && slot.faceTexture) {
-              slot.faceTexture.image = texture.image;
-              slot.faceTexture.needsUpdate = true;
-              if (slot.material) {
-                slot.material.map = slot.faceTexture;
-                slot.material.needsUpdate = true;
-              }
-            }
-          });
-        });
-      };
-      img.src = image.url;
+      loadTextureSource(image.url).then((el) => paintTexture(image, el)).catch(() => {});
       return texture;
     }
 
@@ -996,7 +1041,18 @@ uniform float uImageMix;`
           tile.mesh.rotation.copy(tmpEuler);
         }
       });
-      renderer.render(scene, camera);
+      try {
+        renderer.render(scene, camera);
+      } catch {
+        images.forEach((img) => {
+          if (img.texture) img.texture.needsUpdate = false;
+        });
+        tiles.forEach((tile) => {
+          tile.faceSlots.forEach((slot) => {
+            if (slot.faceTexture) slot.faceTexture.needsUpdate = false;
+          });
+        });
+      }
     }
     renderer.setAnimationLoop(frame);
 

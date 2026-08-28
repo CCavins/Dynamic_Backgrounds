@@ -2489,7 +2489,7 @@ html.dyn-mosaic-on .logo-tile {
       interval: 4000,
       mount(root, pool) {
         const api = globalThis.BGTileField;
-        if (!api) return { stopped: true };
+        if (!api || !globalThis.THREE) return { stopped: true, waiting: true };
         return api.mount(root, pool);
       },
       tick(root, pool, state) {
@@ -2506,7 +2506,7 @@ html.dyn-mosaic-on .logo-tile {
       interval: 4000,
       mount(root, pool) {
         const api = globalThis.BGTileField;
-        if (!api) return { stopped: true };
+        if (!api || !globalThis.THREE) return { stopped: true, waiting: true };
         return api.mount(root, pool);
       },
       tick(root, pool, state) {
