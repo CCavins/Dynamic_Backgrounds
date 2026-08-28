@@ -19,7 +19,7 @@
                 <a href="extension.html">Extension</a>
                 <a href="create.html">Create</a>
             </nav>
-            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.12.1</span></a>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.13.0</span></a>
         </header>
 
         <div class="page-intro">
@@ -178,7 +178,14 @@
                 <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
                 <div class="meta">
                     <h3>Cube field</h3>
-                    <p>Photo cubes turning in a shallow 3D field.</p>
+                    <p>Showcase: idle field plus three featured cubes.</p>
+                </div>
+            </article>
+            <article class="theme-card" data-kind="mosaic" data-theme="depthfield">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
+                <div class="meta">
+                    <h3>Depth Field</h3>
+                    <p>Two-layer cube grid with a slow Y-spin.</p>
                 </div>
             </article>
             <article class="theme-card" data-kind="mosaic" data-theme="pedestals">
@@ -194,6 +201,9 @@
     </div>
     <script src="extension/rules.js"></script>
     <script src="extension/message-themes.js"></script>
+    <script src="extension/vendor/three.min.js"></script>
+    <script src="extension/vendor/RoundedBoxGeometry.js"></script>
+    <script src="extension/vendor/tile-field.js"></script>
     <script src="extension/mosaic-themes.js"></script>
     <script src="extension/engines/api.js"></script>
     <script src="extension/engines/example-aurora.js"></script>

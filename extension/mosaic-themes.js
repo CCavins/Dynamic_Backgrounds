@@ -295,10 +295,14 @@ html.dyn-mosaic-on .logo-tile {
 #dyn-mosaic-theme[data-theme="spotlight"] .dyn-hero .dyn-card {
   position: absolute;
   inset: 0;
-  transition: transform 0.75s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 0.85s cubic-bezier(0.22, 0.8, 0.2, 1);
 }
 #dyn-mosaic-theme[data-theme="spotlight"] .dyn-hero .is-from-bottom {
   transform: translateY(100%);
+}
+#dyn-mosaic-theme[data-theme="spotlight"] .dyn-hero .is-exit {
+  transform: translateY(-100%);
+  opacity: 1;
 }
 #dyn-mosaic-theme[data-theme="spotlight"] .dyn-strip {
   display: flex;
@@ -314,11 +318,6 @@ html.dyn-mosaic-on .logo-tile {
   aspect-ratio: 2 / 3;
   width: auto;
   position: relative;
-  transition: transform 0.55s cubic-bezier(0.22, 0.82, 0.18, 1), opacity 0.45s ease;
-}
-#dyn-mosaic-theme[data-theme="spotlight"] .dyn-strip .dyn-card.is-from-bottom {
-  transform: translateY(28%);
-  opacity: 0;
 }
 
 #dyn-mosaic-theme[data-theme="coverflow"] {
@@ -367,14 +366,7 @@ html.dyn-mosaic-on .logo-tile {
   aspect-ratio: 2 / 3;
   margin-left: calc(min(24vw, 340px) / -2);
   transform-origin: 50% 100%;
-  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.45s ease;
-}
-#dyn-mosaic-theme[data-theme="fan"] .dyn-card.is-from-bottom {
-  transform: translateY(40%) rotate(0deg) scale(0.92);
-  opacity: 0;
-}
-#dyn-mosaic-theme[data-theme="fan"] .dyn-card.is-exit {
-  opacity: 0;
+  transition: transform 0.85s cubic-bezier(0.22, 0.8, 0.2, 1);
 }
 
 #dyn-mosaic-theme[data-theme="filmstrip"] {
@@ -407,13 +399,7 @@ html.dyn-mosaic-on .logo-tile {
   width: min(16vw, 230px);
   aspect-ratio: 2 / 3;
   height: auto;
-  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), z-index 0s;
-}
-#dyn-mosaic-theme[data-theme="scatter"] .dyn-card.is-focus {
-  z-index: 20;
-}
-#dyn-mosaic-theme[data-theme="scatter"] .dyn-card.is-from-bottom {
-  z-index: 1;
+  transition: transform 0.95s cubic-bezier(0.22, 0.8, 0.2, 1);
 }
 
 #dyn-mosaic-theme[data-theme="cascade"] {
@@ -507,6 +493,7 @@ html.dyn-mosaic-on .logo-tile {
   padding: 5% 6% 13%;
 }
 #dyn-mosaic-theme[data-theme="reels"] .dyn-reel {
+  position: relative;
   width: min(24vw, 340px);
   aspect-ratio: 2 / 3;
   height: auto;
@@ -518,13 +505,14 @@ html.dyn-mosaic-on .logo-tile {
 #dyn-mosaic-theme[data-theme="reels"] .dyn-reel-strip {
   display: flex;
   flex-direction: column;
-  transition: transform 0.95s cubic-bezier(0.18, 0.9, 0.22, 1);
+  width: 100%;
+  transition: transform 0.95s cubic-bezier(0.22, 0.82, 0.18, 1);
 }
 #dyn-mosaic-theme[data-theme="reels"] .dyn-card {
-  flex: 0 0 auto;
+  flex: 0 0 var(--frame, 100%);
   width: 100%;
-  aspect-ratio: 2 / 3;
-  height: auto;
+  height: var(--frame, 100%);
+  aspect-ratio: auto;
   border-radius: 0;
   box-shadow: none;
 }
@@ -777,53 +765,21 @@ html.dyn-mosaic-on .logo-tile {
   background: radial-gradient(120% 120% at 50% 50%, transparent 58%, rgba(0, 0, 0, 0.45) 100%);
 }
 
-#dyn-mosaic-theme[data-theme="cubes"] {
+#dyn-mosaic-theme[data-theme="cubes"],
+#dyn-mosaic-theme[data-theme="depthfield"] {
   overflow: hidden;
-  perspective: 1400px;
   background: #050506;
 }
-#dyn-mosaic-theme[data-theme="cubes"] .dyn-cube-field {
+#dyn-mosaic-theme[data-theme="cubes"] canvas,
+#dyn-mosaic-theme[data-theme="depthfield"] canvas {
   position: absolute;
   inset: 0;
-  transform-style: preserve-3d;
-  transform: rotateX(12deg) rotateY(-18deg);
-}
-#dyn-mosaic-theme[data-theme="cubes"] .dyn-cube {
-  position: absolute;
-  left: var(--cx);
-  top: var(--cy);
-  width: min(11vw, 128px);
-  height: min(11vw, 128px);
-  transform-style: preserve-3d;
-  transform: translateZ(var(--cz)) rotateX(var(--rx)) rotateY(var(--ry));
-  transition: transform 1.1s cubic-bezier(0.22, 0.8, 0.2, 1);
-}
-#dyn-mosaic-theme[data-theme="cubes"] .dyn-cube-face {
-  position: absolute;
-  inset: 0;
-  background: #10131c;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  overflow: hidden;
-  backface-visibility: hidden;
-}
-#dyn-mosaic-theme[data-theme="cubes"] .dyn-cube-face img {
+  display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
 }
-#dyn-mosaic-theme[data-theme="cubes"] .dyn-cube .f-front { transform: rotateY(0deg) translateZ(var(--half)); }
-#dyn-mosaic-theme[data-theme="cubes"] .dyn-cube .f-back { transform: rotateY(180deg) translateZ(var(--half)); }
-#dyn-mosaic-theme[data-theme="cubes"] .dyn-cube .f-right { transform: rotateY(90deg) translateZ(var(--half)); }
-#dyn-mosaic-theme[data-theme="cubes"] .dyn-cube .f-left { transform: rotateY(-90deg) translateZ(var(--half)); }
-#dyn-mosaic-theme[data-theme="cubes"] .dyn-cube .f-top { transform: rotateX(90deg) translateZ(var(--half)); }
-#dyn-mosaic-theme[data-theme="cubes"] .dyn-cube .f-bottom { transform: rotateX(-90deg) translateZ(var(--half)); }
-#dyn-mosaic-theme[data-theme="cubes"] .dyn-card {
-  background: transparent;
-  box-shadow: none;
-  border-radius: 0;
-  overflow: visible;
-}
-#dyn-mosaic-theme[data-theme="cubes"] .dyn-cube-vignette {
+#dyn-mosaic-theme[data-theme="cubes"] .dyn-cube-vignette,
+#dyn-mosaic-theme[data-theme="depthfield"] .dyn-cube-vignette {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -1063,19 +1019,37 @@ html.dyn-mosaic-on .logo-tile {
     });
   }
 
-  function layoutFan(cards) {
+  function layoutFan(cards, frontIndex) {
     const n = cards.length;
     const span = 56;
+    const front = frontIndex == null ? Math.floor(n / 2) : frontIndex;
     cards.forEach((card, i) => {
       const t = n === 1 ? 0.5 : i / (n - 1);
       const rot = (t - 0.5) * span;
       const dist = Math.abs(t - 0.5);
-      card.style.zIndex = String(Math.round(40 - dist * 60));
-      if (!card.classList.contains("is-from-bottom") && !card.classList.contains("is-exit")) {
-        card.style.transform = `rotate(${rot}deg) translateY(${Math.abs(t - 0.5) * 6}%)`;
-      }
+      const isFront = i === front;
+      card.style.zIndex = isFront ? "50" : String(Math.round(40 - dist * 60));
+      card.style.transform = `rotate(${rot}deg) translateY(${isFront ? -4 : Math.abs(t - 0.5) * 6}%)`;
       card.dataset.rot = String(rot);
     });
+  }
+
+  function sizeReelFrames(reel) {
+    const h = reel.reel.clientHeight || reel.reel.getBoundingClientRect().height || 1;
+    reel.reel.style.setProperty("--frame", h + "px");
+    return h;
+  }
+
+  function snapReelStrip(reel, animate) {
+    const cards = [...reel.strip.children];
+    const target = cards[Math.min(Math.max(0, reel.index), Math.max(0, cards.length - 1))];
+    const y = target ? target.offsetTop : 0;
+    if (!animate) reel.strip.style.transition = "none";
+    reel.strip.style.transform = "translateY(" + -y + "px)";
+    if (!animate) {
+      reel.strip.offsetHeight;
+      reel.strip.style.transition = "";
+    }
   }
 
   function layoutOrbit(cards, angle) {
@@ -1289,46 +1263,44 @@ html.dyn-mosaic-on .logo-tile {
         stripUrls.forEach((src) => strip.appendChild(makeCard(src)));
         root.appendChild(heroWrap);
         root.appendChild(strip);
-        return { heroWrap, strip, heroSrc, stripUrls };
+        return { heroWrap, strip, heroSrc, stripUrls, stripCursor: 0, busy: false };
       },
       tick(root, pool, state, api) {
-        const next = api.nextUrl(state.heroSrc);
+        if (state.busy) return;
+        const next = feedSrc(api, pool, state.heroSrc);
         if (!next) return;
         const prev = state.heroSrc;
+        const outgoing = [...state.heroWrap.children].find(
+          (node) => !node.classList.contains("is-from-bottom") && !node.classList.contains("is-exit")
+        );
         const incoming = makeCard(next, "is-from-bottom");
         incoming.style.zIndex = "8";
         state.heroWrap.appendChild(incoming);
-        requestAnimationFrame(() => incoming.classList.remove("is-from-bottom"));
-        window.setTimeout(() => {
+        state.busy = true;
+        requestAnimationFrame(() => {
+          if (outgoing) outgoing.classList.add("is-exit");
+          incoming.classList.remove("is-from-bottom");
+        });
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
           [...state.heroWrap.children].forEach((node) => {
             if (node !== incoming) node.remove();
           });
-        }, 780);
+          incoming.style.zIndex = "";
+          state.busy = false;
+        };
+        incoming.addEventListener("transitionend", finish, { once: true });
+        window.setTimeout(finish, 920);
         state.heroSrc = next;
-        if (prev && !api.isRetiring(prev) && prev !== next && !state.stripUrls.includes(prev)) {
-          state.stripUrls.unshift(prev);
-          const stripCard = makeCard(prev, "is-from-bottom");
-          state.strip.insertBefore(stripCard, state.strip.firstChild);
-          requestAnimationFrame(() => stripCard.classList.remove("is-from-bottom"));
+        if (prev && prev !== next && state.stripUrls.length) {
+          const slot = state.stripCursor % state.stripUrls.length;
+          state.stripCursor += 1;
+          state.stripUrls[slot] = prev;
+          const card = state.strip.children[slot];
+          if (card) revealFromBottom(card, prev);
         }
-        while (state.stripUrls.length > 6) {
-          state.stripUrls.pop();
-          const leaving = state.strip.lastElementChild;
-          if (leaving) {
-            leaving.classList.add("is-exit");
-            window.setTimeout(() => leaving.remove(), 480);
-          }
-        }
-        const used = new Set(state.stripUrls.concat([state.heroSrc, next]));
-        state.stripUrls.forEach((url, i) => {
-          if (!api.isRetiring(url)) return;
-          const replacement = api.nextUrl(used);
-          if (!replacement) return;
-          used.add(replacement);
-          state.stripUrls[i] = replacement;
-          const card = state.strip.children[i];
-          if (card) revealFromBottom(card, replacement);
-        });
       },
     },
 
@@ -1374,37 +1346,20 @@ html.dyn-mosaic-on .logo-tile {
           return card;
         });
         root.appendChild(fan);
-        layoutFan(cards);
-        return { fan, cards, urls };
+        const front = Math.floor(count / 2);
+        layoutFan(cards, front);
+        return { fan, cards, urls, front };
       },
       tick(root, pool, state, api) {
-        const next = api.nextUrl(state.urls);
+        const n = state.cards.length;
+        if (!n) return;
+        state.front = (state.front + 1) % n;
+        layoutFan(state.cards, state.front);
+        const card = state.cards[state.front];
+        const next = feedSrc(api, pool, imgSrc(card));
         if (!next) return;
-        const incoming = makeCard(next, "is-from-bottom");
-        incoming.style.zIndex = "8";
-        state.fan.appendChild(incoming);
-        const mid = Math.floor(state.cards.length / 2);
-        state.cards.splice(mid, 0, incoming);
-        state.urls.splice(mid, 0, next);
-        incoming.style.zIndex = "50";
-        requestAnimationFrame(() => {
-          incoming.classList.remove("is-from-bottom");
-          layoutFan(state.cards);
-        });
-        let dropIndex = state.urls.findIndex((url, i) => i !== mid && api.isRetiring(url));
-        if (dropIndex < 0 && state.cards.length > 6) {
-          dropIndex = mid === 0 ? state.cards.length - 1 : 0;
-        }
-        if (dropIndex >= 0 && state.cards.length > 6) {
-          const leaving = state.cards.splice(dropIndex, 1)[0];
-          state.urls.splice(dropIndex, 1);
-          leaving.classList.add("is-exit");
-          const rot = Number(leaving.dataset.rot || 0);
-          leaving.style.zIndex = "1";
-          leaving.style.transform = `rotate(${rot + (rot < 0 ? -18 : 18)}deg) translateY(18%)`;
-          window.setTimeout(() => leaving.remove(), 700);
-          layoutFan(state.cards);
-        }
+        state.urls[state.front] = next;
+        revealFromBottom(card, next);
       },
     },
 
@@ -1467,34 +1422,39 @@ html.dyn-mosaic-on .logo-tile {
         });
         const focus = 0;
         cards[focus].classList.add("is-focus");
-        cards[focus].style.transform = "translate(-4%, -6%) rotate(-2deg)";
-        return { cards, focus, wait: slots.map(() => 0) };
+        cards[focus].style.transform = "translate(-4%, -8%) rotate(-2deg) scale(1.08)";
+        cards[focus].style.zIndex = "20";
+        return { cards, focus, prevFocus: 0, phase: 0, wait: slots.map(() => 0) };
       },
       tick(root, pool, state, api) {
         if (!state.cards.length) return;
-        const prevFocus = state.focus;
-        const busy = {};
-        busy[prevFocus] = true;
-        let nextFocus = pickFairTurn(state, state.cards.length, busy);
-        if (nextFocus < 0) nextFocus = (prevFocus + 1) % state.cards.length;
-        state.cards[prevFocus].classList.remove("is-focus");
-        state.cards[prevFocus].style.transform = state.cards[prevFocus].dataset.base;
-        state.focus = nextFocus;
-        const next = state.cards[state.focus];
-        next.classList.add("is-focus");
-        next.style.zIndex = "20";
-        next.style.transform = "translate(-4%, -6%) rotate(-2deg)";
-        const src = api.nextUrl(imgSrc(state.cards[prevFocus]));
-        if (!src) return;
-        const back = state.cards[prevFocus];
-        back.classList.add("is-from-bottom");
-        back.style.transform = `${back.dataset.base} translateY(28%)`;
-        revealFromBottom(back, src).then(() => {
-          back.classList.remove("is-from-bottom");
-          back.style.transform = back.classList.contains("is-focus")
-            ? "translate(-4%, -6%) rotate(-2deg)"
-            : back.dataset.base;
-        });
+        state.phase = (state.phase || 0) + 1;
+        if (state.phase % 2 === 1) {
+          const prevFocus = state.focus;
+          const busy = {};
+          busy[prevFocus] = true;
+          let nextFocus = pickFairTurn(state, state.cards.length, busy);
+          if (nextFocus < 0) nextFocus = (prevFocus + 1) % state.cards.length;
+          const leaving = state.cards[prevFocus];
+          leaving.classList.remove("is-focus");
+          leaving.style.transform = leaving.dataset.base;
+          window.setTimeout(() => {
+            if (!leaving.classList.contains("is-focus")) leaving.style.zIndex = String(prevFocus);
+          }, 280);
+          state.prevFocus = prevFocus;
+          state.focus = nextFocus;
+          const next = state.cards[state.focus];
+          next.classList.add("is-focus");
+          next.style.transform = "translate(-4%, -8%) rotate(-2deg) scale(1.08)";
+          window.setTimeout(() => {
+            if (next.classList.contains("is-focus")) next.style.zIndex = "20";
+          }, 200);
+          return;
+        }
+        const back = state.cards[state.prevFocus];
+        if (!back || back.classList.contains("is-focus")) return;
+        const src = feedSrc(api, pool, imgSrc(back));
+        if (src) revealFromBottom(back, src);
       },
     },
 
@@ -1620,7 +1580,10 @@ html.dyn-mosaic-on .logo-tile {
           frames.forEach((src) => strip.appendChild(makeCard(src)));
           reel.appendChild(strip);
           root.appendChild(reel);
-          reels.push({ reel, strip, frames, index: 0 });
+          const item = { reel, strip, frames, index: 0, busy: false };
+          sizeReelFrames(item);
+          snapReelStrip(item, false);
+          reels.push(item);
         }
         return { reels, wait: [0, 0, 0] };
       },
@@ -1629,33 +1592,45 @@ html.dyn-mosaic-on .logo-tile {
         const reelIndex = pickFairTurn(state, 3, null);
         if (reelIndex < 0) return;
         const reel = state.reels[reelIndex];
+        if (reel.busy) return;
+        sizeReelFrames(reel);
         const used = new Set();
         state.reels.forEach((item) => used.add(visibleOf(item)));
         const spin = 3 + Math.floor(Math.random() * 4);
         for (let s = 0; s < spin; s += 1) {
-          const src = api.nextUrl(used);
+          const src = feedSrc(api, pool, used);
           if (!src) continue;
           used.add(src);
           reel.frames.push(src);
           reel.strip.appendChild(makeCard(src));
         }
+        sizeReelFrames(reel);
         reel.index += spin;
-        const frameH = reel.reel.getBoundingClientRect().height || 1;
-        reel.strip.style.transform = `translateY(${-reel.index * frameH}px)`;
-        if (reel.frames.length > 24) {
-          window.setTimeout(() => {
+        reel.busy = true;
+        snapReelStrip(reel, true);
+        let settled = false;
+        const afterSpin = () => {
+          if (settled) return;
+          settled = true;
+          reel.strip.removeEventListener("transitionend", onEnd);
+          if (reel.frames.length > 24) {
             const remove = reel.frames.length - 10;
             for (let i = 0; i < remove; i += 1) {
               reel.frames.shift();
               if (reel.strip.firstElementChild) reel.strip.firstElementChild.remove();
             }
-            reel.index -= remove;
-            reel.strip.style.transition = "none";
-            reel.strip.style.transform = `translateY(${-reel.index * frameH}px)`;
-            reel.strip.offsetHeight;
-            reel.strip.style.transition = "";
-          }, 1000);
-        }
+            reel.index = Math.max(0, reel.index - remove);
+            sizeReelFrames(reel);
+            snapReelStrip(reel, false);
+          }
+          reel.busy = false;
+        };
+        const onEnd = (event) => {
+          if (event && event.target !== reel.strip) return;
+          afterSpin();
+        };
+        reel.strip.addEventListener("transitionend", onEnd);
+        window.setTimeout(afterSpin, 1100);
       },
     },
 
@@ -2507,71 +2482,34 @@ html.dyn-mosaic-on .logo-tile {
     cubes: {
       interval: 4000,
       mount(root, pool) {
-        const field = document.createElement("div");
-        field.className = "dyn-cube-field";
-        const portrait = stageSize(root).portrait;
-        const colsN = portrait ? 4 : 6;
-        const rowsN = portrait ? 6 : 4;
-        const count = colsN * rowsN;
-        const urls = fill(pool, count * 2);
-        const cubes = [];
-        for (let i = 0; i < count; i += 1) {
-          const col = i % colsN;
-          const row = Math.floor(i / colsN);
-          const cube = document.createElement("div");
-          cube.className = "dyn-cube";
-          cube.style.setProperty("--half", "min(4.8cqw, 58px)");
-          cube.style.setProperty("--cx", ((portrait ? 10 : 6) + col * (portrait ? 22 : 15) + (Math.random() * 5 - 2.5)).toFixed(1) + "%");
-          cube.style.setProperty("--cy", ((portrait ? 6 : 8) + row * (portrait ? 15 : 22) + (Math.random() * 6 - 3)).toFixed(1) + "%");
-          cube.style.setProperty("--cz", (Math.random() * 280 - 120).toFixed(0) + "px");
-          const rx = Math.random() * 16 - 6;
-          const ry = Math.random() * 40 - 16;
-          cube.style.setProperty("--rx", rx.toFixed(1) + "deg");
-          cube.style.setProperty("--ry", ry.toFixed(1) + "deg");
-          ["f-front", "f-back", "f-right", "f-left", "f-top", "f-bottom"].forEach((name, f) => {
-            const face = document.createElement("div");
-            face.className = "dyn-cube-face " + name;
-            if (f === 0 || f === 2 || f === 1) {
-              const img = document.createElement("img");
-              img.alt = "";
-              img.src = urls[(i * 3 + f) % Math.max(urls.length, 1)] || urls[i] || "";
-              face.appendChild(img);
-            }
-            cube.appendChild(face);
-          });
-          field.appendChild(cube);
-          cubes.push({ el: cube, rx, ry, spin: 0 });
-        }
-        root.appendChild(field);
-        const vignette = document.createElement("div");
-        vignette.className = "dyn-cube-vignette";
-        root.appendChild(vignette);
-        const state = { cubes, field, rotY: -18, poolRef: pool, wait: cubes.map(() => 0), stopped: false };
-        function spinField(now) {
-          if (state.stopped) return;
-          state.rotY = -18 + Math.sin(now / 14000) * 10;
-          field.style.transform = `rotateX(12deg) rotateY(${state.rotY.toFixed(2)}deg)`;
-          state.raf = window.requestAnimationFrame(spinField);
-        }
-        state.raf = window.requestAnimationFrame(spinField);
-        return state;
+        const api = globalThis.BGTileField;
+        if (!api) return { stopped: true };
+        return api.mount(root, pool);
       },
-      tick(root, pool, state, api) {
-        if (state) state.poolRef = pool;
-        const index = pickFairTurn(state, state.cubes.length, null);
-        if (index < 0) return;
-        const cube = state.cubes[index];
-        const src = feedSrc(api, pool);
-        const faces = [...cube.el.querySelectorAll(".dyn-cube-face img")];
-        const hidden = faces[(cube.spin + 1) % Math.max(faces.length, 1)] || faces[0];
-        if (hidden && src) hidden.src = src;
-        cube.spin += 1;
-        cube.ry += 90;
-        cube.el.style.setProperty("--ry", cube.ry.toFixed(1) + "deg");
+      tick(root, pool, state) {
+        const api = globalThis.BGTileField;
+        if (api) api.tick(root, pool, state);
       },
       unmount(root, state) {
-        if (state) state.stopped = true;
-        stopTimers(state);
+        const api = globalThis.BGTileField;
+        if (api) api.unmount(root, state);
+      },
+    },
+
+    depthfield: {
+      interval: 4000,
+      mount(root, pool) {
+        const api = globalThis.BGTileField;
+        if (!api) return { stopped: true };
+        return api.mount(root, pool);
+      },
+      tick(root, pool, state) {
+        const api = globalThis.BGTileField;
+        if (api) api.tick(root, pool, state);
+      },
+      unmount(root, state) {
+        const api = globalThis.BGTileField;
+        if (api) api.unmount(root, state);
       },
     },
 

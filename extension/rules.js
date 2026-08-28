@@ -123,6 +123,7 @@
     flipwall: { label: "3D flip wall" },
     livewall: { label: "Live mosaic" },
     cubes: { label: "Cube field" },
+    depthfield: { label: "Depth Field" },
     pedestals: { label: "Pedestals" },
   };
 

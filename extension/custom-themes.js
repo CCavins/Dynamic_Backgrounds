@@ -29,6 +29,7 @@
     "flipwall",
     "livewall",
     "cubes",
+    "depthfield",
     "pedestals",
   ]);
   const RESERVED = new Set(["off", ...MESSAGE_ENGINES, ...MOSAIC_ENGINES]);

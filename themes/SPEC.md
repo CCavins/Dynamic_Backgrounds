@@ -114,7 +114,7 @@ Array of `{ "box", "text", "max", "min" }`. Selectors are queried inside the the
 
 Do not use these as a new pack `id` or a new engine `id`:
 
-`off`, `led-scoreboard`, `neon-nightclub`, `ultras-tifo`, `holo-card`, `broadcast-tv`, `liquid-glass`, `parallax-drift`, `decks`, `spotlight`, `coverflow`, `fan`, `filmstrip`, `scatter`, `cascade`, `orbit`, `billboard`, `reels`, `polaroid`, `flipwall`, `livewall`, `cubes`, `pedestals`
+`off`, `led-scoreboard`, `neon-nightclub`, `ultras-tifo`, `holo-card`, `broadcast-tv`, `liquid-glass`, `parallax-drift`, `decks`, `spotlight`, `coverflow`, `fan`, `filmstrip`, `scatter`, `cascade`, `orbit`, `billboard`, `reels`, `polaroid`, `flipwall`, `livewall`, `cubes`, `depthfield`, `pedestals`
 
 Wrapping a built-in: set `"engine"` to one of those built-in ids (matching `kind`) and give the pack a **new** `id`. That reuses the built-in JS as-is. You cannot redesign that JS from JSON.
 
