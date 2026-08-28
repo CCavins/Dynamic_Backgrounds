@@ -389,6 +389,10 @@
     stageRatioH.value = String(parsed.ah);
   }
 
+  function showCustomRatioFields(show) {
+    if (stageRatioRow) stageRatioRow.hidden = !show;
+  }
+
   function syncStageAspectUI(mode) {
     if (!stageAspect) return;
     const next = rulesApi.normalizeStageAspect(mode);
@@ -397,45 +401,32 @@
     if (![...stageAspect.options].some((opt) => opt.value === stageAspect.value)) {
       stageAspect.value = "custom";
     }
+    const custom = stageAspect.value === "custom";
     fillRatioFields(next === "auto" ? "16:9" : next);
-    if (stageRatioRow) stageRatioRow.hidden = next === "auto";
+    showCustomRatioFields(custom);
     syncSelectUI(stageAspect);
   }
 
   if (stageAspect) {
     enhanceSelect(stageAspect);
     stageAspect.addEventListener("change", () => {
-      if (stageAspect.value === "auto") {
-        if (stageRatioRow) stageRatioRow.hidden = true;
-      } else {
-        if (stageRatioRow) stageRatioRow.hidden = false;
-        if (stageAspect.value !== "custom") fillRatioFields(stageAspect.value);
-        else if (!stageRatioW.value || !stageRatioH.value) fillRatioFields("16:9");
+      const custom = stageAspect.value === "custom";
+      if (custom) {
+        const seed =
+          cachedSettings && cachedSettings.stageAspect && cachedSettings.stageAspect !== "auto"
+            ? cachedSettings.stageAspect
+            : "16:9";
+        fillRatioFields(seed);
       }
+      showCustomRatioFields(custom);
       persist();
     });
   }
   if (stageRatioW) {
-    stageRatioW.addEventListener("input", () => {
-      if (stageAspect) {
-        const next = readStageAspect();
-        const preset = rulesApi.presetForAspect ? rulesApi.presetForAspect(next) : "custom";
-        stageAspect.value = preset;
-        syncSelectUI(stageAspect);
-      }
-      schedulePersist();
-    });
+    stageRatioW.addEventListener("input", schedulePersist);
   }
   if (stageRatioH) {
-    stageRatioH.addEventListener("input", () => {
-      if (stageAspect) {
-        const next = readStageAspect();
-        const preset = rulesApi.presetForAspect ? rulesApi.presetForAspect(next) : "custom";
-        stageAspect.value = preset;
-        syncSelectUI(stageAspect);
-      }
-      schedulePersist();
-    });
+    stageRatioH.addEventListener("input", schedulePersist);
   }
   [
     mosaicShowBackground,
