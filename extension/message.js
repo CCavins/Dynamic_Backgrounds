@@ -18,6 +18,10 @@
   let lastSettingsKey = "";
   let lastThemeSettings = null;
   let cycle = 0;
+  let pendingRebuild = false;
+  let rebuildGen = 0;
+  let ignoreResizeUntil = 0;
+  let mountedHostKey = "";
 
   function captureKey(capture) {
     if (!capture) return "";
@@ -65,12 +69,59 @@
     return root;
   }
 
+  function requestRebuild() {
+    pendingRebuild = true;
+    rebuildGen += 1;
+    mountedTheme = "";
+    mountedAspect = "";
+  }
+
+  function suppressResizeRebuild(ms) {
+    ignoreResizeUntil = Math.max(ignoreResizeUntil, performance.now() + (ms || 1200));
+  }
+
+  function hostSizeKey(host) {
+    if (!host) return "";
+    return host.clientWidth + "x" + host.clientHeight;
+  }
+
+  function nextFrame() {
+    return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  }
+
+  function layoutReady(el) {
+    return Boolean(el && el.clientWidth >= 8 && el.clientHeight >= 8);
+  }
+
+  async function waitHostStable() {
+    await nextFrame();
+    await nextFrame();
+    const start = performance.now();
+    let last = "";
+    let hits = 0;
+    while (performance.now() - start < 800) {
+      const host = rules.findOverlayHost && rules.findOverlayHost();
+      if (layoutReady(host)) {
+        const key = host.clientWidth + "x" + host.clientHeight;
+        if (key === last) {
+          hits += 1;
+          if (hits >= 2) return host;
+        } else {
+          hits = 0;
+          last = key;
+        }
+      }
+      await nextFrame();
+    }
+    return rules.findOverlayHost && rules.findOverlayHost();
+  }
+
   function unmountTheme() {
     const root = document.getElementById(OVERLAY_ID);
     if (active && active.def && typeof active.def.unmount === "function" && root) {
       active.def.unmount(root, active.state);
     }
-    if (root) root.replaceChildren();
+    if (root) root.remove();
     active = null;
     mountedTheme = "";
     mountedAspect = "";
@@ -78,10 +129,34 @@
     lastSettingsKey = "";
   }
 
+  async function rebuildNow(id, themeSettings) {
+    const token = rebuildGen;
+    unmountTheme();
+    suppressResizeRebuild(1600);
+    document.documentElement.classList.add("dyn-message-on");
+    if (typeof rules.applyOutputCanvas === "function") rules.applyOutputCanvas();
+    if (typeof rules.findOverlayHost === "function") rules.findOverlayHost();
+    suppressResizeRebuild(1600);
+    await waitHostStable();
+    if (token !== rebuildGen) {
+      pendingRebuild = true;
+      scheduleApply(80);
+      return false;
+    }
+    const ok = mountTheme(id, themeSettings);
+    if (ok) {
+      const host = rules.findOverlayHost && rules.findOverlayHost();
+      mountedHostKey = hostSizeKey(host);
+    }
+    return ok;
+  }
+
   function mountTheme(id, themeSettings) {
     const def = themeApi.themes[id];
     if (!def) return false;
-    unmountTheme();
+    const host = rules.findOverlayHost && rules.findOverlayHost();
+    if (host && !layoutReady(host)) return false;
+    if (active || document.getElementById(OVERLAY_ID)) unmountTheme();
     const root = ensureOverlay();
     if (!root) return false;
     root.dataset.theme = id;
@@ -112,6 +187,26 @@
     const style = document.getElementById(STYLE_ID);
     if (style) style.remove();
     handoff.clearMode("message");
+  }
+
+  async function releaseForMosaic() {
+    const root = document.getElementById(OVERLAY_ID);
+    const wasOn =
+      Boolean(root) ||
+      document.documentElement.classList.contains("dyn-message-on") ||
+      handoff.currentMode() === "message";
+    if (!wasOn) {
+      teardownHard();
+      return;
+    }
+    if (active && root && typeof active.def.hide === "function") {
+      try {
+        await active.def.hide(root, active.state, lastThemeSettings);
+      } catch {
+        /* ignore */
+      }
+    }
+    teardownHard();
   }
 
   function decodeImage(src) {
@@ -167,7 +262,11 @@
   const customApi = globalThis.BGCustomThemes;
   if (customApi && typeof customApi.onChange === "function") {
     customApi.onChange(() => {
-      mountedTheme = "";
+      // Imported mosaic packs must not remount a live message beat.
+      const kind = handoff.liveKind();
+      const mode = handoff.currentMode();
+      if (kind === "mosaic" || (kind === "" && mode === "mosaic")) return;
+      requestRebuild();
       lastKey = "";
       scheduleApply();
     });
@@ -195,7 +294,10 @@
     const def = themeApi.themes[theme];
 
     if (theme === "off" || !def) {
-      teardownHard();
+      // If a message beat is live and mosaic theme is also off, still clear any
+      // leftover message chrome. Mosaic handles its own yield separately.
+      if (handoff.liveKind() === "mosaic") await releaseForMosaic();
+      else teardownHard();
       return;
     }
 
@@ -206,41 +308,62 @@
     const hasMsg = Boolean(cap.src || cap.message || cap.name);
     const mosaicOn =
       settings.enabled !== false && rules.normalizeMosaicTheme(settings.mosaicTheme) !== "off";
-    // Do not steal a mosaic page, or an unknown boot while a mosaic theme is on.
-    if (kind === "mosaic" || mosaicPage) return;
+    // Yield cleanly when Vixi is on a mosaic beat.
+    if (kind === "mosaic") {
+      document.documentElement.classList.add("dyn-cover-message", "dyn-cover-mosaic");
+      if (!mosaicOn) await releaseForMosaic();
+      return;
+    }
+    // Do not steal a pure mosaic page with no message content.
+    if (kind !== "message" && mosaicPage && !hasMsg) return;
     if (kind === "" && mosaicOn && !hasMsg) return;
-    if (kind !== "message" && !(kind === "" && (!mode || mode === "message"))) return;
+    if (kind !== "message" && !(kind === "" && (!mode || mode === "message" || hasMsg))) return;
 
     ensureStyle();
     ensureFonts();
     lastThemeSettings = themeSettings;
 
     await handoff.activate("message", {
-      prepare() {
-        // Mount the themed chrome before the outgoing overlay fades, so the
-        // fade reveals the theme's set piece instead of the stock template.
-        document.documentElement.classList.add("dyn-message-on");
+      async prepare() {
+        // Build our message theme while mosaic is still covering the stage, so
+        // the fade never reveals Vixi's stock capture/message layers.
+        const html = document.documentElement;
+        html.classList.add("dyn-message-on", "dyn-cover-message", "dyn-cover-mosaic");
+        await decodeImage(rules.messageCapture().src);
         const overlay = document.getElementById(OVERLAY_ID);
-        if (mountedTheme !== theme || mountedAspect !== aspect || !overlay) {
-          mountTheme(theme, themeSettings);
+        const needsMount =
+          pendingRebuild || mountedTheme !== theme || mountedAspect !== aspect || !overlay;
+        if (needsMount) {
+          pendingRebuild = false;
+          if (!(await rebuildNow(theme, themeSettings))) return;
+        } else if (lastSettingsKey !== settingsKey(theme, themeSettings)) {
+          lastSettingsKey = settingsKey(theme, themeSettings);
+          if (overlay && active && typeof active.def.applySettings === "function") {
+            active.def.applySettings(overlay, active.state, themeSettings);
+          }
         }
-        return decodeImage(rules.messageCapture().src);
+        const live = document.getElementById(OVERLAY_ID);
+        if (live && typeof rules.ensureBrandChrome === "function") {
+          rules.ensureBrandChrome(live, "message");
+        }
+        const capture = rules.messageCapture();
+        if (!capture.src && !capture.message && !capture.name) return;
+        const key = captureKey(capture);
+        if (key === lastKey) return;
+        lastKey = key;
+        await present(capture, themeSettings, false);
       },
       async reveal() {
         document.documentElement.classList.add("dyn-message-on");
         const overlay = document.getElementById(OVERLAY_ID);
-        if (mountedTheme !== theme || mountedAspect !== aspect || !overlay) {
-          if (!mountTheme(theme, themeSettings)) return;
-        } else if (lastSettingsKey !== settingsKey(theme, themeSettings)) {
-          lastSettingsKey = settingsKey(theme, themeSettings);
-          if (typeof active.def.applySettings === "function") {
-            active.def.applySettings(overlay, active.state, themeSettings);
-          }
+        if (!overlay || !active || mountedTheme !== theme) {
+          pendingRebuild = true;
+          if (!(await rebuildNow(theme, themeSettings))) return;
         }
-        if (overlay && typeof rules.ensureBrandChrome === "function") {
-          rules.ensureBrandChrome(overlay, "message");
+        const live = document.getElementById(OVERLAY_ID);
+        if (live && typeof rules.ensureBrandChrome === "function") {
+          rules.ensureBrandChrome(live, "message");
         }
-
         const capture = rules.messageCapture();
         if (!capture.src && !capture.message && !capture.name) return;
         const key = captureKey(capture);
@@ -283,11 +406,53 @@
 
   try {
     chrome.storage.onChanged.addListener((changes, area) => {
-      if (area === "local") scheduleApply();
+      if (area !== "local") return;
+      // Changing the mosaic theme must not interrupt a live message.
+      const touchesMessage = Boolean(
+        changes.messageTheme ||
+          changes.messageThemeSettings ||
+          changes.messageShowBackground ||
+          changes.messageShowQr ||
+          changes.messageShowLogo ||
+          changes.enabled ||
+          changes.stageAspect ||
+          changes.showBackground ||
+          changes.showQr ||
+          changes.showLogo ||
+          changes.customThemes ||
+          changes.customEngines
+      );
+      if (!touchesMessage) return;
+      if (
+        changes.messageTheme ||
+        changes.enabled ||
+        changes.stageAspect ||
+        changes.messageThemeSettings ||
+        changes.messageShowBackground ||
+        changes.messageShowQr ||
+        changes.messageShowLogo
+      ) {
+        requestRebuild();
+      }
+      scheduleApply();
     });
   } catch {
     /* extension reloaded */
   }
+
+  let resizeRebuildTimer = 0;
+  window.addEventListener("resize", () => {
+    if (resizeRebuildTimer) clearTimeout(resizeRebuildTimer);
+    resizeRebuildTimer = setTimeout(() => {
+      resizeRebuildTimer = 0;
+      if (performance.now() < ignoreResizeUntil) return;
+      const host = rules.findOverlayHost && rules.findOverlayHost();
+      const key = hostSizeKey(host);
+      if (key && key === mountedHostKey) return;
+      requestRebuild();
+      scheduleApply();
+    }, 250);
+  });
 
   apply().catch(() => {});
 })();

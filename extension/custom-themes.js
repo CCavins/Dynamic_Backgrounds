@@ -640,11 +640,17 @@
         const img = card.querySelector("img");
         const src = nextSrc(api || state.api, pool, img && img.src);
         if (!img || !src) return;
-        card.classList.add("is-swap");
-        window.setTimeout(() => {
-          img.src = src;
-          card.classList.remove("is-swap");
-        }, 220);
+        const probe = new Image();
+        probe.onload = () => {
+          card.classList.add("is-swap");
+          window.setTimeout(() => {
+            img.src = src;
+            card.classList.add("dyn-feed-ready");
+            card.classList.remove("dyn-feed-pending", "is-swap");
+          }, 220);
+        };
+        probe.src = src;
+        if (probe.complete && probe.naturalWidth) probe.onload();
       },
       unmount(root) {
         if (root) root.replaceChildren();

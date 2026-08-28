@@ -46,6 +46,19 @@
     "html.dyn-kind-mosaic [data-dyn-chrome-kind=\"message\"]{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
+    "html.dyn-kind-message:not(.dyn-handoff) #dyn-mosaic-theme," +
+    "html.dyn-kind-mosaic:not(.dyn-handoff) #dyn-message-theme{" +
+      "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
+    "}" +
+    "html.dyn-handoff .capture-content-layer," +
+    "html.dyn-handoff .message-layer," +
+    "html.dyn-handoff .message-content," +
+    "html.dyn-handoff .v2-message," +
+    "html.dyn-handoff .mosaic-tile-slot," +
+    "html.dyn-handoff .mosaic-asset," +
+    "html.dyn-handoff .mosaic-image{" +
+      "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
+    "}" +
     "html.dyn-show-bg #dyn-theme-host," +
     "html.dyn-show-bg.dyn-kind-message #dyn-message-theme," +
     "html.dyn-show-bg.dyn-kind-message #dyn-message-theme[data-theme]," +
@@ -61,6 +74,9 @@
     "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .scene::before," +
     "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .scene::after{" +
       "background:transparent!important;background-image:none!important;" +
+    "}" +
+    "html.dyn-theme-on,html.dyn-theme-on body,html.dyn-theme-on .output-page{" +
+      "background:#000!important;" +
     "}" +
     "html.dyn-stage-forced,html.dyn-stage-forced body,html.dyn-stage-forced .output-page{" +
       "background:#000!important;overflow:hidden!important;" +
@@ -103,19 +119,14 @@
     ensureCoverStyle();
     const html = document.documentElement;
     const enabled = s.enabled !== false;
-    html.classList.toggle(
-      "dyn-cover-message",
-      Boolean(enabled && s.messageTheme && s.messageTheme !== "off")
-    );
-    html.classList.toggle(
-      "dyn-cover-mosaic",
-      Boolean(enabled && s.mosaicTheme && s.mosaicTheme !== "off")
-    );
-    const eitherTheme = Boolean(
-      enabled &&
-        ((s.messageTheme && s.messageTheme !== "off") || (s.mosaicTheme && s.mosaicTheme !== "off"))
-    );
+    const msgThemeOn = Boolean(enabled && s.messageTheme && s.messageTheme !== "off");
+    const mosThemeOn = Boolean(enabled && s.mosaicTheme && s.mosaicTheme !== "off");
+    const eitherTheme = msgThemeOn || mosThemeOn;
     const kind = rules.activeThemeKind ? rules.activeThemeKind(s) : "";
+    // Keep stock layers covered whenever that kind's theme is enabled. Dropping
+    // the message cover while mosaic still fades is what flashes Vixi's original.
+    html.classList.toggle("dyn-cover-message", msgThemeOn);
+    html.classList.toggle("dyn-cover-mosaic", mosThemeOn);
     const chrome = rules.chromeForKind ? rules.chromeForKind(s, kind) : { showBackground: false };
     const liveOn = rules.liveThemeIsOn ? rules.liveThemeIsOn(s) : eitherTheme;
     html.classList.toggle("dyn-theme-on", liveOn);
@@ -132,20 +143,67 @@
     }
   }
 
+  function beginHandoff() {
+    ensureCoverStyle();
+    document.documentElement.classList.add("dyn-handoff");
+  }
+
+  function endHandoff() {
+    document.documentElement.classList.remove("dyn-handoff");
+    if (lastSettings) applyCovers(lastSettings);
+  }
+
+  function layerLooksLive(el) {
+    if (!el) return false;
+    try {
+      if (el.hidden || el.getAttribute("aria-hidden") === "true") return false;
+      const st = getComputedStyle(el);
+      if (st.display === "none" || st.visibility === "hidden") return false;
+      if (Number.parseFloat(st.opacity || "1") < 0.05) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 2 && r.height > 2;
+    } catch {
+      return false;
+    }
+  }
+
   function liveKind() {
+    let hint = "";
     try {
       const q = location.search || "";
-      if (/(?:^|[?&])standalone=mosaic(?:&|$)/i.test(q)) return "mosaic";
-      if (/(?:^|[?&])standalone=message(?:&|$)/i.test(q)) return "message";
+      if (/(?:^|[?&])standalone=mosaic(?:&|$)/i.test(q)) hint = "mosaic";
+      if (/(?:^|[?&])standalone=message(?:&|$)/i.test(q)) hint = "message";
     } catch {
       /* ignore */
     }
-    const cap = rules.messageCapture();
-    const hasMsg = Boolean(cap.src || cap.message || cap.name);
+    const cap = typeof rules.messageCapture === "function" ? rules.messageCapture() : {};
+    const hasMsg = Boolean(cap && (cap.src || cap.message || cap.name));
     const mosaicN = typeof rules.mosaicContentCount === "function" ? rules.mosaicContentCount() : 0;
-    const mosaicPage = mosaicN > 0 || (typeof rules.pageLooksLikeMosaic === "function" && rules.pageLooksLikeMosaic());
+    const mosaicPage =
+      mosaicN > 0 ||
+      (typeof rules.pageLooksLikeMosaic === "function" && rules.pageLooksLikeMosaic());
+    const msgLayer =
+      document.querySelector(".capture-content-layer") ||
+      document.querySelector(".message-layer") ||
+      document.querySelector(".v2-message");
+    const mosaicLayer =
+      document.querySelector(".mosaic-layout") ||
+      document.querySelector(".v2-mosaic-swap-tile") ||
+      document.querySelector(".v2-asset-tile");
+    const msgLive = hasMsg && layerLooksLive(msgLayer);
+    const mosaicLive = mosaicPage && layerLooksLive(mosaicLayer);
+    // A live message beat wins even on ?standalone=mosaic links, so mosaic
+    // cards can fade out instead of sitting on top of the capture.
+    if (msgLive && !mosaicLive) return "message";
+    if (mosaicLive && !msgLive) return "mosaic";
+    if (msgLive) return "message";
+    if (mosaicLive) return "mosaic";
+    if (hint === "mosaic" || hint === "message") return hint;
+    // Residual .mosaic-layout in the DOM must not block a message beat when
+    // the mosaic layer is not actually visible (Vixi often leaves the shell).
+    if (hasMsg && !mosaicLive) return "message";
     if (mosaicPage && !hasMsg) return "mosaic";
-    if (hasMsg && !mosaicPage) return "message";
+    if (hasMsg) return "message";
     return "";
   }
 
@@ -174,25 +232,30 @@
         if (typeof tasks.reveal === "function") await withTimeout(tasks.reveal(), 12000);
         return;
       }
-      if (typeof tasks.prepare === "function") await withTimeout(tasks.prepare(), 6000);
-      const outgoing = mode && actors[mode];
-      if (outgoing && typeof outgoing.hide === "function") {
-        try {
-          await withTimeout(outgoing.hide(), 2600);
-        } catch {
-          /* outgoing overlay may already be gone */
+      beginHandoff();
+      try {
+        if (typeof tasks.prepare === "function") await withTimeout(tasks.prepare(), 8000);
+        const outgoing = mode && actors[mode];
+        if (outgoing && typeof outgoing.hide === "function") {
+          try {
+            await withTimeout(outgoing.hide(), 2600);
+          } catch {
+            /* outgoing overlay may already be gone */
+          }
         }
-      }
-      const prev = mode;
-      mode = kind;
-      if (typeof tasks.reveal === "function") await withTimeout(tasks.reveal(), 12000);
-      const prevActor = prev && actors[prev];
-      if (prevActor && typeof prevActor.teardown === "function") {
-        try {
-          prevActor.teardown();
-        } catch {
-          /* ignore */
+        const prev = mode;
+        mode = kind;
+        if (typeof tasks.reveal === "function") await withTimeout(tasks.reveal(), 12000);
+        const prevActor = prev && actors[prev];
+        if (prevActor && typeof prevActor.teardown === "function") {
+          try {
+            prevActor.teardown();
+          } catch {
+            /* ignore */
+          }
         }
+      } finally {
+        endHandoff();
       }
     });
   }

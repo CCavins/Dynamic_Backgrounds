@@ -119,6 +119,8 @@
     let nextImageId = 1;
     let coverageTimer = 0;
     let showcaseSwapTimer = 0;
+    let retireGate = 0;
+    let poolSeeded = false;
     let stopped = false;
     const tiles = [];
 
@@ -780,27 +782,49 @@ uniform float uImageMix;`
       return counts;
     }
 
+    function liveImages() {
+      return images.filter((img) => !img.retiring);
+    }
+
+    function imageById(id) {
+      if (id == null) return null;
+      for (let i = 0; i < images.length; i += 1) {
+        if (images[i].id === id) return images[i];
+      }
+      return null;
+    }
+
+    function markImageUsed(img) {
+      if (!img) return;
+      img.uses = (img.uses || 0) + 1;
+      if (img.fresh && (img.uses >= 8 || (img.addedAt && performance.now() - img.addedAt > 20000))) {
+        img.fresh = false;
+      }
+    }
+
     function pickImageForTile(tile, excludeFace, alsoExcludeId, usage) {
-      if (!images.length) return null;
-      if (images.length === 1) return images[0];
+      const pool = liveImages();
+      if (!pool.length) return null;
+      if (pool.length === 1) return pool[0];
       const onTile = imagesOnTile(tile, excludeFace);
       if (alsoExcludeId != null) onTile.add(alsoExcludeId);
       const counts = usage || countImageUsage();
-      let candidates = images.filter((img) => !onTile.has(img.id));
+      let candidates = pool.filter((img) => !onTile.has(img.id));
       if (!candidates.length) {
-        candidates = images.filter((img) => img.id !== alsoExcludeId);
-        if (!candidates.length) candidates = images.slice();
+        candidates = pool.filter((img) => img.id !== alsoExcludeId);
+        if (!candidates.length) candidates = pool.slice();
       }
       let best = candidates[0];
       let bestScore = Infinity;
       candidates.forEach((img) => {
-        const score = (counts.get(img.id) || 0) + Math.random() * 0.35;
+        const score = (counts.get(img.id) || 0) + Math.random() * 0.35 - (img.fresh ? 1.35 : 0);
         if (score < bestScore) {
           bestScore = score;
           best = img;
         }
       });
       counts.set(best.id, (counts.get(best.id) || 0) + 1);
+      markImageUsed(best);
       return best;
     }
 
@@ -818,7 +842,8 @@ uniform float uImageMix;`
     }
 
     function ensureFaceCoverage(force) {
-      if (!images.length) return;
+      const live = liveImages();
+      if (!live.length) return;
       const refs = [];
       tiles.forEach((tile) => {
         for (let f = 0; f < 6; f++) refs.push({ tile, face: f, slot: tile.faceSlots[f] });
@@ -826,21 +851,40 @@ uniform float uImageMix;`
       const empties = refs.filter((r) => r.slot.state === "empty");
       if (!empties.length) return;
       const busy = refs.length - empties.length;
-      const targetFilled = images.length >= 3 ? refs.length : Math.max(1, Math.floor(refs.length * 0.9));
+      const targetFilled = live.length >= 3 ? refs.length : Math.max(1, Math.floor(refs.length * 0.9));
       let need = targetFilled - busy;
       if (!force && need <= 0) return;
       if (force) need = Math.max(need, empties.length);
       const usage = countImageUsage();
-      const fillCount = Math.min(need, empties.length, FACE_FILL_PER_TICK);
+      const cap = force ? FACE_FILL_PER_TICK : 8;
+      const fillCount = Math.min(need, empties.length, cap);
       for (let i = 0; i < fillCount; i++) {
         const image = pickImageForTile(empties[i].tile, empties[i].face, null, usage);
         if (image) beginFaceCycle(empties[i].tile, empties[i].face, image);
       }
     }
 
+    function clearFaceToEmpty(tile, faceIndex) {
+      const slot = tile.faceSlots[faceIndex];
+      slot.imageId = null;
+      slot.pendingImage = null;
+      slot.fade = 0;
+      slot.state = "empty";
+      slot.holdUntil = 0;
+      if (slot.material && slot.material.userData.imageMix) slot.material.userData.imageMix.value = 0;
+      tile.mesh.material[faceIndex] = emptyFaceMaterial(tile);
+    }
+
     function updateFaceTransitions(dt, now) {
       const fadeSpeed = 1000 / FADE_MS;
       let activeFades = 0;
+      retireGate += dt;
+      let retireAllowed = 0;
+      while (retireGate >= 0.07) {
+        retireGate -= 0.07;
+        retireAllowed += 1;
+      }
+      const live = liveImages();
       tiles.forEach((tile) => {
         tile.faceSlots.forEach((slot) => {
           if (slot.state === "fadingIn" || slot.state === "fadingOut") activeFades += 1;
@@ -853,21 +897,37 @@ uniform float uImageMix;`
             if (slot.material) slot.material.userData.imageMix.value = smoothstep(slot.fade);
             if (slot.fade >= 1) {
               slot.state = "holding";
-              slot.holdUntil = now + DWELL_MS * (0.55 + Math.random() * 0.7);
+              const shown = imageById(slot.imageId);
+              slot.holdUntil =
+                now + DWELL_MS * (shown && shown.retiring ? 0.12 : 0.55 + Math.random() * 0.7);
               activeFades -= 1;
             }
           } else if (slot.state === "holding") {
-            if (now >= slot.holdUntil && images.length && activeFades < MAX_ACTIVE_FADES) {
-              slot.pendingImage = pickImageForTile(tile, f, slot.imageId);
-              slot.state = "fadingOut";
-              activeFades += 1;
-            }
+            const shown = imageById(slot.imageId);
+            const dropFace = !live.length || Boolean(shown && shown.retiring);
+            const due = now >= slot.holdUntil;
+            if (!dropFace && !due) return;
+            if (dropFace && (retireAllowed <= 0 || activeFades >= 12)) return;
+            if (!dropFace && activeFades >= MAX_ACTIVE_FADES) return;
+            const next = dropFace && !live.length ? null : pickImageForTile(tile, f, slot.imageId);
+            if (!dropFace && !next) return;
+            slot.pendingImage = next;
+            slot.state = "fadingOut";
+            activeFades += 1;
+            if (dropFace) retireAllowed -= 1;
           } else if (slot.state === "fadingOut") {
+            if (slot.pendingImage && slot.pendingImage.retiring) {
+              slot.pendingImage = live.length ? pickImageForTile(tile, f, slot.imageId) : null;
+            }
             slot.fade = Math.max(0, slot.fade - dt * fadeSpeed);
             if (slot.material) slot.material.userData.imageMix.value = smoothstep(slot.fade);
             if (slot.fade <= 0) {
-              const next = slot.pendingImage || pickImageForTile(tile, f, slot.imageId);
+              const next =
+                slot.pendingImage && !slot.pendingImage.retiring
+                  ? slot.pendingImage
+                  : pickImageForTile(tile, f, slot.imageId);
               if (next) applyTextureToSlot(tile, f, next, true);
+              else clearFaceToEmpty(tile, f);
             }
           }
         });
@@ -1017,14 +1077,46 @@ uniform float uImageMix;`
       if (activePreset === "showcase") relayoutShowcase();
     }
 
+    function pruneRetiredImages() {
+      const used = new Set();
+      tiles.forEach((tile) => {
+        tile.faceSlots.forEach((slot) => {
+          if (slot.imageId != null) used.add(slot.imageId);
+          if (slot.pendingImage && slot.pendingImage.id != null) used.add(slot.pendingImage.id);
+        });
+      });
+      for (let i = images.length - 1; i >= 0; i -= 1) {
+        const img = images[i];
+        if (!img.retiring || used.has(img.id)) continue;
+        if (img.texture) img.texture.dispose();
+        images.splice(i, 1);
+      }
+    }
+
     function syncPool(nextPool) {
       const urls = uniqueUrls(nextPool);
+      const want = new Set(urls);
+      const now = performance.now();
+      images.forEach((img) => {
+        img.retiring = !want.has(img.url);
+      });
       const have = new Set(images.map((img) => img.url));
       urls.forEach((url) => {
         if (have.has(url)) return;
-        images.push({ id: nextImageId++, url, name: url });
+        images.push({
+          id: nextImageId++,
+          url,
+          name: url,
+          retiring: false,
+          fresh: poolSeeded,
+          addedAt: now,
+          uses: 0,
+        });
       });
-      if (images.length) ensureFaceCoverage(true);
+      const force = !poolSeeded;
+      poolSeeded = true;
+      if (liveImages().length) ensureFaceCoverage(force);
+      pruneRetiredImages();
     }
 
     syncPool(pool);

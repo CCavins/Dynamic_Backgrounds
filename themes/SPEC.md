@@ -232,9 +232,11 @@ unmount(root, state)
 ```
 
 - `root` is `#dyn-mosaic-theme`
-- `pool` is an array of photo URLs
+- `pool` is the current live mosaic list for this tick. Photos that left the mosaic are omitted. An empty pool means show no photos. Do not snapshot `pool` from `mount` and reuse it forever — read the `pool` argument on each `tick`, or call `api.nextUrl()`
+- The host fades leftover `.dyn-card` photos that are leaving the mosaic. Do not wait for the host to fill empty slots — themes own their layout. Canvas or WebGL themes should apply the `pool` passed into each `tick` the same way. Cards stay hidden until their photo has decoded.
 - `api` is `{ nextUrl(avoid), isRetiring(src), hasIncoming() }`
-  - `nextUrl(avoid)` prefers unseen incoming photos, then the pool, avoiding `avoid` (string or iterable of URLs)
+  - `nextUrl(avoid)` prefers unseen incoming photos, then the live pool, skipping photos that are cycling out. Avoid `avoid` (string or iterable of URLs)
+  - `isRetiring(src)` is true while a photo is leaving the mosaic
 - Cards: `BGMosaicThemes.makeCard(src, className?)` → `div.dyn-card > img`
 - `interval` is milliseconds between `tick` calls. JSON `interval` overrides when set
 

@@ -156,8 +156,13 @@
 
   function isOutputPage(urlString) {
     try {
+      if (document.documentElement.getAttribute("data-dyn-harness") === "1") return true;
       const url = new URL(urlString);
-      if (!/vixisuite/i.test(url.hostname)) return false;
+      // api.vixisuite…/go/o/ID?standalone=mosaic and cdn…/go/output/ID
+      if (!/vixisuite/i.test(url.hostname) && !/thefamousgroup\.com$/i.test(url.hostname)) {
+        return false;
+      }
+      if (/(?:^|[?&])standalone=(?:mosaic|message)(?:&|$)/i.test(url.search || "")) return true;
       return /\/go\/output(?:\/|$)/.test(url.pathname) || /\/go\/o\//.test(url.pathname);
     } catch {
       return false;
@@ -482,6 +487,9 @@
   ];
   const STAGE_CANVAS_STYLE_ID = "dyn-stage-canvas-style";
   const STAGE_CANVAS_CSS =
+    "html.dyn-theme-on,html.dyn-theme-on body,html.dyn-theme-on .output-page{" +
+      "background:#000!important;" +
+    "}" +
     "html.dyn-stage-forced,html.dyn-stage-forced body,html.dyn-stage-forced .output-page{" +
       "background:#000!important;overflow:hidden!important;" +
     "}" +
@@ -608,8 +616,11 @@
     bindCanvasResize();
 
     if (mode === "auto") {
+      // Keep auto sizing (no forced letterbox), but leave a black page behind
+      // so transparent theme areas do not show the browser chrome gray.
       resetOutputCanvas();
       html.dataset.stageAspect = "auto";
+      ensureStageCanvasStyle();
       return resolveStageSize(findWrapper(), mode);
     }
 
@@ -978,6 +989,15 @@
     return Boolean(document.querySelector(MOSAIC_CHROME_SCOPE + ", img.mosaic-image"));
   }
 
+  function pageLooksLikeMessage() {
+    try {
+      if (/(?:^|[?&])standalone=message(?:&|$)/i.test(location.search || "")) return true;
+    } catch {
+      /* ignore */
+    }
+    return Boolean(document.querySelector(MESSAGE_CHROME_SCOPE));
+  }
+
   function hasMosaic() {
     return mosaicContentCount() > 0 || pageLooksLikeMosaic();
   }
@@ -1027,20 +1047,26 @@
     );
   }
 
-  function mosaicAssetClassUrls() {
+  function mosaicAssetClassUrls(face) {
+    const prefix = face === "back" ? "back" : "front";
     const urls = [];
     const seen = new Set();
+    const re = new RegExp("^" + prefix + "-(https?:\\/\\/\\S+)", "i");
     document.querySelectorAll(".mosaic-asset").forEach((el) => {
       String(el.className || "")
         .split(/\s+/)
         .forEach((token) => {
-          const match = /^(?:front|back)-(https?:\/\/\S+)/i.exec(token);
+          const match = re.exec(token);
           if (!match || seen.has(match[1]) || isBrandMosaicSrc(match[1])) return;
           seen.add(match[1]);
           urls.push(match[1]);
         });
     });
     return urls;
+  }
+
+  function mosaicAssetBackUrls() {
+    return mosaicAssetClassUrls("back");
   }
 
   function backgroundLayers(root) {
@@ -1087,6 +1113,26 @@
     if (img.classList.contains("v2-app-wrapper__bg-image")) return true;
     if (img.closest(".output-wrapper > .asset-view")) return true;
     if (img.closest(".mosaic-layout > .asset-view")) return true;
+    if (img.closest(".v2-mosaic-face.back, .dyn-flip-back, [class*='mosaic-face--back']")) {
+      return true;
+    }
+    const asset = img.closest(".mosaic-asset");
+    if (asset) {
+      const fronts = [];
+      const backs = [];
+      String(asset.className || "")
+        .split(/\s+/)
+        .forEach((token) => {
+          const front = /^front-(https?:\/\/\S+)/i.exec(token);
+          const back = /^back-(https?:\/\/\S+)/i.exec(token);
+          if (front) fronts.push(front[1]);
+          if (back) backs.push(back[1]);
+        });
+      const src = mosaicImageSrc(img);
+      const onFront = fronts.some((url) => url === src || (src && src.indexOf(url) === 0));
+      const onBack = backs.some((url) => url === src || (src && src.indexOf(url) === 0));
+      if (onBack && !onFront) return true;
+    }
     if (isBrandMosaicSrc(mosaicImageSrc(img) || img.currentSrc || img.src)) return true;
     return false;
   }
@@ -1339,12 +1385,14 @@
     findOverlayHost,
     hasMosaic,
     pageLooksLikeMosaic,
+    pageLooksLikeMessage,
     hasMessage,
     mosaicContentCount,
     messageCapture,
     mosaicImages,
     mosaicImageSrc,
     mosaicAssetClassUrls,
+    mosaicAssetBackUrls,
     isBrandMosaicSrc,
     backgroundLayers,
     isSkippedMosaicImage,

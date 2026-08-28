@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en" data-dyn-harness="1">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mosaic runtime check</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #07070c; color: #e8e8ef; font: 14px/1.45 ui-sans-serif, system-ui; }
+    body { display: grid; grid-template-columns: 1fr 320px; }
+    .output-page { position: relative; background: #111; overflow: hidden; }
+    .output-wrapper, .v2-app-wrapper {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+    }
+    .mosaic-layout { position: absolute; width: 0; height: 0; overflow: hidden; }
+    #log { overflow: auto; padding: 16px; border-left: 1px solid #2a2a36; background: #0c0c12; }
+    #log h1 { font-size: 15px; margin: 0 0 12px; }
+    .row { display: flex; gap: 8px; align-items: baseline; margin: 0 0 8px; }
+    .ok { color: #5ee0a0; }
+    .fail { color: #ff6b7a; }
+    .info { color: #9aa0b5; }
+  </style>
+</head>
+<body>
+  <div class="output-page">
+    <div class="output-wrapper v2-app-wrapper">
+      <div class="mosaic-layout" id="vixi-mosaic"></div>
+    </div>
+  </div>
+  <aside id="log">
+    <h1>Runtime check</h1>
+    <div id="rows"></div>
+  </aside>
+
+  <script>
+    (function mockChrome() {
+      const store = {
+        enabled: true,
+        mosaicTheme: "spotlight",
+        messageTheme: "off",
+        messageThemeSettings: {},
+        stageAspect: "16:9",
+        rules: [],
+        anyOutputIframeHtml: "",
+        customThemes: [],
+        mosaicShowBackground: false,
+        mosaicShowQr: false,
+        mosaicShowLogo: false,
+        messageShowBackground: false,
+        messageShowQr: false,
+        messageShowLogo: false,
+      };
+      const listeners = [];
+      window.chrome = {
+        runtime: { id: "dyn-harness" },
+        storage: {
+          local: {
+            get(defaults, cb) {
+              const out = Object.assign({}, defaults || {}, store);
+              if (typeof defaults === "function") defaults(out);
+              else if (cb) cb(out);
+            },
+            set(values, cb) {
+              const changes = {};
+              Object.keys(values || {}).forEach((key) => {
+                changes[key] = { oldValue: store[key], newValue: values[key] };
+                store[key] = values[key];
+              });
+              listeners.forEach((fn) => fn(changes, "local"));
+              if (cb) cb();
+            },
+          },
+          onChanged: {
+            addListener(fn) { listeners.push(fn); },
+          },
+        },
+      };
+    })();
+  </script>
+  <script src="../extension/rules.js"></script>
+  <script src="../extension/handoff.js"></script>
+  <script src="../extension/mosaic-themes.js"></script>
+  <script src="../extension/message-themes.js"></script>
+  <script src="../extension/engines/api.js"></script>
+  <script src="../extension/custom-themes.js"></script>
+  <script src="../extension/vendor/three.min.js"></script>
+  <script src="../extension/vendor/RoundedBoxGeometry.js"></script>
+  <script src="../extension/vendor/tile-field.js"></script>
+  <script src="../extension/mosaic.js"></script>
+  <script src="../extension/message.js"></script>
+  <script>
+    (async function run() {
+      const SAMPLE = "../samples/patriots/";
+      const PHOTOS = [
+        "patriots_001.jpg", "patriots_002.jpg", "patriots_003.jpg",
+        "patriots_004.jpg", "patriots_005.jpg", "patriots_006.jpg",
+        "patriots_007.jpg", "patriots_008.jpg",
+      ];
+      const mosaic = document.getElementById("vixi-mosaic");
+      const rows = document.getElementById("rows");
+      const results = [];
+
+      function log(ok, label, detail) {
+        const el = document.createElement("div");
+        el.className = "row " + (ok === true ? "ok" : ok === false ? "fail" : "info");
+        el.textContent = (ok === true ? "PASS  " : ok === false ? "FAIL  " : "···  ") + label + (detail ? " — " + detail : "");
+        rows.appendChild(el);
+        results.push({ ok, label, detail });
+      }
+
+      function sleep(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+
+      function overlay() {
+        return document.getElementById("dyn-mosaic-theme");
+      }
+
+      function overlayTheme() {
+        const root = overlay();
+        return root ? root.dataset.theme || "" : "";
+      }
+
+      function overlaySrcs() {
+        const root = overlay();
+        if (!root) return [];
+        return [...root.querySelectorAll(".dyn-card img:not(.dyn-reveal)")]
+          .map((img) => img.currentSrc || img.src)
+          .filter(Boolean);
+      }
+
+      function overlayVisible() {
+        const root = overlay();
+        if (!root) return false;
+        const r = root.getBoundingClientRect();
+        if (r.width < 40 || r.height < 40) return false;
+        const style = getComputedStyle(root);
+        if (style.opacity === "0" || style.visibility === "hidden") return false;
+        const canvas = root.querySelector("canvas");
+        if (canvas && canvas.width > 8 && canvas.height > 8) return true;
+        const ready = root.querySelectorAll(".dyn-card.dyn-feed-ready, .dyn-card img[src]:not([src=''])");
+        return ready.length > 0 || root.children.length > 0;
+      }
+
+      function seedMosaic(names) {
+        mosaic.replaceChildren();
+        names.forEach((name) => {
+          const slot = document.createElement("div");
+          slot.className = "mosaic-tile-slot";
+          const img = document.createElement("img");
+          img.className = "mosaic-image";
+          img.src = SAMPLE + name;
+          slot.appendChild(img);
+          mosaic.appendChild(slot);
+        });
+      }
+
+      function addPhoto(name) {
+        const slot = document.createElement("div");
+        slot.className = "mosaic-tile-slot";
+        const img = document.createElement("img");
+        img.className = "mosaic-image";
+        img.src = SAMPLE + name;
+        slot.appendChild(img);
+        mosaic.appendChild(slot);
+      }
+
+      function removePhoto(name) {
+        [...mosaic.querySelectorAll("img")].forEach((img) => {
+          if ((img.src || "").includes(name) && img.closest(".mosaic-tile-slot")) {
+            img.closest(".mosaic-tile-slot").remove();
+          }
+        });
+      }
+
+      function setStorage(values) {
+        return new Promise((resolve) => chrome.storage.local.set(values, resolve));
+      }
+
+      log(null, "Seeding 6 mosaic photos");
+      seedMosaic(PHOTOS.slice(0, 6));
+      await sleep(2000);
+
+      const bootTheme = overlayTheme();
+      const bootVisible = overlayVisible();
+      log(bootTheme === "spotlight", "Initial load mounts selected theme", bootTheme || "none");
+      log(bootVisible, "Initial load shows themed photos, not a black stage");
+
+      log(null, "Adding patriots_007.jpg");
+      addPhoto("patriots_007.jpg");
+      await sleep(1600);
+      const afterAdd = overlaySrcs().some((src) => src.includes("patriots_007"));
+      log(
+        afterAdd,
+        "New mosaic photo is incorporated into the theme",
+        afterAdd ? "" : overlaySrcs().map((src) => src.split("/").pop()).join(", ") || "no overlay srcs"
+      );
+
+      const beforeRemove = overlaySrcs().filter((src) => src.includes("patriots_001"));
+      log(null, "Removing patriots_001.jpg");
+      removePhoto("patriots_001.jpg");
+      await sleep(1200);
+      const stillOnlyThat = beforeRemove.length > 0 && overlaySrcs().every((src) => src.includes("patriots_001"));
+      log(!stillOnlyThat, "Removed mosaic photo starts leaving the theme");
+
+      log(null, "Switching theme to coverflow");
+      await setStorage({ mosaicTheme: "coverflow" });
+      await sleep(1800);
+      log(overlayTheme() === "coverflow", "Theme change remounts coverflow", overlayTheme() || "none");
+      log(overlayVisible(), "Theme change still shows photos");
+
+      log(null, "Switching aspect to 9:16");
+      await setStorage({ stageAspect: "9:16" });
+      await sleep(3200);
+      log(overlayTheme() === "coverflow", "Aspect change keeps the selected theme", overlayTheme() || "none");
+      log(overlayVisible(), "Aspect change does not leave a black stage");
+      const host = document.getElementById("dyn-theme-host");
+      log(Boolean(host && host.clientWidth >= 8 && host.clientHeight >= 8), "Aspect change keeps a sized host");
+
+      log(null, "Switching theme to decks after portrait");
+      await setStorage({ mosaicTheme: "decks" });
+      await sleep(1800);
+      log(overlayTheme() === "decks", "Second theme change remounts decks", overlayTheme() || "none");
+      log(overlayVisible(), "Second theme change still shows photos");
+
+      log(null, "Cutting mosaic from 6 photos down to patriots_006.jpg");
+      seedMosaic(["patriots_006.jpg"]);
+      await sleep(4500);
+      const leftover = overlaySrcs().filter((src) => src && !src.includes("patriots_006"));
+      log(overlaySrcs().some((src) => src.includes("patriots_006")), "Decks still shows the one remaining photo");
+      log(leftover.length === 0, "Removed photos leave the decks", leftover.length ? leftover.length + " leftover" : "clean");
+
+      log(null, "Adding patriots_007.jpg and patriots_008.jpg onto decks");
+      addPhoto("patriots_007.jpg");
+      addPhoto("patriots_008.jpg");
+      await sleep(1000);
+      const addedBack = ["patriots_007.jpg", "patriots_008.jpg"].filter((name) =>
+        overlaySrcs().some((src) => src.includes(name))
+      );
+      log(addedBack.length > 0, "New mosaic photos appear on decks", addedBack.length ? addedBack.join(", ") : "none");
+
+      log(null, "Rapid theme switching stress (blank-stage race)");
+      const stressThemes = ["spotlight", "coverflow", "decks", "fan", "filmstrip", "scatter", "orbit", "billboard"];
+      let blankHits = 0;
+      for (let i = 0; i < 12; i += 1) {
+        const next = stressThemes[i % stressThemes.length];
+        await setStorage({ mosaicTheme: next });
+        // Fire a competing change mid-rebuild the way a fast popup click does.
+        if (i % 2 === 0) {
+          await sleep(40);
+          await setStorage({ mosaicTheme: stressThemes[(i + 1) % stressThemes.length] });
+        }
+        await sleep(900);
+        if (!overlay() || !overlayVisible()) blankHits += 1;
+      }
+      await sleep(1600);
+      const finalTheme = overlayTheme();
+      log(blankHits === 0, "Rapid theme switches never leave a blank stage", blankHits ? blankHits + " blank frames" : "clean");
+      log(Boolean(finalTheme && overlayVisible()), "After rapid switches a theme is still visible", finalTheme || "none");
+
+      const failed = results.filter((row) => row.ok === false).length;
+      const passed = results.filter((row) => row.ok === true).length;
+      log(failed === 0, failed === 0 ? "All checks passed (" + passed + ")" : failed + " failed / " + passed + " passed");
+      document.title = (failed === 0 ? "PASS" : "FAIL") + " — Mosaic runtime check";
+    })().catch((err) => {
+      const rows = document.getElementById("rows");
+      const el = document.createElement("div");
+      el.className = "row fail";
+      el.textContent = "FAIL  Harness error — " + (err && err.message ? err.message : err);
+      rows.appendChild(el);
+    });
+  </script>
+</body>
+</html>

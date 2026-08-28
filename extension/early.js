@@ -26,6 +26,9 @@
     "html.dyn-theme-on .mosaic-layout > .asset-view{" +
       "visibility:hidden!important;opacity:0!important;" +
     "}" +
+    "html.dyn-theme-on,html.dyn-theme-on body,html.dyn-theme-on .output-page{" +
+      "background:#000!important;" +
+    "}" +
     "html.dyn-theme-on:not(.dyn-show-bg) .v2-app-wrapper__bg-image," +
     "html.dyn-theme-on:not(.dyn-show-bg) .output-wrapper > .asset-view{" +
       "visibility:hidden!important;opacity:0!important;" +

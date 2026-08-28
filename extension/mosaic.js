@@ -14,6 +14,8 @@
   let settleTimer = 0;
   let applyGen = 0;
   let applying = false;
+  let pendingRebuild = false;
+  let rebuildGen = 0;
   let dealIndex = 0;
   let mountedTheme = "";
   let mountedAspect = "";
@@ -25,7 +27,17 @@
   const pool = [];
   const remembered = [];
   const rememberedSet = new Set();
+  const missingCounts = new Map();
+  const FORGET_AFTER = 4;
+  const EMPTY_CONFIRM_MS = 1600;
+  let emptySince = 0;
   let lastShown = "";
+  let feedHoldoffUntil = 0;
+  let ignoreResizeUntil = 0;
+  let mountedHostKey = "";
+  let rebuildRunning = false;
+  let lastConfirmed = [];
+  let drainTimer = 0;
 
   function imageSrc(img) {
     if (typeof rules.mosaicImageSrc === "function") return rules.mosaicImageSrc(img);
@@ -64,90 +76,193 @@
     }
   }
 
-  function harvestOverlayUrls() {
-    const urls = [];
-    const seen = new Set();
-    const root = document.getElementById(OVERLAY_ID);
-    if (!root) return urls;
-    root.querySelectorAll(".dyn-card img").forEach((img) => {
-      if (img.closest(".dyn-brand-chrome, [data-qr], [data-logo], .dyn-brand-logo, .dyn-brand-qr")) {
-        return;
-      }
+  function canonSrc(src) {
+    const raw = String(src || "").trim();
+    if (!raw) return "";
+    try {
+      const url = new URL(raw, location.href);
+      return (url.origin + url.pathname).replace(/\/+$/, "");
+    } catch {
+      return raw.split("?")[0].split("#")[0];
+    }
+  }
+
+  function srcSetHas(set, src) {
+    if (!set || !src) return false;
+    if (set.has(src)) return true;
+    const key = canonSrc(src);
+    if (!key) return false;
+    for (const item of set) {
+      if (item === src || canonSrc(item) === key) return true;
+    }
+    return false;
+  }
+
+  function collectImgUrls() {
+    const fromImgs = [];
+    const laidOut = [];
+    rules.mosaicImages().forEach((img) => {
       const src = imageSrc(img);
-      if (!src || isBrandSrc(src) || src.startsWith("chrome-extension:") || seen.has(src)) return;
-      seen.add(src);
-      urls.push(src);
+      if (!src) return;
+      if (rules.isSkippedMosaicImage(img)) return;
+      fromImgs.push(src);
+      const tile =
+        (img.closest && img.closest(".mosaic-asset, .mosaic-tile-slot, .v2-asset-tile, .v2-mosaic-swap-tile")) ||
+        img;
+      const box = tile.getBoundingClientRect ? tile.getBoundingClientRect() : null;
+      if (box && box.width >= 8 && box.height >= 8) laidOut.push(src);
     });
-    return urls;
+    return fromImgs.length ? fromImgs : laidOut;
   }
 
   function collectUrls() {
     const urls = [];
     const seenNow = new Set();
     function add(src) {
-      if (!src || isBrandSrc(src) || seenNow.has(src)) return;
-      seenNow.add(src);
+      if (!src || isBrandSrc(src)) return;
+      const key = canonSrc(src) || src;
+      if (seenNow.has(key)) return;
+      seenNow.add(key);
       urls.push(src);
     }
-    rules.mosaicImages().forEach((img) => {
-      const src = imageSrc(img);
-      if (!src) return;
-      if (rules.isSkippedMosaicImage(img)) return;
+    const classUrls =
+      typeof rules.mosaicAssetClassUrls === "function" ? rules.mosaicAssetClassUrls() : [];
+    const backUrls =
+      typeof rules.mosaicAssetBackUrls === "function" ? rules.mosaicAssetBackUrls() : [];
+    const imgUrls = collectImgUrls();
+    const classSet = new Set(classUrls);
+    const confirmedSet = new Set(lastConfirmed);
+
+    // front-* tokens are the live mosaic, but a newly added shot often
+    // paints as an <img> before Vixi writes the matching front-* class.
+    classUrls.forEach(add);
+    imgUrls.forEach((src) => {
+      if (srcSetHas(classSet, src)) return;
+      if (srcSetHas(retiring, src)) return;
+      if (backUrls.length && srcSetHas(new Set(backUrls), src) && !srcSetHas(classSet, src)) return;
+      if (
+        classUrls.length &&
+        confirmedSet.size &&
+        srcSetHas(confirmedSet, src) &&
+        !srcSetHas(classSet, src)
+      ) {
+        return;
+      }
       add(src);
     });
-    if (typeof rules.mosaicAssetClassUrls === "function") {
-      rules.mosaicAssetClassUrls().forEach(add);
-    }
+    if (urls.length) return urls;
+    imgUrls.forEach(add);
     return urls;
   }
 
+  function snapshotOverlayPool() {
+    const root = document.getElementById(OVERLAY_ID);
+    if (!root) return;
+    const urls = [];
+    const seen = new Set();
+    overlayFeedImgs(root).forEach((img) => {
+      const src = feedImgUrl(img);
+      if (!src || isBrandSrc(src)) return;
+      const key = canonSrc(src) || src;
+      if (seen.has(key)) return;
+      seen.add(key);
+      urls.push(src);
+    });
+    if (!urls.length) return;
+    lastConfirmed = urls.slice();
+    rememberUrls(urls);
+    if (!pool.length) {
+      urls.forEach((src) => {
+        liveSet.add(src);
+        pool.push(src);
+      });
+    }
+  }
+
   function restoreRemembered() {
-    if (pool.length || !remembered.length) return;
-    remembered.forEach((src) => {
-      if (!liveSet.has(src)) incoming.push(src);
+    if (pool.length) return;
+    const source = lastConfirmed.length ? lastConfirmed : remembered;
+    if (!source.length) return;
+    source.forEach((src) => {
+      if (srcSetHas(retiring, src)) return;
+      if (!srcSetHas(liveSet, src)) incoming.push(src);
       liveSet.add(src);
       pool.push(src);
     });
   }
 
-  function overlayNeedsPhotos() {
-    const root = document.getElementById(OVERLAY_ID);
-    if (!root) return true;
-    const cards = [...root.querySelectorAll(".dyn-card img")];
-    if (!cards.length) return false;
-    return cards.every((img) => {
-      const src = imageSrc(img);
-      return !src || isBrandSrc(src);
-    });
-  }
-
   function syncFeed() {
     forgetBrandUrls();
-    rememberUrls(harvestOverlayUrls());
     const now = collectUrls();
     if (now.length) rememberUrls(now);
 
     // A flaky collect (covers on, Vue swap, srcset-only) must not wipe photos
-    // we already have. Empty frames are only for a session that never had any.
+    // we already have. While a mosaic theme is on, Vixi often removes or hides
+    // the live mosaic tiles entirely — keep the last confirmed pool.
     if (!now.length) {
-      restoreRemembered();
-      return { added: [], removed: [] };
+      const themeOn =
+        Boolean(mountedTheme) ||
+        rebuildRunning ||
+        document.documentElement.classList.contains("dyn-mosaic-on");
+      if (themeOn) {
+        restoreRemembered();
+        return { added: [], removed: [] };
+      }
+      if (!emptySince) emptySince = Date.now();
+      const settling = Boolean(mountedTheme && mountedAt && performance.now() - mountedAt < 2800);
+      const holdoff = performance.now() < feedHoldoffUntil;
+      if (holdoff || settling || Date.now() - emptySince < EMPTY_CONFIRM_MS) {
+        restoreRemembered();
+        return { added: [], removed: [] };
+      }
+      const removed = [];
+      const leftover = new Set([...liveSet, ...remembered, ...pool]);
+      leftover.forEach((src) => {
+        if (!src) return;
+        removed.push(src);
+        retiring.add(src);
+      });
+      remembered.length = 0;
+      rememberedSet.clear();
+      // Keep lastConfirmed so a later remount can still show photos.
+      incoming.length = 0;
+      liveSet.clear();
+      pool.length = 0;
+      missingCounts.clear();
+      dealIndex = 0;
+      return { added: [], removed };
     }
+    emptySince = 0;
+    lastConfirmed = now.slice();
 
     const nowSet = new Set(now);
     const added = [];
     now.forEach((src) => {
-      if (!liveSet.has(src)) {
+      missingCounts.delete(src);
+      if (!srcSetHas(liveSet, src)) {
         added.push(src);
         incoming.push(src);
       }
-      retiring.delete(src);
+      [...retiring].forEach((item) => {
+        if (item === src || canonSrc(item) === canonSrc(src)) retiring.delete(item);
+      });
     });
     const removed = [];
     liveSet.forEach((src) => {
-      if (nowSet.has(src)) return;
+      if (srcSetHas(nowSet, src)) return;
       removed.push(src);
       retiring.add(src);
+    });
+    const tracked = new Set([...remembered, ...liveSet]);
+    tracked.forEach((src) => {
+      if (srcSetHas(nowSet, src)) return;
+      const misses = (missingCounts.get(src) || 0) + 1;
+      missingCounts.set(src, misses);
+      if (misses >= FORGET_AFTER) {
+        rememberedSet.delete(src);
+        const rememberedAt = remembered.indexOf(src);
+        if (rememberedAt >= 0) remembered.splice(rememberedAt, 1);
+      }
     });
     liveSet.clear();
     now.forEach((src) => liveSet.add(src));
@@ -155,7 +270,7 @@
     now.forEach((src) => pool.push(src));
     if (dealIndex >= pool.length) dealIndex = 0;
     for (let i = incoming.length - 1; i >= 0; i -= 1) {
-      if (!liveSet.has(incoming[i])) incoming.splice(i, 1);
+      if (!srcSetHas(liveSet, incoming[i])) incoming.splice(i, 1);
     }
     return { added, removed };
   }
@@ -163,6 +278,18 @@
   function layoutReady(el) {
     if (!el) return false;
     return el.clientWidth >= 8 && el.clientHeight >= 8;
+  }
+
+  function overlayCount(src) {
+    if (!src) return 0;
+    const root = document.getElementById(OVERLAY_ID);
+    if (!root) return 0;
+    let n = 0;
+    root.querySelectorAll(".dyn-card img").forEach((img) => {
+      const url = img.currentSrc || img.src;
+      if (url && (url === src || canonSrc(url) === canonSrc(src))) n += 1;
+    });
+    return n;
   }
 
   function nextUrl(avoid) {
@@ -173,8 +300,8 @@
     function takeIncoming(filter) {
       for (let i = 0; i < incoming.length; i += 1) {
         const src = incoming[i];
-        if (!src || !liveSet.has(src) || retiring.has(src)) continue;
-        if (filter && filter.has(src)) continue;
+        if (!src || !srcSetHas(liveSet, src) || srcSetHas(retiring, src)) continue;
+        if (filter && srcSetHas(filter, src)) continue;
         incoming.splice(i, 1);
         return src;
       }
@@ -183,14 +310,18 @@
 
     function takePool(filter) {
       if (!pool.length) return "";
+      const ranked = [];
       for (let step = 0; step < pool.length; step += 1) {
         const src = pool[(dealIndex + step) % pool.length];
-        if (!src || retiring.has(src)) continue;
-        if (filter && filter.has(src)) continue;
-        dealIndex = (dealIndex + step + 1) % pool.length;
-        return src;
+        if (!src || srcSetHas(retiring, src)) continue;
+        if (filter && srcSetHas(filter, src)) continue;
+        ranked.push({ src, step, rare: overlayCount(src) });
       }
-      return "";
+      if (!ranked.length) return "";
+      ranked.sort((a, b) => a.rare - b.rare || a.step - b.step);
+      const picked = ranked[0];
+      dealIndex = (dealIndex + picked.step + 1) % pool.length;
+      return picked.src;
     }
 
     const picked = takeIncoming(blocked) || takePool(blocked);
@@ -243,12 +374,281 @@
     return {
       nextUrl,
       isRetiring(src) {
-        return Boolean(src && retiring.has(src));
+        return Boolean(src && (srcSetHas(retiring, src) || (pool.length && !srcSetHas(liveSet, src))));
       },
       hasIncoming() {
-        return incoming.some((src) => liveSet.has(src));
+        return incoming.some((src) => srcSetHas(liveSet, src));
       },
     };
+  }
+
+  const FEED_CSS =
+    "#" +
+    OVERLAY_ID +
+    " .dyn-card:not(.dyn-feed-ready){opacity:0!important}" +
+    "#" +
+    OVERLAY_ID +
+    " img.dyn-feed-out{opacity:0!important;transition:opacity .75s ease}";
+
+  function overlayFeedImgs(root) {
+    if (!root) return [];
+    return [...root.querySelectorAll(".dyn-card img:not(.dyn-reveal)")].filter((img) => {
+      if (img.closest(".dyn-brand-chrome, [data-qr], [data-logo], .dyn-brand-logo, .dyn-brand-qr")) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  function feedImgUrl(img) {
+    return img ? String(img.currentSrc || img.src || "").trim() : "";
+  }
+
+  function imgIsReady(img) {
+    return Boolean(img && feedImgUrl(img) && img.complete && img.naturalWidth > 0);
+  }
+
+  function syncImgPending(img) {
+    if (!img) return;
+    const ready = imgIsReady(img);
+    img.classList.toggle("dyn-feed-pending", !ready);
+    const card = img.closest(".dyn-card");
+    if (!card) return;
+    const imgs = [...card.querySelectorAll("img:not(.dyn-reveal)")];
+    const cardReady = imgs.some((item) => imgIsReady(item));
+    card.classList.toggle("dyn-feed-ready", cardReady);
+    card.classList.toggle("dyn-feed-pending", !cardReady);
+  }
+
+  function armImgReveal(img) {
+    if (!img || img.tagName !== "IMG") return;
+    if (!img.closest(".dyn-card") || img.classList.contains("dyn-reveal")) return;
+    syncImgPending(img);
+    if (imgIsReady(img) || img.dataset.dynFeedArm === feedImgUrl(img)) return;
+    img.dataset.dynFeedArm = feedImgUrl(img);
+    const onReady = () => syncImgPending(img);
+    img.addEventListener("load", onReady, { once: true });
+    img.addEventListener("error", onReady, { once: true });
+  }
+
+  let imgWatch = null;
+  function watchFeedImgs(root) {
+    if (!root) return;
+    overlayFeedImgs(root).forEach(armImgReveal);
+    if (imgWatch) imgWatch.disconnect();
+    imgWatch = new MutationObserver((records) => {
+      records.forEach((record) => {
+        if (record.type === "attributes" && record.target && record.target.tagName === "IMG") {
+          armImgReveal(record.target);
+          return;
+        }
+        record.addedNodes &&
+          record.addedNodes.forEach((node) => {
+            if (node.tagName === "IMG") armImgReveal(node);
+            if (node.querySelectorAll) node.querySelectorAll("img").forEach(armImgReveal);
+          });
+      });
+    });
+    imgWatch.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["src"],
+    });
+  }
+
+  function fadeClearImg(img) {
+    if (!img || img.classList.contains("dyn-feed-out")) return;
+    img.classList.add("dyn-feed-out");
+    window.setTimeout(() => {
+      img.removeAttribute("src");
+      img.src = "";
+      img.classList.remove("dyn-feed-out");
+      syncImgPending(img);
+    }, 760);
+  }
+
+  function fadeSetImg(img, src) {
+    if (!img || !src) return;
+    img.classList.add("dyn-feed-pending");
+    const probe = new Image();
+    probe.onload = () => {
+      img.src = src;
+      img.classList.remove("dyn-feed-out");
+      const show = () => syncImgPending(img);
+      img.addEventListener("load", show, { once: true });
+      if (img.complete) show();
+    };
+    probe.onerror = () => syncImgPending(img);
+    probe.src = src;
+  }
+
+  let feedLockUntil = 0;
+  let mountedAt = 0;
+  function reconcileOverlay(root) {
+    if (!root || !active) return;
+    const theme = root.dataset ? root.dataset.theme : "";
+    if (theme === "cubes" || theme === "depthfield") return;
+    if (performance.now() - mountedAt < 1200) return;
+    if (performance.now() < feedLockUntil) return;
+    const imgs = leftoverOverlayImgs(root);
+    if (!imgs.length) return;
+    const batch = pool.length <= 2 ? Math.min(4, imgs.length) : 1;
+    feedLockUntil = performance.now() + (batch > 1 ? 220 : 400);
+    imgs.slice(0, batch).forEach((img) => {
+      if (pool.length) {
+        const next = nextUrl(feedImgUrl(img));
+        if (next) {
+          fadeSetImg(img, next);
+          return;
+        }
+      }
+      fadeClearImg(img);
+    });
+    armDrain();
+  }
+
+  function leftoverOverlayImgs(root) {
+    if (!root) return [];
+    return overlayFeedImgs(root).filter((img) => {
+      if (img.classList.contains("dyn-feed-out")) return false;
+      const src = feedImgUrl(img);
+      if (!src) return false;
+      if (srcSetHas(retiring, src)) return true;
+      return Boolean(pool.length && !srcSetHas(liveSet, src));
+    });
+  }
+
+  function armDrain() {
+    if (drainTimer) return;
+    drainTimer = setInterval(() => {
+      const root = document.getElementById(OVERLAY_ID);
+      if (!root || !active) {
+        clearInterval(drainTimer);
+        drainTimer = 0;
+        return;
+      }
+      if (!leftoverOverlayImgs(root).length && !retiring.size) {
+        clearInterval(drainTimer);
+        drainTimer = 0;
+        return;
+      }
+      reconcileOverlay(root);
+    }, 240);
+  }
+
+  function runThemeTick(added) {
+    const root = document.getElementById(OVERLAY_ID);
+    if (!root || !active) return;
+    placeIncoming(root);
+    placeAdded(root, added);
+    placeMissingLive(root);
+    if (typeof active.def.tick === "function") {
+      active.def.tick(root, pool, active.state, makeApi());
+    }
+    watchFeedImgs(root);
+    placeIncoming(root);
+    placeAdded(root, added);
+    placeMissingLive(root);
+    reconcileOverlay(root);
+    if (leftoverOverlayImgs(root).length || retiring.size) armDrain();
+  }
+
+  function pickDuplicateCard(root, avoidSrc, used) {
+    const imgs = overlayFeedImgs(root).filter((img) => {
+      if (used && used.has(img)) return false;
+      if (img.classList.contains("dyn-feed-out")) return false;
+      const src = feedImgUrl(img);
+      if (!src) return false;
+      if (avoidSrc && srcSetHas(new Set([avoidSrc]), src)) return false;
+      return true;
+    });
+    if (!imgs.length) return null;
+    const counts = new Map();
+    overlayFeedImgs(root).forEach((img) => {
+      const key = canonSrc(feedImgUrl(img)) || feedImgUrl(img);
+      if (key) counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    imgs.sort((a, b) => {
+      const ca = counts.get(canonSrc(feedImgUrl(a)) || feedImgUrl(a)) || 0;
+      const cb = counts.get(canonSrc(feedImgUrl(b)) || feedImgUrl(b)) || 0;
+      return cb - ca;
+    });
+    return imgs[0] || null;
+  }
+
+  function placeAdded(root, added) {
+    if (!root || !added || !added.length) return;
+    const theme = root.dataset ? root.dataset.theme : "";
+    if (theme === "cubes" || theme === "depthfield") return;
+    const used = new Set();
+    added.forEach((src) => {
+      if (!src) return;
+      [...retiring].forEach((item) => {
+        if (item === src || canonSrc(item) === canonSrc(src)) retiring.delete(item);
+      });
+      if (overlayCount(src)) return;
+      const target = pickDuplicateCard(root, src, used);
+      if (!target) return;
+      used.add(target);
+      target.src = src;
+      fadeSetImg(target, src);
+    });
+  }
+
+  function placeMissingLive(root) {
+    if (!root || !pool.length) return;
+    const theme = root.dataset ? root.dataset.theme : "";
+    if (theme === "cubes" || theme === "depthfield") return;
+    const used = new Set();
+    pool.forEach((src) => {
+      if (!src) return;
+      [...retiring].forEach((item) => {
+        if (item === src || canonSrc(item) === canonSrc(src)) retiring.delete(item);
+      });
+      if (overlayCount(src)) return;
+      const target = pickDuplicateCard(root, src, used);
+      if (!target) return;
+      used.add(target);
+      target.src = src;
+      fadeSetImg(target, src);
+    });
+  }
+
+  function placeIncoming(root) {
+    if (!root || !incoming.length) return;
+    const theme = root.dataset ? root.dataset.theme : "";
+    if (theme === "cubes" || theme === "depthfield") return;
+    let placed = 0;
+    const used = new Set();
+    while (incoming.length && placed < 4) {
+      const imgs = overlayFeedImgs(root).filter((img) => {
+        if (used.has(img)) return false;
+        if (img.classList.contains("dyn-feed-out")) return false;
+        return Boolean(feedImgUrl(img));
+      });
+      if (!imgs.length) return;
+      const next = incoming.find((src) => srcSetHas(liveSet, src) && !srcSetHas(retiring, src));
+      if (!next) return;
+      const counts = new Map();
+      imgs.forEach((img) => {
+        const key = canonSrc(feedImgUrl(img)) || feedImgUrl(img);
+        counts.set(key, (counts.get(key) || 0) + 1);
+      });
+      const target = imgs
+        .filter((img) => !srcSetHas(new Set([next]), feedImgUrl(img)))
+        .sort((a, b) => {
+          const ca = counts.get(canonSrc(feedImgUrl(a)) || feedImgUrl(a)) || 0;
+          const cb = counts.get(canonSrc(feedImgUrl(b)) || feedImgUrl(b)) || 0;
+          return cb - ca;
+        })[0] || imgs[0];
+      const picked = nextUrl(feedImgUrl(target));
+      if (!picked) return;
+      used.add(target);
+      target.src = picked;
+      fadeSetImg(target, picked);
+      placed += 1;
+    }
   }
 
   function ensureStyle() {
@@ -258,9 +658,8 @@
       style.id = STYLE_ID;
       document.documentElement.appendChild(style);
     }
-    if (style.textContent !== themeApi.STYLE) {
-      style.textContent = themeApi.STYLE;
-    }
+    const next = String((themeApi && themeApi.STYLE) || "") + FEED_CSS;
+    if (style.textContent !== next) style.textContent = next;
   }
 
   function ensureOverlay() {
@@ -327,16 +726,70 @@
     tickTimer = setInterval(() => {
       // No point churning the DOM while the display isn't visible.
       if (document.hidden) return;
-      if (!active || pool.length < 1) return;
-      const root = document.getElementById(OVERLAY_ID);
-      if (!root || typeof active.def.tick !== "function") return;
-      active.def.tick(root, pool, active.state, makeApi());
+      if (!active) return;
+      if (!document.getElementById(OVERLAY_ID)) return;
+      // Vixi often updates mosaic membership via front-* class tokens, not
+      // img src. Sync on every tick so adds/removes are not missed.
+      const { added, removed } = syncFeed();
+      runThemeTick(added);
+      if (!added.length && !removed.length && retiring.size) {
+        const root = document.getElementById(OVERLAY_ID);
+        if (root) reconcileOverlay(root);
+      }
     }, interval || 2500);
   }
 
-  function unmountTheme(opts) {
-    const resetFeed = Boolean(opts && opts.resetFeed);
+  function requestRebuild() {
+    pendingRebuild = true;
+    rebuildGen += 1;
+  }
+
+  function suppressResizeRebuild(ms) {
+    ignoreResizeUntil = Math.max(ignoreResizeUntil, performance.now() + (ms || 1200));
+  }
+
+  function hostSizeKey(host) {
+    if (!host) return "";
+    return host.clientWidth + "x" + host.clientHeight;
+  }
+
+  function nextFrame() {
+    return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  }
+
+  async function waitHostStable() {
+    await nextFrame();
+    await nextFrame();
+    const start = performance.now();
+    let last = "";
+    let hits = 0;
+    while (performance.now() - start < 800) {
+      const host = rules.findOverlayHost && rules.findOverlayHost();
+      if (layoutReady(host)) {
+        const key = host.clientWidth + "x" + host.clientHeight;
+        if (key === last) {
+          hits += 1;
+          if (hits >= 2) return host;
+        } else {
+          hits = 0;
+          last = key;
+        }
+      }
+      await nextFrame();
+    }
+    return rules.findOverlayHost && rules.findOverlayHost();
+  }
+
+  function disposeMounted() {
     stopTick();
+    if (drainTimer) {
+      clearInterval(drainTimer);
+      drainTimer = 0;
+    }
+    if (imgWatch) {
+      imgWatch.disconnect();
+      imgWatch = null;
+    }
     const root = document.getElementById(OVERLAY_ID);
     if (active && active.def && typeof active.def.unmount === "function" && root) {
       try {
@@ -345,18 +798,106 @@
         /* a 0-size remount can leave the theme in a bad state */
       }
     }
-    if (root) root.replaceChildren();
+    if (root) root.remove();
     active = null;
     mountedTheme = "";
     mountedAspect = "";
     mountedEmpty = true;
     lastShown = "";
+    retiring.clear();
+    incoming.length = 0;
+    feedLockUntil = 0;
+    dealIndex = 0;
+    emptySince = 0;
+    feedHoldoffUntil = performance.now() + 3200;
+    mountedHostKey = "";
+  }
+
+  function unmountTheme(opts) {
+    const resetFeed = Boolean(opts && opts.resetFeed);
+    disposeMounted();
     if (resetFeed) {
       liveSet.clear();
-      retiring.clear();
       incoming.length = 0;
       dealIndex = 0;
       pool.length = 0;
+      missingCounts.clear();
+      emptySince = 0;
+      remembered.length = 0;
+      rememberedSet.clear();
+    }
+  }
+
+  async function rebuildNow(id) {
+    if (rebuildRunning) {
+      pendingRebuild = true;
+      return false;
+    }
+    rebuildRunning = true;
+    let ok = false;
+    try {
+      // Theme/aspect changes bump rebuildGen while we await. Never abort after
+      // dispose — remount, and if another rebuild was requested, loop again.
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        const token = rebuildGen;
+        pendingRebuild = false;
+        let target = id;
+        try {
+          const settings = await rules.loadSettings();
+          if (settings && settings.enabled !== false) {
+            target = rules.normalizeMosaicTheme(settings.mosaicTheme) || id;
+          }
+        } catch {
+          /* use id */
+        }
+        if (!target || target === "off" || !themeApi.themes[target]) {
+          ok = false;
+          break;
+        }
+        const prevHostKey = mountedHostKey;
+        snapshotOverlayPool();
+        disposeMounted();
+        suppressResizeRebuild(4000);
+        ensureStyle();
+        document.documentElement.classList.add("dyn-mosaic-on");
+        if (typeof rules.applyOutputCanvas === "function") rules.applyOutputCanvas();
+        if (typeof rules.findOverlayHost === "function") rules.findOverlayHost();
+        suppressResizeRebuild(4000);
+        const hostNow = rules.findOverlayHost && rules.findOverlayHost();
+        if (layoutReady(hostNow) && prevHostKey && hostSizeKey(hostNow) === prevHostKey) {
+          await nextFrame();
+          await nextFrame();
+        } else {
+          await waitHostStable();
+        }
+        syncFeed();
+        if (!pool.length) restoreRemembered();
+        if (!pool.length && lastConfirmed.length) {
+          lastConfirmed.forEach((src) => {
+            if (!src || srcSetHas(liveSet, src)) return;
+            liveSet.add(src);
+            pool.push(src);
+          });
+        }
+        await decodeUrls(pool);
+        ok = mountTheme(target);
+        const host = rules.findOverlayHost && rules.findOverlayHost();
+        if (ok) mountedHostKey = hostSizeKey(host);
+        if (ok && token === rebuildGen && !pendingRebuild) {
+          pendingRebuild = false;
+          return true;
+        }
+        if (!ok) break;
+        // Another rebuild was requested mid-flight — remount once more.
+      }
+      if (!ok) {
+        pendingRebuild = true;
+        watchSettle();
+      }
+      return ok && Boolean(document.getElementById(OVERLAY_ID));
+    } finally {
+      rebuildRunning = false;
+      if (!document.getElementById(OVERLAY_ID) || pendingRebuild) scheduleApply(60);
     }
   }
 
@@ -365,13 +906,9 @@
     if (!def) return false;
     const host = rules.findOverlayHost();
     if (!host) return false;
-    if (!layoutReady(host)) {
-      if (active && mountedTheme === id) return true;
-      return false;
-    }
-    rememberUrls(harvestOverlayUrls());
+    if (!layoutReady(host)) return false;
     rememberUrls(pool);
-    unmountTheme({ resetFeed: false });
+    if (active || document.getElementById(OVERLAY_ID)) disposeMounted();
     const root = ensureOverlay();
     if (!root) return false;
     root.dataset.theme = id;
@@ -383,6 +920,8 @@
     mountedAspect = rules.currentStageAspect ? rules.currentStageAspect() : "auto";
     mountedEmpty = pool.length === 0;
     if (typeof rules.ensureBrandChrome === "function") rules.ensureBrandChrome(root, "mosaic");
+    mountedAt = performance.now();
+    watchFeedImgs(root);
     startTick(def.interval);
     return true;
   }
@@ -401,6 +940,24 @@
     handoff.clearMode("mosaic");
   }
 
+  async function releaseForMessage() {
+    stopTick();
+    const root = document.getElementById(OVERLAY_ID);
+    const wasOn =
+      Boolean(root) ||
+      document.documentElement.classList.contains("dyn-mosaic-on") ||
+      handoff.currentMode() === "mosaic";
+    if (!wasOn) {
+      teardownHard();
+      return;
+    }
+    if (root) {
+      root.classList.add("is-leaving");
+      await wait(420);
+    }
+    teardownHard();
+  }
+
   handoff.register("mosaic", {
     hide() {
       stopTick();
@@ -415,7 +972,11 @@
   const customApi = globalThis.BGCustomThemes;
   if (customApi && typeof customApi.onChange === "function") {
     customApi.onChange(() => {
-      mountedTheme = "";
+      // Imported message packs must not remount a live mosaic stage.
+      const kind = handoff.liveKind();
+      const mode = handoff.currentMode();
+      if (kind === "message" || (kind === "" && mode === "message")) return;
+      requestRebuild();
       scheduleApply();
     });
   }
@@ -443,6 +1004,10 @@
   }
 
   async function apply() {
+    if (applying) {
+      scheduleApply(80);
+      return;
+    }
     const gen = ++applyGen;
     applying = true;
     try {
@@ -456,7 +1021,9 @@
       // the chrome APIs; only a page refresh swaps in the new script.
       const settings = await rules.loadSettings();
       if (gen !== applyGen) return;
+      if (pendingRebuild) suppressResizeRebuild(1600);
       handoff.applyCovers(settings);
+      if (pendingRebuild) suppressResizeRebuild(1600);
       const theme = settings.enabled ? rules.normalizeMosaicTheme(settings.mosaicTheme) : "off";
       const aspect = rules.normalizeStageAspect
         ? rules.normalizeStageAspect(settings.stageAspect)
@@ -472,18 +1039,54 @@
       let kind = handoff.liveKind();
       const mosaicPage = Boolean(rules.pageLooksLikeMosaic && rules.pageLooksLikeMosaic());
       const mode = handoff.currentMode();
-      if (kind === "message" && !mosaicPage) return;
+      const msgThemeOn =
+        settings.enabled !== false && rules.normalizeMessageTheme(settings.messageTheme) !== "off";
+      // Never keep mosaic cards over a live message beat — even if we still owe
+      // a remount or Vixi left .mosaic-layout in the DOM.
+      if (kind === "message") {
+        document.documentElement.classList.add("dyn-cover-message", "dyn-cover-mosaic");
+        if (!msgThemeOn) await releaseForMessage();
+        // Message theme owns the handoff (prepare mounts first, then fades us).
+        return;
+      }
+      const hasMsg =
+        typeof rules.hasMessage === "function"
+          ? rules.hasMessage()
+          : Boolean((rules.messageCapture() || {}).src);
+      const oweMosaic =
+        pendingRebuild ||
+        document.documentElement.classList.contains("dyn-mosaic-on");
       if (kind !== "mosaic") {
-        if (mosaicPage || (kind === "" && (!mode || mode === "mosaic"))) {
+        // Ambiguous "" with message content: never remount mosaic over it just
+        // because a hidden .mosaic-layout shell is still in the DOM.
+        if (hasMsg && kind === "") {
+          document.documentElement.classList.add("dyn-cover-message", "dyn-cover-mosaic");
+          if (!msgThemeOn) await releaseForMessage();
+          return;
+        }
+        if (mosaicPage || oweMosaic || (kind === "" && (!mode || mode === "mosaic"))) {
           kind = "mosaic";
         } else {
           return;
         }
       }
       await handoff.activate("mosaic", {
-        prepare() {
+        async prepare() {
+          // Mount mosaic under the cover before the message theme fades out.
+          const html = document.documentElement;
+          html.classList.add("dyn-mosaic-on", "dyn-cover-message", "dyn-cover-mosaic");
           syncFeed();
-          return decodeUrls(pool);
+          await decodeUrls(pool);
+          const overlay = document.getElementById(OVERLAY_ID);
+          const needsMount =
+            pendingRebuild ||
+            mountedTheme !== theme ||
+            mountedAspect !== aspect ||
+            !overlay;
+          if (needsMount) {
+            pendingRebuild = false;
+            await rebuildNow(theme);
+          }
         },
         async reveal() {
           if (gen !== applyGen) return;
@@ -494,18 +1097,52 @@
           const wrapper = rules.findWrapper && rules.findWrapper();
           const host = document.getElementById(handoff.HOST_ID);
           const hostMisplaced = Boolean(wrapper && host && host.parentElement !== wrapper);
-          const needMount =
+          const cubeField = theme === "cubes" || theme === "depthfield";
+          const cubeBroken =
+            cubeField &&
+            globalThis.THREE &&
+            globalThis.BGTileField &&
+            (!active ||
+              !active.state ||
+              active.state.waiting ||
+              (active.state.field && active.state.field.stopped));
+          if (
+            pendingRebuild &&
+            overlay &&
+            mountedTheme === theme &&
+            mountedAspect === aspect &&
+            !hostMisplaced &&
+            !cubeBroken &&
+            !(mountedEmpty && pool.length > 0)
+          ) {
+            pendingRebuild = false;
+          }
+          const sizeChanged =
+            performance.now() >= ignoreResizeUntil &&
+            Boolean(mountedHostKey && host && hostSizeKey(host) !== mountedHostKey);
+          const shouldRebuild =
             mountedTheme !== theme ||
             mountedAspect !== aspect ||
             !overlay ||
             hostMisplaced ||
-            (pool.length && mountedEmpty) ||
-            (pool.length && overlayNeedsPhotos()) ||
-            ((theme === "cubes" || theme === "depthfield") &&
-              globalThis.THREE &&
-              globalThis.BGTileField &&
-              (!active || !active.state || active.state.waiting || (active.state.field && active.state.field.stopped)));
-          if (needMount && !mountTheme(theme)) watchSettle();
+            sizeChanged ||
+            (mountedEmpty && pool.length > 0) ||
+            cubeBroken ||
+            (pendingRebuild && !overlay);
+          if (shouldRebuild) {
+            const ok = await rebuildNow(theme);
+            if (ok && !pendingRebuild) pendingRebuild = false;
+            else {
+              pendingRebuild = true;
+              if (!document.getElementById(OVERLAY_ID)) scheduleApply(60);
+            }
+            return;
+          }
+          if (!overlay || !active) {
+            pendingRebuild = true;
+            await rebuildNow(theme);
+            return;
+          }
           const live = document.getElementById(OVERLAY_ID);
           if (live && typeof rules.ensureBrandChrome === "function") {
             rules.ensureBrandChrome(live, "mosaic");
@@ -514,12 +1151,9 @@
             watchSettle();
             return;
           }
-          if (active && (added.length || removed.length) && typeof active.def.tick === "function") {
-            const bursts = Math.min(Math.max(added.length, removed.length ? 1 : 0), 3);
-            for (let i = 0; i < bursts; i += 1) {
-              active.def.tick(live, pool, active.state, makeApi());
-            }
-          }
+          watchFeedImgs(live);
+          if (added.length || removed.length) runThemeTick(added);
+          else if (retiring.size) reconcileOverlay(live);
         },
       });
     } finally {
@@ -552,14 +1186,37 @@
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ["src", "srcset"],
+    // Vixi encodes live mosaic membership in front-* / back-* class tokens.
+    attributeFilter: ["src", "srcset", "class"],
   });
 
   try {
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== "local") return;
-      if (changes.mosaicTheme || changes.enabled || changes.stageAspect) {
-        mountedTheme = "";
+      // Changing the message theme (or its colors) must not interrupt a live mosaic.
+      const touchesMosaic = Boolean(
+        changes.mosaicTheme ||
+          changes.mosaicShowBackground ||
+          changes.mosaicShowQr ||
+          changes.mosaicShowLogo ||
+          changes.enabled ||
+          changes.stageAspect ||
+          changes.showBackground ||
+          changes.showQr ||
+          changes.showLogo ||
+          changes.customThemes ||
+          changes.customEngines
+      );
+      if (!touchesMosaic) return;
+      if (
+        changes.mosaicTheme ||
+        changes.enabled ||
+        changes.stageAspect ||
+        changes.mosaicShowBackground ||
+        changes.mosaicShowQr ||
+        changes.mosaicShowLogo
+      ) {
+        requestRebuild();
       }
       scheduleApply(0);
     });
@@ -567,29 +1224,21 @@
     /* extension reloaded */
   }
 
-  // Mosaic layouts are computed at mount from the canvas size. When the
-  // window is resized, remount so every tile re-lays out proportionally to
-  // the new canvas (stage-based themes also self-fit via ResizeObserver).
+  // Mosaic layouts are computed at mount from the canvas size. Rebuild so
+  // every tile re-lays out against the new canvas instead of patching.
   let resizeRemountTimer = 0;
   window.addEventListener("resize", () => {
     if (resizeRemountTimer) clearTimeout(resizeRemountTimer);
     resizeRemountTimer = setTimeout(() => {
       resizeRemountTimer = 0;
-      if (applying) {
-        scheduleApply();
-        return;
-      }
-      if (!mountedTheme) {
-        scheduleApply();
-        return;
-      }
-      const host = document.getElementById(handoff.HOST_ID);
-      if (!layoutReady(host)) {
-        watchSettle();
-        return;
-      }
-      syncFeed();
-      mountTheme(mountedTheme);
+      if (performance.now() < ignoreResizeUntil) return;
+      const host =
+        (rules.findOverlayHost && rules.findOverlayHost()) ||
+        document.getElementById(handoff.HOST_ID);
+      const key = hostSizeKey(host);
+      if (key && key === mountedHostKey) return;
+      requestRebuild();
+      scheduleApply(0);
     }, 250);
   });
 

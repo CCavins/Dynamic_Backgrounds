@@ -1,12 +1,36 @@
 (function (root) {
   const TICK = 2500;
 
+  function markCardReady(card, img) {
+    if (!card || !img || !img.naturalWidth) return;
+    img.classList.remove("dyn-feed-pending");
+    card.classList.add("dyn-feed-ready");
+    card.classList.remove("dyn-feed-pending");
+  }
+
+  function armCardImage(card, img, src) {
+    img.alt = "";
+    img.addEventListener("load", () => markCardReady(card, img));
+    img.addEventListener("error", () => {
+      img.classList.add("dyn-feed-pending");
+      card.classList.remove("dyn-feed-ready");
+      card.classList.add("dyn-feed-pending");
+    });
+    if (src) {
+      img.classList.add("dyn-feed-pending");
+      card.classList.add("dyn-feed-pending");
+      img.src = src;
+      if (img.complete && img.naturalWidth) markCardReady(card, img);
+    } else {
+      card.classList.add("dyn-feed-pending");
+    }
+  }
+
   function makeCard(src, className) {
     const card = document.createElement("div");
     card.className = className ? "dyn-card " + className : "dyn-card";
     const img = document.createElement("img");
-    if (src) img.src = src;
-    img.alt = "";
+    armCardImage(card, img, src);
     card.appendChild(img);
     return card;
   }
@@ -18,25 +42,51 @@
 
   function setImg(card, src) {
     const img = card && card.querySelector("img:not(.dyn-reveal)");
-    if (img && src) img.src = src;
+    if (!img || !src) return;
+    if ((img.currentSrc || img.src) === src) {
+      markCardReady(card, img);
+      return;
+    }
+    const probe = new Image();
+    const apply = () => {
+      img.src = src;
+      markCardReady(card, img);
+    };
+    probe.onload = () => {
+      if (typeof probe.decode === "function") probe.decode().then(apply, apply);
+      else apply();
+    };
+    probe.src = src;
+    if (probe.complete && probe.naturalWidth) apply();
   }
 
   function replaceImg(card, src) {
     const img = card && card.querySelector("img:not(.dyn-reveal)");
     if (!img || !src) return Promise.resolve();
-    if ((img.currentSrc || img.src) === src) return Promise.resolve();
+    if ((img.currentSrc || img.src) === src) {
+      markCardReady(card, img);
+      return Promise.resolve();
+    }
     return new Promise((resolve) => {
       let settled = false;
       const done = () => {
         if (settled) return;
         settled = true;
+        img.src = src;
+        markCardReady(card, img);
         resolve();
       };
-      img.addEventListener("load", done, { once: true });
-      img.addEventListener("error", done, { once: true });
-      img.src = src;
-      if (img.complete) done();
-      window.setTimeout(done, 350);
+      const probe = new Image();
+      probe.onload = () => {
+        if (typeof probe.decode === "function") probe.decode().then(done, done);
+        else done();
+      };
+      probe.onerror = done;
+      probe.src = src;
+      if (probe.complete && probe.naturalWidth) {
+        probe.onload();
+      }
+      window.setTimeout(done, 4000);
     });
   }
 
@@ -169,8 +219,7 @@
     const card = document.createElement("div");
     card.className = "dyn-card dyn-polaroid";
     const img = document.createElement("img");
-    if (src) img.src = src;
-    img.alt = "";
+    armCardImage(card, img, src);
     card.appendChild(img);
     const band = document.createElement("div");
     band.className = "dyn-polaroid-band";
@@ -229,12 +278,26 @@ html.dyn-mosaic-on .logo-tile {
   border-radius: 16px;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
+#dyn-mosaic-theme .dyn-card:not(.dyn-feed-ready) {
+  opacity: 0 !important;
+}
 #dyn-mosaic-theme .dyn-card img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center center;
   display: block;
+}
+#dyn-mosaic-theme img.dyn-feed-out {
+  opacity: 0 !important;
+  transition: opacity 0.75s ease;
+}
+#dyn-mosaic-theme img.dyn-feed-in {
+  opacity: 0;
+}
+#dyn-mosaic-theme img.dyn-feed-in.is-on {
+  opacity: 1;
+  transition: opacity 0.75s ease;
 }
 #dyn-mosaic-theme .dyn-reveal {
   position: absolute;
@@ -1201,13 +1264,21 @@ html.dyn-mosaic-on .logo-tile {
       },
       tick(root, pool, state, api) {
         if (!pool.length) return;
+        const usedNow = () => [...root.querySelectorAll(".dyn-card img")].map((img) => img.src);
+        [...root.querySelectorAll(".dyn-card")].forEach((card) => {
+          const src = imgSrc(card);
+          if (!src) return;
+          if (api && typeof api.isRetiring === "function" && api.isRetiring(src)) {
+            const next = feedSrc(api, pool, usedNow());
+            if (next && next !== src) replaceImg(card, next);
+          }
+        });
         const pileIndex = pickFairTurn(state, state.piles.length, state.dealing);
         if (pileIndex < 0) return;
         const pile = state.piles[pileIndex];
         const pileEl = state.pileEls[pileIndex];
         if (!pileEl || !pileEl.children.length) return;
 
-        const usedNow = () => [...root.querySelectorAll(".dyn-card img")].map((img) => img.src);
         const incoming = pileEl.firstElementChild;
         const face = pileEl.children.length > 1 ? pileEl.lastElementChild : null;
         if (!incoming || incoming === face) return;
@@ -1217,9 +1288,7 @@ html.dyn-mosaic-on .logo-tile {
         state.dealing[pileIndex] = true;
         const dir = pileIndex === 0 ? -1 : 1;
         dealFromSide(pileEl, incoming, face, dir).then(() => {
-          const underSrc = face
-            ? feedSrc(api, pool, usedNow()) || pickRandomUrl(pool)
-            : "";
+          const underSrc = face ? feedSrc(api, pool, usedNow()) : "";
           const swap =
             face && face.parentElement && face !== incoming && underSrc
               ? replaceImg(face, underSrc)
@@ -1227,8 +1296,16 @@ html.dyn-mosaic-on .logo-tile {
           return swap.then(() => {
             if (face) face.classList.remove("is-face");
             incoming.classList.remove("is-dealing");
+            [...pileEl.children].forEach((card) => {
+              const src = imgSrc(card);
+              if (!src) return;
+              if (api && typeof api.isRetiring === "function" && api.isRetiring(src)) {
+                const next = feedSrc(api, pool, usedNow());
+                if (next && next !== src) replaceImg(card, next);
+              }
+            });
             while (pileEl.children.length < state.perPile) {
-              const fillSrc = pickRandomUrl(pool, usedNow()) || pickRandomUrl(pool);
+              const fillSrc = feedSrc(api, pool, usedNow());
               if (!fillSrc) break;
               const back = makeCard(fillSrc);
               back.style.opacity = "0";
@@ -1738,8 +1815,14 @@ html.dyn-mosaic-on .logo-tile {
 
         function replaceSlot(slotId) {
           const oldCard = state.live.get(slotId);
-          const src = pickRandomUrl(state.poolRef) || (oldCard && imgSrc(oldCard.wrapper.querySelector(".dyn-polaroid")));
-          if (!src) return;
+          const src = pickRandomUrl(state.poolRef);
+          if (!src) {
+            if (oldCard) {
+              conceal(oldCard, () => state.live.delete(slotId));
+              state.live.delete(slotId);
+            }
+            return;
+          }
           fillSlot(slotId, src);
           if (oldCard) {
             later(state, () => conceal(oldCard), 800);
@@ -2606,7 +2689,7 @@ html.dyn-mosaic-on .logo-tile {
         peds.forEach(prepareNext);
         function swapTexture(p) {
           const incoming = p.layers[1 - p.active];
-          incoming.src = p.pendingSrc || pickRandomUrl(state.poolRef) || incoming.src;
+          incoming.src = p.pendingSrc || pickRandomUrl(state.poolRef) || "";
           incoming.style.opacity = "0";
           p.active = 1 - p.active;
         }
