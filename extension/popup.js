@@ -11,8 +11,12 @@
   const stageRatioRow = document.getElementById("stage-ratio-row");
   const stageRatioW = document.getElementById("stage-ratio-w");
   const stageRatioH = document.getElementById("stage-ratio-h");
-  const showQr = document.getElementById("show-qr");
-  const showLogo = document.getElementById("show-logo");
+  const mosaicShowBackground = document.getElementById("mosaic-show-background");
+  const mosaicShowQr = document.getElementById("mosaic-show-qr");
+  const mosaicShowLogo = document.getElementById("mosaic-show-logo");
+  const messageShowBackground = document.getElementById("message-show-background");
+  const messageShowQr = document.getElementById("message-show-qr");
+  const messageShowLogo = document.getElementById("message-show-logo");
   const messageThemeSettings = document.getElementById("message-theme-settings");
   const anyOutput = document.getElementById("any-output");
   const rulesRoot = document.getElementById("rules");
@@ -328,8 +332,12 @@
     return {
       enabled: enabledInput.checked,
       stageAspect: readStageAspect(),
-      showQr: Boolean(showQr && showQr.checked),
-      showLogo: Boolean(showLogo && showLogo.checked),
+      mosaicShowBackground: Boolean(mosaicShowBackground && mosaicShowBackground.checked),
+      mosaicShowQr: Boolean(mosaicShowQr && mosaicShowQr.checked),
+      mosaicShowLogo: Boolean(mosaicShowLogo && mosaicShowLogo.checked),
+      messageShowBackground: Boolean(messageShowBackground && messageShowBackground.checked),
+      messageShowQr: Boolean(messageShowQr && messageShowQr.checked),
+      messageShowLogo: Boolean(messageShowLogo && messageShowLogo.checked),
       mosaicTheme: mosaicTheme.value,
       messageTheme: theme,
       messageThemeSettings: themeSettings,
@@ -429,8 +437,16 @@
       schedulePersist();
     });
   }
-  if (showQr) showQr.addEventListener("change", persist);
-  if (showLogo) showLogo.addEventListener("change", persist);
+  [
+    mosaicShowBackground,
+    mosaicShowQr,
+    mosaicShowLogo,
+    messageShowBackground,
+    messageShowQr,
+    messageShowLogo,
+  ].forEach((input) => {
+    if (input) input.addEventListener("change", persist);
+  });
   messageTheme.addEventListener("change", () => {
     stashCurrentThemeForm();
     lastMessageTheme = messageTheme.value;
@@ -519,8 +535,12 @@
       enhanceSelect(stageAspect);
       syncStageAspectUI(settings.stageAspect || "auto");
     }
-    if (showQr) showQr.checked = Boolean(settings.showQr);
-    if (showLogo) showLogo.checked = Boolean(settings.showLogo);
+    if (mosaicShowBackground) mosaicShowBackground.checked = Boolean(settings.mosaicShowBackground);
+    if (mosaicShowQr) mosaicShowQr.checked = Boolean(settings.mosaicShowQr);
+    if (mosaicShowLogo) mosaicShowLogo.checked = Boolean(settings.mosaicShowLogo);
+    if (messageShowBackground) messageShowBackground.checked = Boolean(settings.messageShowBackground);
+    if (messageShowQr) messageShowQr.checked = Boolean(settings.messageShowQr);
+    if (messageShowLogo) messageShowLogo.checked = Boolean(settings.messageShowLogo);
     lastMessageTheme = settings.messageTheme;
     syncSelectUI(mosaicTheme);
     syncSelectUI(messageTheme);

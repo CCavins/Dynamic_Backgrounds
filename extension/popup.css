@@ -177,6 +177,10 @@ select {
   color: var(--v2-light-gray);
 }
 
+.chrome-toggles {
+  margin-top: var(--v2-s);
+}
+
 .check-row {
   display: flex;
   align-items: center;

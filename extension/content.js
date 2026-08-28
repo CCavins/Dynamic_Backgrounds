@@ -54,10 +54,24 @@
     // Cached settings keep the injected background alive across extension
     // reloads; only a page refresh swaps in the new script.
     const settings = await rules.loadSettings();
-    if (rules.themeReplacesBackground && rules.themeReplacesBackground(settings)) {
-      hideOriginalBackground(rules.findWrapper());
+    const themeOn = rules.liveThemeIsOn
+      ? rules.liveThemeIsOn(settings)
+      : rules.themeIsOn
+        ? rules.themeIsOn(settings)
+        : Boolean(
+            settings &&
+              settings.enabled !== false &&
+              ((settings.messageTheme && settings.messageTheme !== "off") ||
+                (settings.mosaicTheme && settings.mosaicTheme !== "off"))
+          );
+    if (themeOn) {
       const iframe = document.getElementById(IFRAME_ID);
       if (iframe) iframe.remove();
+      if (rules.themeReplacesBackground && rules.themeReplacesBackground(settings)) {
+        hideOriginalBackground(rules.findWrapper());
+      } else {
+        restoreOriginalBackground();
+      }
       return;
     }
     const src = rules.resolveIframeSrc(settings, location.href);

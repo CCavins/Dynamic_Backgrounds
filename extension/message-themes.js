@@ -18,6 +18,10 @@ html.dyn-message-on .message-layer {
 }
 html.dyn-message-on .v2-qr-tile,
 html.dyn-message-on .qr-tile,
+html.dyn-message-on .v2-logo,
+html.dyn-message-on .v2-logo-tile,
+html.dyn-message-on .event-logo,
+html.dyn-message-on .logo-tile,
 html.dyn-message-on .mosaic-layout > .asset-view {
   visibility: hidden !important;
   opacity: 0 !important;

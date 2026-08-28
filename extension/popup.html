@@ -30,7 +30,7 @@
 
   <section>
     <h2>Stage</h2>
-    <p class="help">Force a canvas ratio. The stage grows until it hits a window edge, then letterboxes the other axis. Auto still follows the window. Vixi’s background is hidden while a theme is on.</p>
+    <p class="help">Force a canvas ratio. The stage grows until it hits a window edge, then letterboxes the other axis. Auto still follows the window.</p>
     <label class="select-label">
       <span>Aspect</span>
       <select id="stage-aspect">
@@ -60,15 +60,6 @@
         <input id="stage-ratio-h" type="number" min="1" max="9999" step="any" inputmode="decimal" value="9">
       </label>
     </div>
-    <label class="check-row">
-      <input type="checkbox" id="show-qr">
-      <span>Show QR code</span>
-    </label>
-    <label class="check-row">
-      <input type="checkbox" id="show-logo">
-      <span>Show logo</span>
-    </label>
-    <p class="help">Both stay hidden unless you turn them on. The theme decides where they sit and how big they are.</p>
   </section>
 
   <section>
@@ -80,6 +71,21 @@
         <option value="off">Off</option>
       </select>
     </label>
+    <div class="chrome-toggles">
+      <label class="check-row">
+        <input type="checkbox" id="mosaic-show-background">
+        <span>Show background</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="mosaic-show-qr">
+        <span>Show QR code</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="mosaic-show-logo">
+        <span>Show logo</span>
+      </label>
+    </div>
+    <p class="help">Mosaic-only. Uses the mosaic item’s background, QR, and logo — not the message ones. Hidden unless turned on. The background fills the stage; the theme places QR and logo.</p>
   </section>
 
   <section>
@@ -92,6 +98,21 @@
       </select>
     </label>
     <div id="message-theme-settings" class="theme-settings" hidden></div>
+    <div class="chrome-toggles">
+      <label class="check-row">
+        <input type="checkbox" id="message-show-background">
+        <span>Show background</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="message-show-qr">
+        <span>Show QR code</span>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="message-show-logo">
+        <span>Show logo</span>
+      </label>
+    </div>
+    <p class="help">Message-only. Uses the capture item’s background, QR, and logo — not the mosaic ones. Hidden unless turned on. The background fills the stage; the theme places QR and logo.</p>
   </section>
 
   <section>

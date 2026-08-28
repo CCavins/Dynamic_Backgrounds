@@ -12,6 +12,13 @@
     stageAspect: "stageAspect",
     showQr: "showQr",
     showLogo: "showLogo",
+    showBackground: "showBackground",
+    messageShowBackground: "messageShowBackground",
+    messageShowQr: "messageShowQr",
+    messageShowLogo: "messageShowLogo",
+    mosaicShowBackground: "mosaicShowBackground",
+    mosaicShowQr: "mosaicShowQr",
+    mosaicShowLogo: "mosaicShowLogo",
   };
 
   const STAGE_ASPECT_PRESETS = [
@@ -40,8 +47,12 @@
     messageTheme: "off",
     messageThemeSettings: {},
     stageAspect: "auto",
-    showQr: false,
-    showLogo: false,
+    messageShowBackground: false,
+    messageShowQr: false,
+    messageShowLogo: false,
+    mosaicShowBackground: false,
+    mosaicShowQr: false,
+    mosaicShowLogo: false,
   };
 
   const MOTION_MODES = ["slow", "drift", "fizz"];
@@ -430,6 +441,14 @@
   }
 
   const QR_SELECTORS = ".v2-qr-tile, .qr-tile";
+  const MESSAGE_CHROME_SCOPE =
+    ".message-layer, .capture-content-layer, .message-content, .v2-message";
+  const MOSAIC_CHROME_SCOPE =
+    ".mosaic-layout, .mosaic-tile-slot, .mosaic-asset, .v2-mosaic-swap-tile, .v2-mosaic-face, .v2-asset-tile";
+  const lastBrand = {
+    message: { qr: null, logo: null },
+    mosaic: { qr: null, logo: null },
+  };
   const LOGO_SELECTORS = [
     ".v2-logo-tile",
     ".v2-logo",
@@ -629,15 +648,14 @@
     return size;
   }
 
-  function silenceReplacedMedia() {
+  function eachBackgroundMedia(fn) {
     backgroundLayers().forEach((el) => {
       const media = [];
       if (el.matches && el.matches("video, audio")) media.push(el);
       if (el.querySelectorAll) media.push(...el.querySelectorAll("video, audio"));
       media.forEach((node) => {
         try {
-          node.pause();
-          node.muted = true;
+          fn(node);
         } catch {
           /* cross-origin or already gone */
         }
@@ -645,10 +663,131 @@
     });
   }
 
-  function themeReplacesBackground(settings) {
+  function silenceReplacedMedia() {
+    eachBackgroundMedia((node) => {
+      node.pause();
+      node.muted = true;
+    });
+  }
+
+  function resumeBackgroundMedia() {
+    eachBackgroundMedia((node) => {
+      if (node.paused && typeof node.play === "function") {
+        const play = node.play();
+        if (play && typeof play.catch === "function") play.catch(() => {});
+      }
+    });
+  }
+
+  function readChromeFlag(raw, nextKey, oldKey) {
+    if (!raw) return false;
+    if (raw[nextKey] != null) return Boolean(raw[nextKey]);
+    return Boolean(raw[oldKey]);
+  }
+
+  function chromeForKind(settings, kind) {
+    const s = settings || lastGoodSettings || DEFAULTS;
+    if (kind === "message") {
+      return {
+        showBackground: Boolean(s.messageShowBackground),
+        showQr: Boolean(s.messageShowQr),
+        showLogo: Boolean(s.messageShowLogo),
+      };
+    }
+    if (kind === "mosaic") {
+      return {
+        showBackground: Boolean(s.mosaicShowBackground),
+        showQr: Boolean(s.mosaicShowQr),
+        showLogo: Boolean(s.mosaicShowLogo),
+      };
+    }
+    return { showBackground: false, showQr: false, showLogo: false };
+  }
+
+  function themeKindFromRoot(themeRoot) {
+    if (!themeRoot) return "";
+    if (themeRoot.id === "dyn-mosaic-theme") return "mosaic";
+    if (themeRoot.id === "dyn-message-theme") return "message";
+    if (themeRoot.closest) {
+      if (themeRoot.closest("#dyn-mosaic-theme")) return "mosaic";
+      if (themeRoot.closest("#dyn-message-theme")) return "message";
+    }
+    return "";
+  }
+
+  function activeThemeKind(settings) {
+    const handoff = root.BGThemeHandoff;
+    const live = handoff && typeof handoff.liveKind === "function" ? handoff.liveKind() : "";
+    if (live === "message" || live === "mosaic") return live;
+    const mode = handoff && typeof handoff.currentMode === "function" ? handoff.currentMode() : "";
+    if (mode === "message" || mode === "mosaic") return mode;
+    const s = settings || lastGoodSettings;
+    if (s && normalizeMessageTheme(s.messageTheme) !== "off") return "message";
+    if (s && normalizeMosaicTheme(s.mosaicTheme) !== "off") return "mosaic";
+    return "";
+  }
+
+  function themeIsOn(settings) {
     const s = settings || lastGoodSettings;
     if (!s || s.enabled === false) return false;
     return normalizeMessageTheme(s.messageTheme) !== "off" || normalizeMosaicTheme(s.mosaicTheme) !== "off";
+  }
+
+  function liveThemeIsOn(settings) {
+    const s = settings || lastGoodSettings;
+    if (!s || s.enabled === false) return false;
+    const kind = activeThemeKind(s);
+    if (kind === "message") return normalizeMessageTheme(s.messageTheme) !== "off";
+    if (kind === "mosaic") return normalizeMosaicTheme(s.mosaicTheme) !== "off";
+    return themeIsOn(s);
+  }
+
+  function themeReplacesBackground(settings) {
+    const s = settings || lastGoodSettings;
+    if (!liveThemeIsOn(s)) return false;
+    const chrome = chromeForKind(s, activeThemeKind(s));
+    return !chrome.showBackground;
+  }
+
+  function classifyChrome(el) {
+    if (!el || !el.closest) return "shared";
+    if (el.closest(MESSAGE_CHROME_SCOPE)) return "message";
+    if (el.closest(MOSAIC_CHROME_SCOPE)) return "mosaic";
+    let node = el.parentElement;
+    while (node && node !== document.documentElement && node !== document.body) {
+      if (!node.querySelector) {
+        node = node.parentElement;
+        continue;
+      }
+      const hasMosaic = Boolean(node.querySelector(MOSAIC_CHROME_SCOPE));
+      const hasMessage = Boolean(node.querySelector(MESSAGE_CHROME_SCOPE));
+      if (hasMosaic && !hasMessage) return "mosaic";
+      if (hasMessage && !hasMosaic) return "message";
+      if (hasMosaic && hasMessage) break;
+      node = node.parentElement;
+    }
+    return "shared";
+  }
+
+  function tagChromeKinds() {
+    const nodes = [
+      ...document.querySelectorAll(QR_SELECTORS),
+      ...document.querySelectorAll(LOGO_SELECTORS),
+      ...backgroundLayers(),
+    ];
+    nodes.forEach((el) => {
+      if (!el || !el.setAttribute) return;
+      el.setAttribute("data-dyn-chrome-kind", classifyChrome(el));
+    });
+  }
+
+  function pickChromeNode(nodes, kind) {
+    const list = [...nodes].filter(Boolean);
+    const exact = list.find((el) => classifyChrome(el) === kind);
+    if (exact) return exact;
+    const opposite = kind === "message" ? "mosaic" : kind === "mosaic" ? "message" : "";
+    if (opposite && list.some((el) => classifyChrome(el) === opposite)) return null;
+    return list.find((el) => classifyChrome(el) === "shared") || null;
   }
 
   function isBrandNode(el) {
@@ -659,18 +798,30 @@
     return false;
   }
 
-  function findBrandNodes() {
-    const qr = document.querySelector(QR_SELECTORS);
-    let logo = document.querySelector(LOGO_SELECTORS);
-    if (logo && qr && (logo === qr || (logo.closest && logo.closest(QR_SELECTORS)))) logo = null;
-    if (!logo) {
+  function findBrandNodes(kind) {
+    const mode = kind === "message" || kind === "mosaic" ? kind : activeThemeKind();
+    const qr = pickChromeNode(document.querySelectorAll(QR_SELECTORS), mode);
+    let logos = [...document.querySelectorAll(LOGO_SELECTORS)].filter((el) => {
+      if (qr && (el === qr || (el.closest && el.closest(QR_SELECTORS)))) return false;
+      return true;
+    });
+    let logo = pickChromeNode(logos, mode);
+    if (!logo && mode === "mosaic") {
       const views = document.querySelectorAll(".mosaic-layout > .asset-view");
       views.forEach((el) => {
         if (logo || (qr && (el === qr || el.contains(qr) || (qr.contains && qr.contains(el))))) return;
         logo = el;
       });
     }
-    return { qr, logo };
+    if (mode === "message" || mode === "mosaic") {
+      if (qr) lastBrand[mode].qr = qr;
+      if (logo) lastBrand[mode].logo = logo;
+    }
+    return {
+      qr: qr || (mode && lastBrand[mode] && lastBrand[mode].qr) || null,
+      logo: logo || (mode && lastBrand[mode] && lastBrand[mode].logo) || null,
+      kind: mode,
+    };
   }
 
   function fillBrandSlot(slot, source) {
@@ -699,13 +850,18 @@
     slot.appendChild(clone);
   }
 
-  function ensureBrandChrome(themeRoot) {
+  function ensureBrandChrome(themeRoot, kind) {
     if (!themeRoot) return;
     const settings = lastGoodSettings || DEFAULTS;
-    const wantQr = Boolean(settings.showQr);
-    const wantLogo = Boolean(settings.showLogo);
+    const mode = kind === "message" || kind === "mosaic" ? kind : themeKindFromRoot(themeRoot);
+    const chrome = chromeForKind(settings, mode);
+    const wantQr = Boolean(chrome.showQr);
+    const wantLogo = Boolean(chrome.showLogo);
+    const wantBg = Boolean(chrome.showBackground);
     themeRoot.classList.toggle("dyn-show-qr", wantQr);
     themeRoot.classList.toggle("dyn-show-logo", wantLogo);
+    themeRoot.classList.toggle("dyn-show-bg", wantBg);
+    if (mode) themeRoot.dataset.chromeKind = mode;
 
     let qrSlot = themeRoot.querySelector("[data-qr]");
     let logoSlot = themeRoot.querySelector("[data-logo]");
@@ -722,7 +878,7 @@
       logoSlot = themeRoot.querySelector("[data-logo]");
     }
 
-    const nodes = findBrandNodes();
+    const nodes = findBrandNodes(mode);
     if (qrSlot) {
       if (wantQr && nodes.qr) fillBrandSlot(qrSlot, nodes.qr);
       else {
@@ -749,8 +905,12 @@
       messageTheme: normalizeMessageTheme(next.messageTheme),
       messageThemeSettings: normalizeMessageThemeSettings(next.messageThemeSettings),
       stageAspect: normalizeStageAspect(next.stageAspect),
-      showQr: Boolean(next.showQr),
-      showLogo: Boolean(next.showLogo),
+      messageShowBackground: readChromeFlag(next, "messageShowBackground", "showBackground"),
+      messageShowQr: readChromeFlag(next, "messageShowQr", "showQr"),
+      messageShowLogo: readChromeFlag(next, "messageShowLogo", "showLogo"),
+      mosaicShowBackground: readChromeFlag(next, "mosaicShowBackground", "showBackground"),
+      mosaicShowQr: readChromeFlag(next, "mosaicShowQr", "showQr"),
+      mosaicShowLogo: readChromeFlag(next, "mosaicShowLogo", "showLogo"),
       rules: rules
         .map((rule) => ({
           outputUrl: String(rule && rule.outputUrl ? rule.outputUrl : "").trim(),
@@ -1058,8 +1218,16 @@
     applyOutputCanvas,
     resetOutputCanvas,
     setStageAspect,
+    themeIsOn,
+    liveThemeIsOn,
+    activeThemeKind,
+    chromeForKind,
+    themeKindFromRoot,
+    classifyChrome,
+    tagChromeKinds,
     themeReplacesBackground,
     silenceReplacedMedia,
+    resumeBackgroundMedia,
     findBrandNodes,
     ensureBrandChrome,
     messageThemeMetaAll,

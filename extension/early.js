@@ -17,12 +17,17 @@
     "html.dyn-cover-mosaic .mosaic-image{" +
       "visibility:hidden!important;" +
     "}" +
-    "html.dyn-cover-message .v2-qr-tile," +
-    "html.dyn-cover-message .qr-tile," +
-    "html.dyn-cover-mosaic .v2-qr-tile," +
-    "html.dyn-cover-mosaic .qr-tile," +
-    "html.dyn-cover-message .mosaic-layout > .asset-view," +
-    "html.dyn-cover-mosaic .mosaic-layout > .asset-view{" +
+    "html.dyn-theme-on .v2-qr-tile," +
+    "html.dyn-theme-on .qr-tile," +
+    "html.dyn-theme-on .v2-logo," +
+    "html.dyn-theme-on .v2-logo-tile," +
+    "html.dyn-theme-on .event-logo," +
+    "html.dyn-theme-on .logo-tile," +
+    "html.dyn-theme-on .mosaic-layout > .asset-view{" +
+      "visibility:hidden!important;opacity:0!important;" +
+    "}" +
+    "html.dyn-theme-on:not(.dyn-show-bg) .v2-app-wrapper__bg-image," +
+    "html.dyn-theme-on:not(.dyn-show-bg) .output-wrapper > .asset-view{" +
       "visibility:hidden!important;opacity:0!important;" +
     "}";
 
@@ -35,19 +40,32 @@
 
   try {
     chrome.storage.local.get(
-      { enabled: true, mosaicTheme: "off", messageTheme: "off" },
+      {
+        enabled: true,
+        mosaicTheme: "off",
+        messageTheme: "off",
+        showBackground: false,
+        messageShowBackground: null,
+        mosaicShowBackground: null,
+      },
       (s) => {
         if (chrome.runtime.lastError) return;
         const enabled = s.enabled !== false;
+        const msgOn = Boolean(enabled && s.messageTheme && s.messageTheme !== "off");
+        const mosOn = Boolean(enabled && s.mosaicTheme && s.mosaicTheme !== "off");
+        const themeOn = msgOn || mosOn;
+        const flag = (nextKey) =>
+          s[nextKey] == null ? Boolean(s.showBackground) : Boolean(s[nextKey]);
+        const showBg = msgOn && !mosOn
+          ? flag("messageShowBackground")
+          : mosOn && !msgOn
+            ? flag("mosaicShowBackground")
+            : flag("messageShowBackground") && flag("mosaicShowBackground");
         const html = document.documentElement;
-        html.classList.toggle(
-          "dyn-cover-message",
-          Boolean(enabled && s.messageTheme && s.messageTheme !== "off")
-        );
-        html.classList.toggle(
-          "dyn-cover-mosaic",
-          Boolean(enabled && s.mosaicTheme && s.mosaicTheme !== "off")
-        );
+        html.classList.toggle("dyn-cover-message", msgOn);
+        html.classList.toggle("dyn-cover-mosaic", mosOn);
+        html.classList.toggle("dyn-theme-on", themeOn);
+        html.classList.toggle("dyn-show-bg", themeOn && showBg);
       }
     );
   } catch {

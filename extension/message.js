@@ -96,7 +96,7 @@
     mountedAspect = rules.currentStageAspect ? rules.currentStageAspect() : "auto";
     lastSettingsKey = settingsKey(id, themeSettings);
     lastThemeSettings = themeSettings;
-    if (typeof rules.ensureBrandChrome === "function") rules.ensureBrandChrome(root);
+    if (typeof rules.ensureBrandChrome === "function") rules.ensureBrandChrome(root, "message");
     return true;
   }
 
@@ -229,7 +229,7 @@
           }
         }
         if (overlay && typeof rules.ensureBrandChrome === "function") {
-          rules.ensureBrandChrome(overlay);
+          rules.ensureBrandChrome(overlay, "message");
         }
 
         const capture = rules.messageCapture();

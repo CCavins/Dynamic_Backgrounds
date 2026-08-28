@@ -20,11 +20,47 @@
     "html.dyn-theme-on .v2-logo-tile," +
     "html.dyn-theme-on .event-logo," +
     "html.dyn-theme-on .logo-tile," +
-    "html.dyn-theme-on .mosaic-layout > .asset-view," +
-    "html.dyn-theme-on .v2-app-wrapper__bg-image," +
-    "html.dyn-theme-on .output-wrapper > .asset-view," +
-    "html.dyn-theme-on #dyn-bg-embed{" +
+    "html.dyn-theme-on .mosaic-layout > .asset-view{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
+    "}" +
+    "html.dyn-theme-on:not(.dyn-show-bg) .v2-app-wrapper__bg-image," +
+    "html.dyn-theme-on:not(.dyn-show-bg) .output-wrapper > .asset-view," +
+    "html.dyn-theme-on:not(.dyn-show-bg) #dyn-bg-embed{" +
+      "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
+    "}" +
+    "html.dyn-show-bg .v2-app-wrapper__bg-image," +
+    "html.dyn-show-bg .output-wrapper > .asset-view," +
+    "html.dyn-show-bg .output-wrapper > .asset-view img," +
+    "html.dyn-show-bg .output-wrapper > .asset-view video," +
+    "html.dyn-show-bg #dyn-bg-embed{" +
+      "position:absolute!important;inset:0!important;" +
+      "left:0!important;top:0!important;right:0!important;bottom:0!important;" +
+      "width:100%!important;height:100%!important;" +
+      "max-width:none!important;max-height:none!important;" +
+      "object-fit:cover!important;object-position:center!important;" +
+      "visibility:visible!important;opacity:1!important;" +
+      "pointer-events:none!important;z-index:0!important;" +
+      "transform:none!important;display:block!important;" +
+    "}" +
+    "html.dyn-kind-message [data-dyn-chrome-kind=\"mosaic\"]," +
+    "html.dyn-kind-mosaic [data-dyn-chrome-kind=\"message\"]{" +
+      "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
+    "}" +
+    "html.dyn-show-bg #dyn-theme-host," +
+    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme," +
+    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme[data-theme]," +
+    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .dyn-fit-stage," +
+    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .dyn-stage," +
+    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .frame," +
+    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .scene," +
+    "html.dyn-show-bg.dyn-kind-mosaic #dyn-mosaic-theme{" +
+      "background:transparent!important;background-image:none!important;" +
+    "}" +
+    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .frame::before," +
+    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .frame::after," +
+    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .scene::before," +
+    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .scene::after{" +
+      "background:transparent!important;background-image:none!important;" +
     "}" +
     "html.dyn-stage-forced,html.dyn-stage-forced body,html.dyn-stage-forced .output-page{" +
       "background:#000!important;overflow:hidden!important;" +
@@ -75,14 +111,25 @@
       "dyn-cover-mosaic",
       Boolean(enabled && s.mosaicTheme && s.mosaicTheme !== "off")
     );
-    const themeOn = Boolean(
+    const eitherTheme = Boolean(
       enabled &&
         ((s.messageTheme && s.messageTheme !== "off") || (s.mosaicTheme && s.mosaicTheme !== "off"))
     );
-    html.classList.toggle("dyn-theme-on", themeOn);
-    if (themeOn && rules.applyOutputCanvas) rules.applyOutputCanvas(s.stageAspect);
+    const kind = rules.activeThemeKind ? rules.activeThemeKind(s) : "";
+    const chrome = rules.chromeForKind ? rules.chromeForKind(s, kind) : { showBackground: false };
+    const liveOn = rules.liveThemeIsOn ? rules.liveThemeIsOn(s) : eitherTheme;
+    html.classList.toggle("dyn-theme-on", liveOn);
+    html.classList.toggle("dyn-kind-message", kind === "message");
+    html.classList.toggle("dyn-kind-mosaic", kind === "mosaic");
+    html.classList.toggle("dyn-show-bg", liveOn && Boolean(chrome.showBackground));
+    if (rules.tagChromeKinds) rules.tagChromeKinds();
+    if (eitherTheme && rules.applyOutputCanvas) rules.applyOutputCanvas(s.stageAspect);
     else if (rules.resetOutputCanvas) rules.resetOutputCanvas();
-    if (themeOn && rules.silenceReplacedMedia) rules.silenceReplacedMedia();
+    if (liveOn && chrome.showBackground) {
+      if (rules.resumeBackgroundMedia) rules.resumeBackgroundMedia();
+    } else if (liveOn && rules.silenceReplacedMedia) {
+      rules.silenceReplacedMedia();
+    }
   }
 
   function liveKind() {

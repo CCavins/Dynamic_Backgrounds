@@ -204,7 +204,11 @@ html.dyn-mosaic-on .mosaic-asset {
 }
 html.dyn-mosaic-on .mosaic-layout > .asset-view,
 html.dyn-mosaic-on .v2-qr-tile,
-html.dyn-mosaic-on .qr-tile {
+html.dyn-mosaic-on .qr-tile,
+html.dyn-mosaic-on .v2-logo,
+html.dyn-mosaic-on .v2-logo-tile,
+html.dyn-mosaic-on .event-logo,
+html.dyn-mosaic-on .logo-tile {
   visibility: hidden !important;
   opacity: 0 !important;
 }
@@ -834,8 +838,8 @@ html.dyn-mosaic-on .qr-tile {
 }
 #dyn-mosaic-theme[data-theme="pedestals"] .dyn-ped-stage {
   position: absolute;
-  width: 1920px;
-  height: 1080px;
+  width: 100%;
+  height: 100%;
   transform-origin: top left;
   perspective: 2000px;
   perspective-origin: 50% 44%;

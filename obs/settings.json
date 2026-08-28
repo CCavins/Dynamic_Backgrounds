@@ -4,8 +4,12 @@
   "mosaicTheme": "decks",
   "messageThemeSettings": {},
   "stageAspect": "auto",
-  "showQr": false,
-  "showLogo": false,
+  "messageShowBackground": false,
+  "messageShowQr": false,
+  "messageShowLogo": false,
+  "mosaicShowBackground": false,
+  "mosaicShowQr": false,
+  "mosaicShowLogo": false,
   "anyOutputIframeHtml": "",
   "rules": []
 }

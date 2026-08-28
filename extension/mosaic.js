@@ -267,6 +267,7 @@
     mountedTheme = id;
     mountedAspect = rules.currentStageAspect ? rules.currentStageAspect() : "auto";
     mountedEmpty = pool.length === 0;
+    if (typeof rules.ensureBrandChrome === "function") rules.ensureBrandChrome(root, "mosaic");
     startTick(def.interval);
     return true;
   }
@@ -343,7 +344,7 @@
         }
         const live = document.getElementById(OVERLAY_ID);
         if (live && typeof rules.ensureBrandChrome === "function") {
-          rules.ensureBrandChrome(live);
+          rules.ensureBrandChrome(live, "mosaic");
         }
         if (!live || !active) return;
         if (active && (added.length || removed.length) && typeof active.def.tick === "function") {
