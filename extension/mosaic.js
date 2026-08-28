@@ -11,6 +11,9 @@
 
   let applyTimer = 0;
   let tickTimer = 0;
+  let settleTimer = 0;
+  let applyGen = 0;
+  let applying = false;
   let dealIndex = 0;
   let mountedTheme = "";
   let mountedAspect = "";
@@ -20,24 +23,117 @@
   const retiring = new Set();
   const incoming = [];
   const pool = [];
+  const remembered = [];
+  const rememberedSet = new Set();
   let lastShown = "";
 
-  function collectUrls() {
+  function imageSrc(img) {
+    if (typeof rules.mosaicImageSrc === "function") return rules.mosaicImageSrc(img);
+    if (!img) return "";
+    const src = img.currentSrc || img.src || "";
+    if (src && !src.startsWith("data:")) return src;
+    const srcset = img.getAttribute && img.getAttribute("srcset");
+    if (!srcset) return "";
+    const first = srcset.split(",")[0].trim().split(/\s+/)[0];
+    return first && !first.startsWith("data:") ? first : "";
+  }
+
+  function isBrandSrc(src) {
+    if (typeof rules.isBrandMosaicSrc === "function") return rules.isBrandMosaicSrc(src);
+    return !src || /\/config\//i.test(src) || /output_logo|layers__logo/i.test(src);
+  }
+
+  function rememberUrls(urls) {
+    (urls || []).forEach((src) => {
+      if (!src || isBrandSrc(src) || rememberedSet.has(src)) return;
+      rememberedSet.add(src);
+      remembered.push(src);
+    });
+  }
+
+  function forgetBrandUrls() {
+    for (let i = remembered.length - 1; i >= 0; i -= 1) {
+      if (!isBrandSrc(remembered[i])) continue;
+      rememberedSet.delete(remembered[i]);
+      remembered.splice(i, 1);
+    }
+    for (let i = pool.length - 1; i >= 0; i -= 1) {
+      if (!isBrandSrc(pool[i])) continue;
+      liveSet.delete(pool[i]);
+      pool.splice(i, 1);
+    }
+  }
+
+  function harvestOverlayUrls() {
     const urls = [];
-    const seenNow = new Set();
-    rules.mosaicImages().forEach((img) => {
-      const src = img.currentSrc || img.src;
-      if (!src || src.startsWith("data:")) return;
-      if (rules.isSkippedMosaicImage(img)) return;
-      if (seenNow.has(src)) return;
-      seenNow.add(src);
+    const seen = new Set();
+    const root = document.getElementById(OVERLAY_ID);
+    if (!root) return urls;
+    root.querySelectorAll(".dyn-card img").forEach((img) => {
+      if (img.closest(".dyn-brand-chrome, [data-qr], [data-logo], .dyn-brand-logo, .dyn-brand-qr")) {
+        return;
+      }
+      const src = imageSrc(img);
+      if (!src || isBrandSrc(src) || src.startsWith("chrome-extension:") || seen.has(src)) return;
+      seen.add(src);
       urls.push(src);
     });
     return urls;
   }
 
+  function collectUrls() {
+    const urls = [];
+    const seenNow = new Set();
+    function add(src) {
+      if (!src || isBrandSrc(src) || seenNow.has(src)) return;
+      seenNow.add(src);
+      urls.push(src);
+    }
+    rules.mosaicImages().forEach((img) => {
+      const src = imageSrc(img);
+      if (!src) return;
+      if (rules.isSkippedMosaicImage(img)) return;
+      add(src);
+    });
+    if (typeof rules.mosaicAssetClassUrls === "function") {
+      rules.mosaicAssetClassUrls().forEach(add);
+    }
+    return urls;
+  }
+
+  function restoreRemembered() {
+    if (pool.length || !remembered.length) return;
+    remembered.forEach((src) => {
+      if (!liveSet.has(src)) incoming.push(src);
+      liveSet.add(src);
+      pool.push(src);
+    });
+  }
+
+  function overlayNeedsPhotos() {
+    const root = document.getElementById(OVERLAY_ID);
+    if (!root) return true;
+    const cards = [...root.querySelectorAll(".dyn-card img")];
+    if (!cards.length) return false;
+    return cards.every((img) => {
+      const src = imageSrc(img);
+      return !src || isBrandSrc(src);
+    });
+  }
+
   function syncFeed() {
+    forgetBrandUrls();
+    rememberUrls(harvestOverlayUrls());
     const now = collectUrls();
+    if (now.length) rememberUrls(now);
+
+    // A flaky collect (covers on, Vue swap, srcset-only) must not wipe photos
+    // we already have. Empty frames are only for a session that never had any.
+    if (!now.length) {
+      restoreRemembered();
+      return { added: [], removed: [] };
+    }
+
     const nowSet = new Set(now);
     const added = [];
     now.forEach((src) => {
@@ -62,6 +158,11 @@
       if (!liveSet.has(incoming[i])) incoming.splice(i, 1);
     }
     return { added, removed };
+  }
+
+  function layoutReady(el) {
+    if (!el) return false;
+    return el.clientWidth >= 8 && el.clientHeight >= 8;
   }
 
   function nextUrl(avoid) {
@@ -233,11 +334,16 @@
     }, interval || 2500);
   }
 
-  function unmountTheme() {
+  function unmountTheme(opts) {
+    const resetFeed = Boolean(opts && opts.resetFeed);
     stopTick();
     const root = document.getElementById(OVERLAY_ID);
     if (active && active.def && typeof active.def.unmount === "function" && root) {
-      active.def.unmount(root, active.state);
+      try {
+        active.def.unmount(root, active.state);
+      } catch {
+        /* a 0-size remount can leave the theme in a bad state */
+      }
     }
     if (root) root.replaceChildren();
     active = null;
@@ -245,18 +351,27 @@
     mountedAspect = "";
     mountedEmpty = true;
     lastShown = "";
-    // Reset feed state so retired/seen URLs can't accumulate forever on a
-    // long-running display cycling through many different mosaics.
-    liveSet.clear();
-    retiring.clear();
-    incoming.length = 0;
-    dealIndex = 0;
+    if (resetFeed) {
+      liveSet.clear();
+      retiring.clear();
+      incoming.length = 0;
+      dealIndex = 0;
+      pool.length = 0;
+    }
   }
 
   function mountTheme(id) {
     const def = themeApi.themes[id];
     if (!def) return false;
-    unmountTheme();
+    const host = rules.findOverlayHost();
+    if (!host) return false;
+    if (!layoutReady(host)) {
+      if (active && mountedTheme === id) return true;
+      return false;
+    }
+    rememberUrls(harvestOverlayUrls());
+    rememberUrls(pool);
+    unmountTheme({ resetFeed: false });
     const root = ensureOverlay();
     if (!root) return false;
     root.dataset.theme = id;
@@ -273,7 +388,7 @@
   }
 
   function teardownSoft() {
-    unmountTheme();
+    unmountTheme({ resetFeed: true });
     document.documentElement.classList.remove("dyn-mosaic-on");
     const root = document.getElementById(OVERLAY_ID);
     if (root) root.remove();
@@ -305,56 +420,107 @@
     });
   }
 
+  function watchSettle() {
+    if (settleTimer) return;
+    let emptyPasses = 0;
+    settleTimer = setInterval(() => {
+      const overlay = document.getElementById(OVERLAY_ID);
+      const host = document.getElementById(handoff.HOST_ID);
+      const sized = layoutReady(overlay || host);
+      if (!active || !overlay || !sized) {
+        emptyPasses = 0;
+        scheduleApply();
+        return;
+      }
+      if (mountedEmpty && emptyPasses < 16) {
+        emptyPasses += 1;
+        scheduleApply();
+        return;
+      }
+      clearInterval(settleTimer);
+      settleTimer = 0;
+    }, 300);
+  }
+
   async function apply() {
-    if (customApi && typeof customApi.whenReady === "function") {
-      await customApi.whenReady();
-    }
-    // Keep theming with cached settings even after an extension reload kills
-    // the chrome APIs; only a page refresh swaps in the new script.
-    const settings = await rules.loadSettings();
-    handoff.applyCovers(settings);
-    const theme = settings.enabled ? rules.normalizeMosaicTheme(settings.mosaicTheme) : "off";
-    const aspect = rules.normalizeStageAspect
-      ? rules.normalizeStageAspect(settings.stageAspect)
-      : "auto";
-    const def = themeApi.themes[theme];
+    const gen = ++applyGen;
+    applying = true;
+    try {
+      if (customApi && typeof customApi.whenReady === "function") {
+        await Promise.race([
+          customApi.whenReady(),
+          new Promise((resolve) => setTimeout(resolve, 1500)),
+        ]);
+      }
+      // Keep theming with cached settings even after an extension reload kills
+      // the chrome APIs; only a page refresh swaps in the new script.
+      const settings = await rules.loadSettings();
+      if (gen !== applyGen) return;
+      handoff.applyCovers(settings);
+      const theme = settings.enabled ? rules.normalizeMosaicTheme(settings.mosaicTheme) : "off";
+      const aspect = rules.normalizeStageAspect
+        ? rules.normalizeStageAspect(settings.stageAspect)
+        : "auto";
+      const def = themeApi.themes[theme];
 
-    if (theme === "off" || !def) {
-      teardownHard();
-      return;
-    }
+      if (theme === "off" || !def) {
+        teardownHard();
+        return;
+      }
 
-    const kind = handoff.liveKind();
-    if (kind !== "mosaic") return;
-
-    await handoff.activate("mosaic", {
-      prepare() {
-        syncFeed();
-        return decodeUrls(pool);
-      },
-      async reveal() {
-        ensureStyle();
-        document.documentElement.classList.add("dyn-mosaic-on");
-        const { added, removed } = syncFeed();
-        const overlay = document.getElementById(OVERLAY_ID);
-        if (mountedTheme !== theme || mountedAspect !== aspect || !overlay) {
-          mountTheme(theme);
-        } else if (pool.length && mountedEmpty) {
-          mountTheme(theme);
+      watchSettle();
+      let kind = handoff.liveKind();
+      const mosaicPage = Boolean(rules.pageLooksLikeMosaic && rules.pageLooksLikeMosaic());
+      const mode = handoff.currentMode();
+      if (kind === "message") return;
+      if (kind !== "mosaic") {
+        if (mosaicPage || (kind === "" && (!mode || mode === "mosaic"))) {
+          kind = "mosaic";
+        } else {
+          return;
         }
-        const live = document.getElementById(OVERLAY_ID);
-        if (live && typeof rules.ensureBrandChrome === "function") {
-          rules.ensureBrandChrome(live, "mosaic");
-        }
-        if (!live || !active) return;
-        if (active && (added.length || removed.length) && typeof active.def.tick === "function") {
-          const bursts = Math.min(Math.max(added.length, removed.length ? 1 : 0), 3);
-          for (let i = 0; i < bursts; i += 1) {
-            active.def.tick(live, pool, active.state, makeApi());
+      }
+      await handoff.activate("mosaic", {
+        prepare() {
+          syncFeed();
+          return decodeUrls(pool);
+        },
+        async reveal() {
+          if (gen !== applyGen) return;
+          ensureStyle();
+          document.documentElement.classList.add("dyn-mosaic-on");
+          const { added, removed } = syncFeed();
+          const overlay = document.getElementById(OVERLAY_ID);
+          const wrapper = rules.findWrapper && rules.findWrapper();
+          const host = document.getElementById(handoff.HOST_ID);
+          const hostMisplaced = Boolean(wrapper && host && host.parentElement !== wrapper);
+          const needMount =
+            mountedTheme !== theme ||
+            mountedAspect !== aspect ||
+            !overlay ||
+            hostMisplaced ||
+            (pool.length && mountedEmpty) ||
+            (pool.length && overlayNeedsPhotos());
+          if (needMount && !mountTheme(theme)) watchSettle();
+          const live = document.getElementById(OVERLAY_ID);
+          if (live && typeof rules.ensureBrandChrome === "function") {
+            rules.ensureBrandChrome(live, "mosaic");
           }
-        }
-      },
-    });
+          if (!live || !active) {
+            watchSettle();
+            return;
+          }
+          if (active && (added.length || removed.length) && typeof active.def.tick === "function") {
+            const bursts = Math.min(Math.max(added.length, removed.length ? 1 : 0), 3);
+            for (let i = 0; i < bursts; i += 1) {
+              active.def.tick(live, pool, active.state, makeApi());
+            }
+          }
+        },
+      });
+    } finally {
+      if (gen === applyGen) applying = false;
+    }
   }
 
   function scheduleApply() {
@@ -382,7 +548,7 @@
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ["src"],
+    attributeFilter: ["src", "srcset"],
   });
 
   try {
@@ -401,7 +567,21 @@
     if (resizeRemountTimer) clearTimeout(resizeRemountTimer);
     resizeRemountTimer = setTimeout(() => {
       resizeRemountTimer = 0;
-      if (active && mountedTheme) mountTheme(mountedTheme);
+      if (applying) {
+        scheduleApply();
+        return;
+      }
+      if (!mountedTheme) {
+        scheduleApply();
+        return;
+      }
+      const host = document.getElementById(handoff.HOST_ID);
+      if (!layoutReady(host)) {
+        watchSettle();
+        return;
+      }
+      syncFeed();
+      mountTheme(mountedTheme);
     }, 250);
   });
 

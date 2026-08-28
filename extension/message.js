@@ -177,7 +177,10 @@
     // Sideloaded engines compile from storage after this file starts. Wait so
     // the first paint does not treat the selected theme as missing.
     if (customApi && typeof customApi.whenReady === "function") {
-      await customApi.whenReady();
+      await Promise.race([
+        customApi.whenReady(),
+        new Promise((resolve) => setTimeout(resolve, 1500)),
+      ]);
     }
     // If the extension was reloaded, chrome APIs are gone but the page keeps
     // running this script. loadSettings falls back to the cached settings, so
@@ -198,8 +201,14 @@
 
     const kind = handoff.liveKind();
     const mode = handoff.currentMode();
-    // Claim the screen when a message is live, and also when nothing is live
-    // yet (boot/idle) so the themed chrome shows instead of the stock layout.
+    const mosaicPage = rules.pageLooksLikeMosaic && rules.pageLooksLikeMosaic();
+    const cap = rules.messageCapture();
+    const hasMsg = Boolean(cap.src || cap.message || cap.name);
+    const mosaicOn =
+      settings.enabled !== false && rules.normalizeMosaicTheme(settings.mosaicTheme) !== "off";
+    // Do not steal a mosaic page, or an unknown boot while a mosaic theme is on.
+    if (kind === "mosaic" || mosaicPage) return;
+    if (kind === "" && mosaicOn && !hasMsg) return;
     if (kind !== "message" && !(kind === "" && (!mode || mode === "message"))) return;
 
     ensureStyle();
@@ -269,7 +278,7 @@
     subtree: true,
     characterData: true,
     attributes: true,
-    attributeFilter: ["src"],
+    attributeFilter: ["src", "srcset"],
   });
 
   try {

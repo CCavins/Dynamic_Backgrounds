@@ -544,11 +544,7 @@
   }
 
   function findOuterCanvas() {
-    return (
-      document.querySelector(".output-wrapper") ||
-      document.querySelector(".v2-app-wrapper") ||
-      document.querySelector(".output-page")
-    );
+    return findWrapper();
   }
 
   function markCanvasOuter(outer) {
@@ -944,21 +940,22 @@
   }
 
   function findOverlayHost() {
-    const wrapper =
-      document.querySelector(".v2-app-wrapper") ||
-      document.querySelector(".output-wrapper") ||
-      document.querySelector(".output-page");
-    if (!wrapper) return document.querySelector(".mosaic-layout");
+    // Standalone mosaic letterboxes .output-wrapper inside a taller
+    // .output-page. Attaching to the page (or a missing wrapper) puts the
+    // theme in the wrong box and destroying the host on hydrate drops it.
+    const wrapper = findWrapper();
+    if (!wrapper) return null;
 
     const hostId = (root.BGThemeHandoff && root.BGThemeHandoff.HOST_ID) || "dyn-theme-host";
     let host = document.getElementById(hostId);
     const app =
       wrapper.querySelector(":scope > .output-app") || wrapper.querySelector(".output-app");
-    if (!host || host.parentElement !== wrapper) {
-      if (host) host.remove();
+    if (!host) {
       host = document.createElement("div");
       host.id = hostId;
       host.setAttribute("aria-hidden", "true");
+    }
+    if (host.parentElement !== wrapper) {
       if (app && app.parentElement === wrapper) wrapper.insertBefore(host, app);
       else wrapper.appendChild(host);
     } else if (
@@ -971,8 +968,17 @@
     return host;
   }
 
+  function pageLooksLikeMosaic() {
+    try {
+      if (/(?:^|[?&])standalone=mosaic(?:&|$)/i.test(location.search || "")) return true;
+    } catch {
+      /* ignore */
+    }
+    return Boolean(document.querySelector(MOSAIC_CHROME_SCOPE + ", img.mosaic-image"));
+  }
+
   function hasMosaic() {
-    return mosaicContentCount() > 0;
+    return mosaicContentCount() > 0 || pageLooksLikeMosaic();
   }
 
   function hasMessage() {
@@ -980,14 +986,25 @@
     return Boolean(cap.src || cap.message || cap.name);
   }
 
+  function mosaicImageSrc(img) {
+    if (!img) return "";
+    const src = String(img.currentSrc || img.src || "").trim();
+    if (src && !src.startsWith("data:")) return src;
+    const srcset = img.getAttribute ? String(img.getAttribute("srcset") || "") : "";
+    if (!srcset) return "";
+    const first = srcset.split(",")[0].trim().split(/\s+/)[0];
+    return first && !first.startsWith("data:") ? first : "";
+  }
+
   function mosaicContentCount() {
     let count = 0;
     mosaicImages().forEach((img) => {
-      const src = img.currentSrc || img.src;
-      if (!src || src.startsWith("data:")) return;
+      const src = mosaicImageSrc(img);
+      if (!src) return;
       if (isSkippedMosaicImage(img)) return;
       count += 1;
     });
+    if (count === 0) count = mosaicAssetClassUrls().length;
     return count;
   }
 
@@ -1004,7 +1021,25 @@
   }
 
   function mosaicImages() {
-    return document.querySelectorAll(".v2-asset-tile img, .v2-mosaic-face img, .mosaic-asset img");
+    return document.querySelectorAll(
+      ".v2-asset-tile img, .v2-mosaic-face img, .v2-mosaic-swap-tile img, .mosaic-asset img, img.mosaic-image, .mosaic-tile-slot img"
+    );
+  }
+
+  function mosaicAssetClassUrls() {
+    const urls = [];
+    const seen = new Set();
+    document.querySelectorAll(".mosaic-asset").forEach((el) => {
+      String(el.className || "")
+        .split(/\s+/)
+        .forEach((token) => {
+          const match = /^(?:front|back)-(https?:\/\/\S+)/i.exec(token);
+          if (!match || seen.has(match[1]) || isBrandMosaicSrc(match[1])) return;
+          seen.add(match[1]);
+          urls.push(match[1]);
+        });
+    });
+    return urls;
   }
 
   function backgroundLayers(root) {
@@ -1024,11 +1059,34 @@
     return found;
   }
 
+  function isBrandMosaicSrc(src) {
+    const s = String(src || "");
+    if (!s) return true;
+    if (/\/config\//i.test(s)) return true;
+    if (/output_logo|layers__logo|default_am_output_logo/i.test(s)) return true;
+    try {
+      const nodes = [
+        ...document.querySelectorAll(LOGO_SELECTORS),
+        ...document.querySelectorAll(".mosaic-layout > .asset-view img"),
+        ...document.querySelectorAll(QR_SELECTORS + " img"),
+      ];
+      for (const el of nodes) {
+        const url = el && (el.currentSrc || el.src) ? el.currentSrc || el.src : "";
+        if (url && url === s) return true;
+      }
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+
   function isSkippedMosaicImage(img) {
     if (!img || !img.closest) return true;
     if (isBrandNode(img)) return true;
     if (img.classList.contains("v2-app-wrapper__bg-image")) return true;
     if (img.closest(".output-wrapper > .asset-view")) return true;
+    if (img.closest(".mosaic-layout > .asset-view")) return true;
+    if (isBrandMosaicSrc(mosaicImageSrc(img) || img.currentSrc || img.src)) return true;
     return false;
   }
 
@@ -1255,10 +1313,14 @@
     findWrapper,
     findOverlayHost,
     hasMosaic,
+    pageLooksLikeMosaic,
     hasMessage,
     mosaicContentCount,
     messageCapture,
     mosaicImages,
+    mosaicImageSrc,
+    mosaicAssetClassUrls,
+    isBrandMosaicSrc,
     backgroundLayers,
     isSkippedMosaicImage,
     extensionAlive,

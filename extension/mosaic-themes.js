@@ -5,7 +5,7 @@
     const card = document.createElement("div");
     card.className = className ? "dyn-card " + className : "dyn-card";
     const img = document.createElement("img");
-    img.src = src || "";
+    if (src) img.src = src;
     img.alt = "";
     card.appendChild(img);
     return card;
@@ -59,9 +59,9 @@
   function fill(pool, count) {
     const unique = uniqueList(pool);
     const out = [];
-    if (!unique.length || count <= 0) return out;
+    if (count <= 0) return out;
     for (let i = 0; i < count; i += 1) {
-      out.push(unique[i] || unique[i % unique.length]);
+      out.push(unique.length ? unique[i] || unique[i % unique.length] : "");
     }
     return out;
   }
@@ -169,7 +169,7 @@
     const card = document.createElement("div");
     card.className = "dyn-card dyn-polaroid";
     const img = document.createElement("img");
-    img.src = src || "";
+    if (src) img.src = src;
     img.alt = "";
     card.appendChild(img);
     const band = document.createElement("div");
@@ -1761,12 +1761,18 @@ html.dyn-mosaic-on .logo-tile {
         }
 
         const urls = fill(pool, slotDefs.length);
+        const hasPhotos = uniqueList(pool).length > 0;
         slotDefs.forEach((slot, i) => {
+          const src = urls[i] || pickRandomUrl(state.poolRef);
+          if (!hasPhotos) {
+            fillSlot(slot.id, src);
+            return;
+          }
           later(state, () => {
-            if (!state.stopped) fillSlot(slot.id, urls[i] || pickRandomUrl(state.poolRef));
+            if (!state.stopped) fillSlot(slot.id, src);
           }, i * 55);
         });
-        later(state, cycleOne, slotDefs.length * 55 + 1500);
+        later(state, cycleOne, hasPhotos ? slotDefs.length * 55 + 1500 : 1500);
         return state;
       },
       tick(root, pool, state) {

@@ -12,7 +12,7 @@
     "html.dyn-cover-mosaic .mosaic-tile-slot," +
     "html.dyn-cover-mosaic .mosaic-asset," +
     "html.dyn-cover-mosaic .mosaic-image{" +
-      "visibility:hidden!important;" +
+      "opacity:0!important;pointer-events:none!important;" +
     "}" +
     "html.dyn-theme-on .v2-qr-tile," +
     "html.dyn-theme-on .qr-tile," +
@@ -133,11 +133,19 @@
   }
 
   function liveKind() {
+    try {
+      const q = location.search || "";
+      if (/(?:^|[?&])standalone=mosaic(?:&|$)/i.test(q)) return "mosaic";
+      if (/(?:^|[?&])standalone=message(?:&|$)/i.test(q)) return "message";
+    } catch {
+      /* ignore */
+    }
     const cap = rules.messageCapture();
     const hasMsg = Boolean(cap.src || cap.message || cap.name);
     const mosaicN = typeof rules.mosaicContentCount === "function" ? rules.mosaicContentCount() : 0;
-    if (hasMsg && mosaicN === 0) return "message";
-    if (!hasMsg && mosaicN > 0) return "mosaic";
+    const mosaicPage = mosaicN > 0 || (typeof rules.pageLooksLikeMosaic === "function" && rules.pageLooksLikeMosaic());
+    if (mosaicPage && !hasMsg) return "mosaic";
+    if (hasMsg && !mosaicPage) return "message";
     return "";
   }
 

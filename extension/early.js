@@ -15,7 +15,7 @@
     "html.dyn-cover-mosaic .mosaic-tile-slot," +
     "html.dyn-cover-mosaic .mosaic-asset," +
     "html.dyn-cover-mosaic .mosaic-image{" +
-      "visibility:hidden!important;" +
+      "opacity:0!important;pointer-events:none!important;" +
     "}" +
     "html.dyn-theme-on .v2-qr-tile," +
     "html.dyn-theme-on .qr-tile," +

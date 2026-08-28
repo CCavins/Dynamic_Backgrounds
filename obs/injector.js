@@ -54,15 +54,15 @@ const FILES = [
   "rules.js",
   "handoff.js",
   "content.js",
-  "vendor/three.min.js",
-  "vendor/RoundedBoxGeometry.js",
-  "vendor/tile-field.js",
   "mosaic-themes.js",
   "message-themes.js",
   ...listedEngineFiles(),
   "custom-themes.js",
   "mosaic.js",
   "message.js",
+  "vendor/three.min.js",
+  "vendor/RoundedBoxGeometry.js",
+  "vendor/tile-field.js",
 ];
 
 function readSettings() {
