@@ -485,10 +485,16 @@
 
   let feedLockUntil = 0;
   let mountedAt = 0;
+  function themeManagesFeed(theme) {
+    // These themes own card enter/exit animations. mosaic.js must not fadeSetImg
+    // their imgs — that flashes without the theme transition.
+    return theme === "polaroid" || theme === "flipwall" || theme === "cubes" || theme === "depthfield";
+  }
+
   function reconcileOverlay(root) {
     if (!root || !active) return;
     const theme = root.dataset ? root.dataset.theme : "";
-    if (theme === "cubes" || theme === "depthfield") return;
+    if (themeManagesFeed(theme)) return;
     if (performance.now() - mountedAt < 1200) return;
     if (performance.now() < feedLockUntil) return;
     const imgs = leftoverOverlayImgs(root);
@@ -540,18 +546,29 @@
   function runThemeTick(added) {
     const root = document.getElementById(OVERLAY_ID);
     if (!root || !active) return;
-    placeIncoming(root);
-    placeAdded(root, added);
-    placeMissingLive(root);
+    const theme = root.dataset ? root.dataset.theme : "";
+    const managed = themeManagesFeed(theme);
+    if (managed) {
+      // Pool already updated in syncFeed. Drop placement queues so add/remove
+      // never rewrite on-screen cards for self-animated themes.
+      incoming.length = 0;
+      retiring.clear();
+    } else {
+      placeIncoming(root);
+      placeAdded(root, added);
+      placeMissingLive(root);
+    }
     if (typeof active.def.tick === "function") {
       active.def.tick(root, pool, active.state, makeApi());
     }
     watchFeedImgs(root);
-    placeIncoming(root);
-    placeAdded(root, added);
-    placeMissingLive(root);
-    reconcileOverlay(root);
-    if (leftoverOverlayImgs(root).length || retiring.size) armDrain();
+    if (!managed) {
+      placeIncoming(root);
+      placeAdded(root, added);
+      placeMissingLive(root);
+      reconcileOverlay(root);
+      if (leftoverOverlayImgs(root).length || retiring.size) armDrain();
+    }
   }
 
   function pickDuplicateCard(root, avoidSrc, used) {
@@ -580,7 +597,7 @@
   function placeAdded(root, added) {
     if (!root || !added || !added.length) return;
     const theme = root.dataset ? root.dataset.theme : "";
-    if (theme === "cubes" || theme === "depthfield") return;
+    if (themeManagesFeed(theme)) return;
     const used = new Set();
     added.forEach((src) => {
       if (!src) return;
@@ -599,17 +616,23 @@
   function placeMissingLive(root) {
     if (!root || !pool.length) return;
     const theme = root.dataset ? root.dataset.theme : "";
-    if (theme === "cubes" || theme === "depthfield") return;
-    const used = new Set();
+    if (themeManagesFeed(theme)) return;
+    // Only fill blank cards. Never rewrite existing photos to chase the full
+    // pool — that mass-swapped Polaroid/fan cards whenever Vixi churned membership.
+    const empties = overlayFeedImgs(root).filter((img) => {
+      if (img.classList.contains("dyn-feed-out")) return false;
+      return !feedImgUrl(img);
+    });
+    if (!empties.length) return;
+    let filled = 0;
     pool.forEach((src) => {
-      if (!src) return;
+      if (!src || filled >= empties.length) return;
       [...retiring].forEach((item) => {
         if (item === src || canonSrc(item) === canonSrc(src)) retiring.delete(item);
       });
       if (overlayCount(src)) return;
-      const target = pickDuplicateCard(root, src, used);
-      if (!target) return;
-      used.add(target);
+      const target = empties[filled];
+      filled += 1;
       target.src = src;
       fadeSetImg(target, src);
     });
@@ -618,10 +641,10 @@
   function placeIncoming(root) {
     if (!root || !incoming.length) return;
     const theme = root.dataset ? root.dataset.theme : "";
-    if (theme === "cubes" || theme === "depthfield") return;
+    if (themeManagesFeed(theme)) return;
     let placed = 0;
     const used = new Set();
-    while (incoming.length && placed < 4) {
+    while (incoming.length && placed < 1) {
       const imgs = overlayFeedImgs(root).filter((img) => {
         if (used.has(img)) return false;
         if (img.classList.contains("dyn-feed-out")) return false;
@@ -734,7 +757,8 @@
       runThemeTick(added);
       if (!added.length && !removed.length && retiring.size) {
         const root = document.getElementById(OVERLAY_ID);
-        if (root) reconcileOverlay(root);
+        const theme = root && root.dataset ? root.dataset.theme : "";
+        if (root && !themeManagesFeed(theme)) reconcileOverlay(root);
       }
     }, interval || 2500);
   }
@@ -1044,6 +1068,7 @@
       // Never keep mosaic cards over a live message beat — even if we still owe
       // a remount or Vixi left .mosaic-layout in the DOM.
       if (kind === "message") {
+        stopTick();
         document.documentElement.classList.add("dyn-cover-message", "dyn-cover-mosaic");
         if (!msgThemeOn) await releaseForMessage();
         // Message theme owns the handoff (prepare mounts first, then fades us).
@@ -1082,10 +1107,13 @@
             pendingRebuild ||
             mountedTheme !== theme ||
             mountedAspect !== aspect ||
-            !overlay;
+            !overlay ||
+            !active;
           if (needsMount) {
             pendingRebuild = false;
+            suppressResizeRebuild(1600);
             await rebuildNow(theme);
+            suppressResizeRebuild(1600);
           }
         },
         async reveal() {
@@ -1106,41 +1134,38 @@
               !active.state ||
               active.state.waiting ||
               (active.state.field && active.state.field.stopped));
+          const sizeChanged =
+            performance.now() >= ignoreResizeUntil &&
+            Boolean(mountedHostKey && host && hostSizeKey(host) !== mountedHostKey);
+          // Prefer feed updates over a second remount — prepare already mounted.
           if (
-            pendingRebuild &&
             overlay &&
+            active &&
             mountedTheme === theme &&
             mountedAspect === aspect &&
             !hostMisplaced &&
             !cubeBroken &&
-            !(mountedEmpty && pool.length > 0)
+            !(mountedEmpty && pool.length > 0) &&
+            !sizeChanged
           ) {
             pendingRebuild = false;
           }
-          const sizeChanged =
-            performance.now() >= ignoreResizeUntil &&
-            Boolean(mountedHostKey && host && hostSizeKey(host) !== mountedHostKey);
-          const shouldRebuild =
+          const doRebuild =
+            !overlay ||
+            !active ||
             mountedTheme !== theme ||
             mountedAspect !== aspect ||
-            !overlay ||
             hostMisplaced ||
-            sizeChanged ||
-            (mountedEmpty && pool.length > 0) ||
             cubeBroken ||
-            (pendingRebuild && !overlay);
-          if (shouldRebuild) {
+            (mountedEmpty && pool.length > 0) ||
+            sizeChanged;
+          if (doRebuild) {
             const ok = await rebuildNow(theme);
             if (ok && !pendingRebuild) pendingRebuild = false;
             else {
               pendingRebuild = true;
               if (!document.getElementById(OVERLAY_ID)) scheduleApply(60);
             }
-            return;
-          }
-          if (!overlay || !active) {
-            pendingRebuild = true;
-            await rebuildNow(theme);
             return;
           }
           const live = document.getElementById(OVERLAY_ID);
@@ -1152,8 +1177,12 @@
             return;
           }
           watchFeedImgs(live);
+          const liveTheme = live.dataset ? live.dataset.theme : "";
           if (added.length || removed.length) runThemeTick(added);
-          else if (retiring.size) reconcileOverlay(live);
+          else if (retiring.size) {
+            if (themeManagesFeed(liveTheme)) runThemeTick([]);
+            else reconcileOverlay(live);
+          }
         },
       });
     } finally {

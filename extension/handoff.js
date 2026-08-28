@@ -50,6 +50,11 @@
     "html.dyn-kind-mosaic:not(.dyn-handoff) #dyn-message-theme{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
+    /* Incoming mosaic must sit under the live message while the message exits,
+       otherwise decks/polaroids paint on top of the fading message beat. */
+    "html.dyn-handoff-to-mosaic #dyn-mosaic-theme{" +
+      "z-index:4!important;" +
+    "}" +
     "html.dyn-handoff .capture-content-layer," +
     "html.dyn-handoff .message-layer," +
     "html.dyn-handoff .message-content," +
@@ -130,8 +135,13 @@
     const chrome = rules.chromeForKind ? rules.chromeForKind(s, kind) : { showBackground: false };
     const liveOn = rules.liveThemeIsOn ? rules.liveThemeIsOn(s) : eitherTheme;
     html.classList.toggle("dyn-theme-on", liveOn);
-    html.classList.toggle("dyn-kind-message", kind === "message");
-    html.classList.toggle("dyn-kind-mosaic", kind === "mosaic");
+    // Until handoff finishes, keep dyn-kind-* on the currently visible mode.
+    // Flipping to the live beat early (e.g. mosaic→message) hides #dyn-mosaic-theme
+    // via CSS before activate() can crossfade, which flashes black.
+    const shownKind =
+      mode && kind && mode !== kind && !html.classList.contains("dyn-handoff") ? mode : kind;
+    html.classList.toggle("dyn-kind-message", shownKind === "message");
+    html.classList.toggle("dyn-kind-mosaic", shownKind === "mosaic");
     html.classList.toggle("dyn-show-bg", liveOn && Boolean(chrome.showBackground));
     if (rules.tagChromeKinds) rules.tagChromeKinds();
     if (eitherTheme && rules.applyOutputCanvas) rules.applyOutputCanvas(s.stageAspect);
@@ -143,13 +153,19 @@
     }
   }
 
-  function beginHandoff() {
+  function beginHandoff(toKind) {
     ensureCoverStyle();
-    document.documentElement.classList.add("dyn-handoff");
+    const html = document.documentElement;
+    html.classList.add("dyn-handoff");
+    html.classList.remove("dyn-handoff-to-message", "dyn-handoff-to-mosaic");
+    if (toKind === "message" || toKind === "mosaic") {
+      html.classList.add("dyn-handoff-to-" + toKind);
+    }
   }
 
   function endHandoff() {
-    document.documentElement.classList.remove("dyn-handoff");
+    const html = document.documentElement;
+    html.classList.remove("dyn-handoff", "dyn-handoff-to-message", "dyn-handoff-to-mosaic");
     if (lastSettings) applyCovers(lastSettings);
   }
 
@@ -232,7 +248,7 @@
         if (typeof tasks.reveal === "function") await withTimeout(tasks.reveal(), 12000);
         return;
       }
-      beginHandoff();
+      beginHandoff(kind);
       try {
         if (typeof tasks.prepare === "function") await withTimeout(tasks.prepare(), 8000);
         const outgoing = mode && actors[mode];

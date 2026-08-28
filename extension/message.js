@@ -356,6 +356,7 @@
       async reveal() {
         document.documentElement.classList.add("dyn-message-on");
         const overlay = document.getElementById(OVERLAY_ID);
+        // prepare already mounted — only remount if that failed.
         if (!overlay || !active || mountedTheme !== theme) {
           pendingRebuild = true;
           if (!(await rebuildNow(theme, themeSettings))) return;

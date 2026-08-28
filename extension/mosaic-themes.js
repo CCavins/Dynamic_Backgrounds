@@ -1746,6 +1746,7 @@ html.dyn-mosaic-on .logo-tile {
           stopped: false,
           timers: [],
           poolRef: pool,
+          lastPlacedSrc: "",
         };
         watchStage(state, stage, stageW, stageH, root);
 
@@ -1813,9 +1814,40 @@ html.dyn-mosaic-on .logo-tile {
           state.live.set(slotId, card);
         }
 
+        function cardSrc(card) {
+          const img = card && card.wrapper && card.wrapper.querySelector(".dyn-card img");
+          return img ? String(img.currentSrc || img.src || "").trim() : "";
+        }
+
+        function urlsEqual(a, b) {
+          if (!a || !b) return false;
+          if (a === b) return true;
+          const na = String(a).split("?")[0].split("#")[0];
+          const nb = String(b).split("?")[0].split("#")[0];
+          return na === nb;
+        }
+
+        function pickCycleSrc(avoidSrcs) {
+          const unique = uniqueList(state.poolRef);
+          const blocked = (avoidSrcs || []).filter(Boolean);
+          const choices = unique.filter((src) => !blocked.some((b) => urlsEqual(src, b)));
+          // With more than 3 photos, never fall back onto a just-shown image.
+          if (unique.length > 3) {
+            if (!choices.length) return "";
+            return choices[Math.floor(Math.random() * choices.length)];
+          }
+          const pool = choices.length ? choices : unique;
+          if (!pool.length) return "";
+          return pool[Math.floor(Math.random() * pool.length)];
+        }
+
         function replaceSlot(slotId) {
           const oldCard = state.live.get(slotId);
-          const src = pickRandomUrl(state.poolRef);
+          const avoid = [cardSrc(oldCard)];
+          if (uniqueList(state.poolRef).length > 3 && state.lastPlacedSrc) {
+            avoid.push(state.lastPlacedSrc);
+          }
+          const src = pickCycleSrc(avoid);
           if (!src) {
             if (oldCard) {
               conceal(oldCard, () => state.live.delete(slotId));
@@ -1823,6 +1855,7 @@ html.dyn-mosaic-on .logo-tile {
             }
             return;
           }
+          state.lastPlacedSrc = src;
           fillSlot(slotId, src);
           if (oldCard) {
             later(state, () => conceal(oldCard), 800);
@@ -1831,6 +1864,10 @@ html.dyn-mosaic-on .logo-tile {
 
         function cycleOne() {
           if (state.stopped) return;
+          if (!uniqueList(state.poolRef).length) {
+            later(state, cycleOne, 3000 + Math.random() * 2000);
+            return;
+          }
           let oldestId = null;
           let oldestSeq = Infinity;
           state.live.forEach((card, slotId) => {
@@ -1855,10 +1892,13 @@ html.dyn-mosaic-on .logo-tile {
             if (!state.stopped) fillSlot(slot.id, src);
           }, i * 55);
         });
-        later(state, cycleOne, hasPhotos ? slotDefs.length * 55 + 1500 : 1500);
+        // Native cycle: one card at a time via drop/toss/place. Feed add/remove
+        // only refreshes poolRef — it must not flash or rewrite cards on screen.
+        later(state, cycleOne, 4200 + Math.random() * 1800);
         return state;
       },
       tick(root, pool, state) {
+        // Pool only — on-screen cards change solely via cycleOne.
         if (state) state.poolRef = pool;
       },
       unmount(root, state) {
