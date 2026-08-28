@@ -16,6 +16,7 @@
   ]);
   const MOSAIC_ENGINES = new Set([
     "decks",
+    "decks-brand",
     "spotlight",
     "coverflow",
     "fan",
@@ -26,9 +27,13 @@
     "billboard",
     "reels",
     "polaroid",
+    "polaroid-brand",
     "flipwall",
+    "flipwall-brand",
     "livewall",
+    "livewall-brand",
     "cubes",
+    "cubes-brand",
     "depthfield",
     "pedestals",
   ]);

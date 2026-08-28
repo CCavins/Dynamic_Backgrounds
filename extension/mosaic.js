@@ -488,7 +488,13 @@
   function themeManagesFeed(theme) {
     // These themes own card enter/exit animations. mosaic.js must not fadeSetImg
     // their imgs — that flashes without the theme transition.
-    return theme === "polaroid" || theme === "flipwall" || theme === "cubes" || theme === "depthfield";
+    return theme === "polaroid" ||
+      theme === "polaroid-brand" ||
+      theme === "flipwall" ||
+      theme === "flipwall-brand" ||
+      theme === "cubes" ||
+      theme === "cubes-brand" ||
+      theme === "depthfield";
   }
 
   function reconcileOverlay(root) {
@@ -938,6 +944,10 @@
     root.dataset.theme = id;
     if (def.engine) root.dataset.engine = def.engine;
     else delete root.dataset.engine;
+    // Brand-aware themes need chrome classes before mount so the content frame sizes correctly.
+    if (/-brand$/.test(id) && typeof rules.ensureBrandChrome === "function") {
+      rules.ensureBrandChrome(root, "mosaic");
+    }
     const state = def.mount(root, pool, makeApi()) || {};
     active = { id, def, state };
     mountedTheme = id;
@@ -1125,7 +1135,10 @@
           const wrapper = rules.findWrapper && rules.findWrapper();
           const host = document.getElementById(handoff.HOST_ID);
           const hostMisplaced = Boolean(wrapper && host && host.parentElement !== wrapper);
-          const cubeField = theme === "cubes" || theme === "depthfield";
+          const cubeField =
+            theme === "cubes" ||
+            theme === "cubes-brand" ||
+            theme === "depthfield";
           const cubeBroken =
             cubeField &&
             globalThis.THREE &&

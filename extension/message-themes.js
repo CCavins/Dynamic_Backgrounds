@@ -35,6 +35,10 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   overflow: hidden;
   background: #05050c;
 }
+#dyn-message-theme.dyn-awaiting-show {
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
 #dyn-message-theme,
 #dyn-message-theme * { box-sizing: border-box; }
 #dyn-message-theme .dyn-fit-stage {

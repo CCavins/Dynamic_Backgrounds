@@ -187,6 +187,14 @@ a.hint:hover {
     color: rgba(255, 255, 255, 0.4);
 }
 
+.section-note {
+    margin: -8px 0 18px;
+    max-width: 52rem;
+    font-size: 14px;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.55);
+}
+
 .theme-grid,
 .grid {
     display: grid;

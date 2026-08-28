@@ -180,6 +180,51 @@ Put these on elements the JSON-only compiler (or your engine) should fill:
 
 If you omit `data-qr` / `data-logo`, the runtime uses a default corner chrome (logo top-left, QR bottom-right). Style those slots for size and placement. Leave them out of the layout only if the theme should never show brand marks.
 
+### Conditional chrome layouts (recommended)
+
+The theme root gets toggle classes you can target in CSS:
+
+| Class on `#dyn-*-theme` | Meaning |
+|---|---|
+| `dyn-show-qr` | Show QR is on for this kind |
+| `dyn-show-logo` | Show logo is on for this kind |
+| `dyn-show-bg` | Show background is on for this kind |
+
+Use them to move content and place chrome differently for each combination:
+
+```css
+/* Default slots — exact placement is yours */
+#dyn-message-theme[data-theme="my-theme"] [data-logo] {
+  position: absolute; top: 4%; left: 4%; width: 12%;
+}
+#dyn-message-theme[data-theme="my-theme"] [data-qr] {
+  position: absolute; right: 4%; bottom: 4%; width: 12%;
+}
+
+/* Neither chrome: full-bleed content */
+#dyn-message-theme[data-theme="my-theme"]:not(.dyn-show-qr):not(.dyn-show-logo) .content {
+  inset: 0;
+}
+
+/* Logo only */
+#dyn-message-theme[data-theme="my-theme"].dyn-show-logo:not(.dyn-show-qr) .content {
+  top: 12%;
+}
+
+/* QR only */
+#dyn-message-theme[data-theme="my-theme"].dyn-show-qr:not(.dyn-show-logo) .content {
+  right: 18%;
+}
+
+/* Both */
+#dyn-message-theme[data-theme="my-theme"].dyn-show-qr.dyn-show-logo .content {
+  right: 18%;
+  top: 10%;
+}
+```
+
+Same pattern works for mosaic themes (`#dyn-mosaic-theme`). Built-in themes marked with `*` use this idea: they reflow or reserve a rail when chrome is on, and use the full stage when it is off.
+
 For JSON-only message themes, `html` is required and is written into `.dyn-fit-stage`.
 
 ## Engine JS file shape (locked)

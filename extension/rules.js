@@ -110,6 +110,7 @@
 
   const MOSAIC_THEME_META = {
     decks: { label: "Card decks" },
+    "decks-brand": { label: "Card decks*", brandAware: true },
     spotlight: { label: "Spotlight" },
     coverflow: { label: "Coverflow" },
     fan: { label: "Fan" },
@@ -120,9 +121,13 @@
     billboard: { label: "Billboard" },
     reels: { label: "Reels" },
     polaroid: { label: "Polaroid wall" },
+    "polaroid-brand": { label: "Polaroid wall*", brandAware: true },
     flipwall: { label: "3D flip wall" },
+    "flipwall-brand": { label: "3D flip wall*", brandAware: true },
     livewall: { label: "Live mosaic" },
+    "livewall-brand": { label: "Live mosaic*", brandAware: true },
     cubes: { label: "Cube field" },
+    "cubes-brand": { label: "Cube field*", brandAware: true },
     depthfield: { label: "Depth Field" },
     pedestals: { label: "Pedestals" },
   };

@@ -1011,6 +1011,63 @@ html.dyn-mosaic-on .logo-tile {
   grid-template-columns: repeat(4, 264px);
   grid-template-rows: repeat(7, 261px);
 }
+
+/* Brand-aware variants (*): content lives in .dyn-brand-frame; chrome sits in the rail. */
+#dyn-mosaic-theme[data-theme$="-brand"] .dyn-brand-frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  container-type: size;
+}
+#dyn-mosaic-theme[data-theme$="-brand"] .dyn-brand-frame.is-reserved {
+  right: 20%;
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme$="-brand"] .dyn-brand-frame.is-reserved {
+  right: 0;
+  bottom: 15%;
+}
+/* Card decks*: keep piles in-flow on the root and open a right/bottom rail. */
+#dyn-mosaic-theme[data-theme="decks-brand"].dyn-show-qr,
+#dyn-mosaic-theme[data-theme="decks-brand"].dyn-show-logo {
+  justify-content: flex-start;
+  padding-left: 5%;
+  padding-right: 22%;
+  gap: 7%;
+}
+#dyn-mosaic-theme[data-theme="decks-brand"].dyn-show-qr .dyn-pile,
+#dyn-mosaic-theme[data-theme="decks-brand"].dyn-show-logo .dyn-pile {
+  width: min(22vw, 300px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="decks-brand"].dyn-show-qr,
+#dyn-mosaic-theme.dyn-portrait[data-theme="decks-brand"].dyn-show-logo {
+  padding-right: 8%;
+  padding-bottom: 18%;
+  justify-content: center;
+}
+#dyn-mosaic-theme[data-theme$="-brand"] > .dyn-brand-chrome .dyn-brand-logo {
+  left: auto;
+  right: 3.2%;
+  top: 4%;
+  width: min(15%, 170px);
+}
+#dyn-mosaic-theme[data-theme$="-brand"] > .dyn-brand-chrome .dyn-brand-qr {
+  right: 3.2%;
+  bottom: 4%;
+  width: min(15%, 160px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme$="-brand"] > .dyn-brand-chrome .dyn-brand-logo {
+  top: auto;
+  bottom: 4.2%;
+  left: 4%;
+  right: auto;
+  width: min(22%, 160px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme$="-brand"] > .dyn-brand-chrome .dyn-brand-qr {
+  bottom: 4.2%;
+  right: 4%;
+  width: min(20%, 150px);
+}
 `.replace(
     /#dyn-mosaic-theme\.dyn-portrait\[data-theme="([^"]+)"\]/g,
     '#dyn-mosaic-theme.dyn-portrait:is([data-theme="$1"], [data-engine="$1"])'
@@ -2789,6 +2846,49 @@ html.dyn-mosaic-on .logo-tile {
     },
 
   };
+
+  function brandAware(baseId) {
+    const base = themes[baseId];
+    if (!base) return null;
+    // Flex layouts (decks) reflow with padding on the root. Absolute/WebGL
+    // themes mount into a sized frame so columns/cameras rebuild for the rail.
+    const useFrame = baseId !== "decks";
+    return {
+      interval: base.interval,
+      mount(root, pool, api) {
+        const rulesApi = root.BGExtensionRules || globalThis.BGExtensionRules;
+        if (rulesApi && typeof rulesApi.ensureBrandChrome === "function") {
+          rulesApi.ensureBrandChrome(root, "mosaic");
+        }
+        root.dataset.engine = baseId;
+        const reserve =
+          root.classList.contains("dyn-show-qr") || root.classList.contains("dyn-show-logo");
+        if (!useFrame) {
+          return base.mount(root, pool, api) || {};
+        }
+        const frame = document.createElement("div");
+        frame.className = "dyn-brand-frame" + (reserve ? " is-reserved" : "");
+        root.appendChild(frame);
+        void frame.offsetWidth;
+        const inner = base.mount(frame, pool, api) || {};
+        return Object.assign(inner, { brandFrame: frame, brandBase: baseId });
+      },
+      tick(root, pool, state, api) {
+        if (!state) return;
+        const target = state.brandFrame || root;
+        if (typeof base.tick === "function") base.tick(target, pool, state, api);
+      },
+      unmount(root, state) {
+        const target = (state && state.brandFrame) || root;
+        if (typeof base.unmount === "function") base.unmount(target, state);
+      },
+    };
+  }
+
+  ["decks", "polaroid", "flipwall", "livewall", "cubes"].forEach((id) => {
+    const wrapped = brandAware(id);
+    if (wrapped) themes[id + "-brand"] = wrapped;
+  });
 
   root.BGMosaicThemes = {
     STYLE,

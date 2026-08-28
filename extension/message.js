@@ -171,6 +171,7 @@
     mountedAspect = rules.currentStageAspect ? rules.currentStageAspect() : "auto";
     lastSettingsKey = settingsKey(id, themeSettings);
     lastThemeSettings = themeSettings;
+    root.classList.add("dyn-awaiting-show");
     if (typeof rules.ensureBrandChrome === "function") rules.ensureBrandChrome(root, "message");
     return true;
   }
@@ -245,8 +246,14 @@
       await active.def.hide(root, active.state, themeSettings);
     }
     if (token !== cycle) return;
-    if (typeof active.def.show === "function") {
-      await active.def.show(root, next, active.state, themeSettings);
+    try {
+      if (typeof active.def.show === "function") {
+        await active.def.show(root, next, active.state, themeSettings);
+      }
+    } finally {
+      // Reveal after show (or after a failed show) so we never leave QR/logo alone
+      // on a cold load, and never stick on a black stage forever.
+      root.classList.remove("dyn-awaiting-show");
     }
   }
 
@@ -349,7 +356,10 @@
         const capture = rules.messageCapture();
         if (!capture.src && !capture.message && !capture.name) return;
         const key = captureKey(capture);
-        if (key === lastKey) return;
+        if (key === lastKey) {
+          if (live) live.classList.remove("dyn-awaiting-show");
+          return;
+        }
         lastKey = key;
         await present(capture, themeSettings, false);
       },
@@ -368,7 +378,10 @@
         const capture = rules.messageCapture();
         if (!capture.src && !capture.message && !capture.name) return;
         const key = captureKey(capture);
-        if (key === lastKey) return;
+        if (key === lastKey) {
+          if (live) live.classList.remove("dyn-awaiting-show");
+          return;
+        }
         const shouldHide = Boolean(lastKey);
         lastKey = key;
         await present(capture, themeSettings, shouldHide);
