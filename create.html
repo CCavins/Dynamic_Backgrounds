@@ -19,7 +19,7 @@
                 <a href="extension.html">Extension</a>
                 <a href="create.html" aria-current="page">Create</a>
             </nav>
-            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.14.1</span></a>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.14.2</span></a>
         </header>
 
         <div class="page-intro">
@@ -54,9 +54,13 @@
             </ul>
             <p>To preview without a live output, open <a href="themes/preview.html">themes/preview.html</a>.</p>
 
+            <h2>QR, logo, and layout variants</h2>
+            <p>Put <code>data-qr</code> and <code>data-logo</code> on the boxes that should receive Vixi’s marks when those toggles are on. Style them for exact size and position. Omit them to use the default corners, or leave the toggles off to hide chrome entirely.</p>
+            <p>The theme root gets <code>dyn-show-qr</code>, <code>dyn-show-logo</code>, and <code>dyn-show-bg</code> when those checkboxes are on. Use those classes in CSS for four layouts: neither, logo only, QR only, both. Prefer reflowing content away from the chrome rail instead of clipping photos with a hard mid-stage edge. Full examples are in <a href="themes/SPEC.md">themes/SPEC.md</a>.</p>
+
             <h2>Hand this to an AI</h2>
             <p>Attach <a href="themes/SPEC.md">themes/SPEC.md</a> and the closest example, then paste:</p>
-            <pre>You are writing a Dynamic Backgrounds theme pack. Read themes/SPEC.md and clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine".</pre>
+            <pre>You are writing a Dynamic Backgrounds theme pack. Read themes/SPEC.md and clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine". Prefer data-qr / data-logo slots and dyn-show-qr / dyn-show-logo layout variants when the brief mentions QR or logo.</pre>
             <p>Then describe the look. The spec lists every field, clamp, reserved id, reject rule, and engine hook.</p>
             <p>Limits: up to 24 imported themes. CSS max 100 KB, HTML max 50 KB, engine JS max ~200 KB. Importing the same <code>id</code> again replaces the previous pack.</p>
         </article>

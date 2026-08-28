@@ -114,9 +114,9 @@ Array of `{ "box", "text", "max", "min" }`. Selectors are queried inside the the
 
 Do not use these as a new pack `id` or a new engine `id`:
 
-`off`, `led-scoreboard`, `neon-nightclub`, `ultras-tifo`, `holo-card`, `broadcast-tv`, `liquid-glass`, `parallax-drift`, `decks`, `spotlight`, `coverflow`, `fan`, `filmstrip`, `scatter`, `cascade`, `orbit`, `billboard`, `reels`, `polaroid`, `flipwall`, `livewall`, `cubes`, `depthfield`, `pedestals`
+`off`, `led-scoreboard`, `neon-nightclub`, `ultras-tifo`, `holo-card`, `broadcast-tv`, `liquid-glass`, `parallax-drift`, `decks`, `decks-brand`, `spotlight`, `coverflow`, `fan`, `filmstrip`, `scatter`, `cascade`, `orbit`, `billboard`, `reels`, `polaroid`, `polaroid-brand`, `flipwall`, `flipwall-brand`, `livewall`, `livewall-brand`, `cubes`, `cubes-brand`, `depthfield`, `pedestals`
 
-Wrapping a built-in: set `"engine"` to one of those built-in ids (matching `kind`) and give the pack a **new** `id`. That reuses the built-in JS as-is. You cannot redesign that JS from JSON.
+Wrapping a built-in: set `"engine"` to one of those built-in ids (matching `kind`) and give the pack a **new** `id`. That reuses the built-in JS as-is. You cannot redesign that JS from JSON. Brand-aware wrap ids end in `-brand` (popup label with `*`).
 
 ## Reject list
 
@@ -225,6 +225,8 @@ Use them to move content and place chrome differently for each combination:
 
 Same pattern works for mosaic themes (`#dyn-mosaic-theme`). Built-in themes marked with `*` use this idea: they reflow or reserve a rail when chrome is on, and use the full stage when it is off.
 
+**Avoid hard mid-stage crops.** Prefer laying content out so cards/slots never need to sit under the QR/logo, and let edges bleed a little if needed. Do not rely on `overflow: hidden` on a half-width frame — that draws a straight cut through photos.
+
 For JSON-only message themes, `html` is required and is written into `.dyn-fit-stage`.
 
 ## Engine JS file shape (locked)
@@ -278,12 +280,14 @@ unmount(root, state)
 
 - `root` is `#dyn-mosaic-theme`
 - `pool` is the current live mosaic list for this tick. Photos that left the mosaic are omitted. An empty pool means show no photos. Do not snapshot `pool` from `mount` and reuse it forever — read the `pool` argument on each `tick`, or call `api.nextUrl()`
-- The host fades leftover `.dyn-card` photos that are leaving the mosaic. Do not wait for the host to fill empty slots — themes own their layout. Canvas or WebGL themes should apply the `pool` passed into each `tick` the same way. Cards stay hidden until their photo has decoded.
+- Treat feed add/remove as a **pool** update. Do not mass-swap every on-screen card when membership changes; use your theme’s enter/exit motion (or `api.nextUrl()`) so the wall stays stable between intentional transitions
+- The host may fade leftover `.dyn-card` photos that are leaving for host-managed layouts. Self-animated themes (Polaroid, flip wall, cubes, …) typically own replacement themselves. Cards stay hidden until their photo has decoded.
 - `api` is `{ nextUrl(avoid), isRetiring(src), hasIncoming() }`
   - `nextUrl(avoid)` prefers unseen incoming photos, then the live pool, skipping photos that are cycling out. Avoid `avoid` (string or iterable of URLs)
   - `isRetiring(src)` is true while a photo is leaving the mosaic
 - Cards: `BGMosaicThemes.makeCard(src, className?)` → `div.dyn-card > img`
 - `interval` is milliseconds between `tick` calls. JSON `interval` overrides when set
+- Read `dyn-show-qr` / `dyn-show-logo` on the theme root (or `themeRoot.classList`) if your layout should reflow for chrome
 
 ### Helpers (use these, do not reimplement)
 

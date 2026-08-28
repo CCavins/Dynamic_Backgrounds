@@ -1776,10 +1776,24 @@ html.dyn-mosaic-on .logo-tile {
         const shortSide = 1080;
         const stageW = vw <= vh ? shortSide : Math.round((shortSide * vw) / vh);
         const stageH = vw <= vh ? Math.round((shortSide * vh) / vw) : shortSide;
-        const cols = Math.max(1, Math.round(stageW / 370));
-        const rows = Math.max(1, Math.round(stageH / 355));
-        const cellW = stageW / cols;
-        const cellH = stageH / rows;
+        // Brand-aware: keep slot anchors in the content area (leave a chrome rail)
+        // without clipping — cards may bleed slightly into the rail.
+        const themeRoot =
+          (root.closest && root.closest("#dyn-mosaic-theme")) ||
+          (root.id === "dyn-mosaic-theme" ? root : null) ||
+          root;
+        const brandAware = String(themeRoot.dataset.theme || "").endsWith("-brand");
+        const reserve =
+          brandAware &&
+          (themeRoot.classList.contains("dyn-show-qr") ||
+            themeRoot.classList.contains("dyn-show-logo"));
+        const portrait = vh > vw;
+        const layoutW = reserve && !portrait ? stageW * 0.78 : stageW;
+        const layoutH = reserve && portrait ? stageH * 0.85 : stageH;
+        const cols = Math.max(1, Math.round(layoutW / 370));
+        const rows = Math.max(1, Math.round(layoutH / 355));
+        const cellW = layoutW / cols;
+        const cellH = layoutH / rows;
         const slotDefs = [];
         for (let r = 0; r < rows; r += 1) {
           for (let c = 0; c < cols; c += 1) {
@@ -1788,6 +1802,8 @@ html.dyn-mosaic-on .logo-tile {
               x: Math.round(c * cellW + cellW * 0.08 + (Math.random() - 0.5) * 44),
               y: Math.round(r * cellH + cellH * 0.05 + (Math.random() - 0.5) * 36),
               rot: +((3 + Math.random() * 5) * (Math.random() < 0.5 ? -1 : 1)).toFixed(1),
+              col: c,
+              row: r,
             });
           }
         }
@@ -1808,10 +1824,15 @@ html.dyn-mosaic-on .logo-tile {
         watchStage(state, stage, stageW, stageH, root);
 
         function jitter(slotDef) {
+          let jx = (Math.random() - 0.5) * 140;
+          let jy = (Math.random() - 0.5) * 140;
+          // Softly keep rightmost / bottommost cards from leaping into the chrome rail.
+          if (reserve && !portrait && slotDef.col >= cols - 1) jx = Math.min(jx, 28);
+          if (reserve && portrait && slotDef.row >= rows - 1) jy = Math.min(jy, 28);
           return {
             id: slotDef.id,
-            x: slotDef.x + (Math.random() - 0.5) * 140,
-            y: slotDef.y + (Math.random() - 0.5) * 140,
+            x: slotDef.x + jx,
+            y: slotDef.y + jy,
             rot: slotDef.rot + (Math.random() - 0.5) * 28,
           };
         }
@@ -2850,9 +2871,10 @@ html.dyn-mosaic-on .logo-tile {
   function brandAware(baseId) {
     const base = themes[baseId];
     if (!base) return null;
-    // Flex layouts (decks) reflow with padding on the root. Absolute/WebGL
-    // themes mount into a sized frame so columns/cameras rebuild for the rail.
-    const useFrame = baseId !== "decks";
+    // Flex (decks) and scatter (polaroid) reflow on the full root — no clip frame,
+    // so chrome rails never draw a hard edge through the middle of the stage.
+    // Absolute/WebGL themes still mount into a sized frame.
+    const useFrame = baseId !== "decks" && baseId !== "polaroid";
     return {
       interval: base.interval,
       mount(root, pool, api) {

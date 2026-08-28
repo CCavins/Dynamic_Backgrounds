@@ -72,6 +72,28 @@ Tokens and extra query params on an output URL are ignored when matching. Stagin
 
 The popup **Stage** control resizes the output canvas to a chosen ratio (16:9, 9:16, 4:3, 1:1, 21:9, or any width:height). Auto still follows the window. Themes restack for portrait without flipping photo crops. Mosaic and message each have their own background / QR / logo toggles. Those stay hidden unless you turn them on for that kind. The background fills the stage at the current aspect; the theme places QR and logo.
 
+### Mosaic themes
+
+Built-in mosaic looks (popup **Mosaic theme**):
+
+| Theme | Notes |
+| --- | --- |
+| Card decks, Spotlight, Coverflow, Fan, Filmstrip, Scatter, Cascade, Orbit, Billboard, Reels | Standard layouts |
+| Polaroid wall, 3D flip wall, Live mosaic, Cube field, Depth Field, Pedestals | Standard layouts |
+| Card decks*, Polaroid wall*, 3D flip wall*, Live mosaic*, Cube field* | **Brand-aware** — when Show QR / Show logo are on, content reflows to leave room for chrome (no hard mid-screen crop). With both off, they use the full stage like the originals |
+
+`*` in the name means the theme is optimized for QR/logo placement. The popup explains this under the mosaic dropdown.
+
+Mosaic photo updates: feed add/remove only refreshes the **pool**. On-screen cards change through each theme’s own transitions (for example Polaroid’s drop/toss/place), not by flashing every card when membership changes.
+
+### Message themes
+
+Message themes stay black until the first capture `show()` finishes, so a cold load does not flash QR/logo alone before the layout paints. Mosaic ↔ message handoffs crossfade under cover so stock Vixi layers and leftover cards do not sit on top of the other beat.
+
+### Custom themes
+
+Build and import your own packs — see [themes/README.md](themes/README.md) and the contract in [themes/SPEC.md](themes/SPEC.md). The Create page on the live site walks through import. You can place QR/logo exactly with `data-qr` / `data-logo` and reflow layout with `dyn-show-qr` / `dyn-show-logo` CSS.
+
 If you change files in `extension/`, rebuild the zip from the repo root:
 
 ```bash
