@@ -194,6 +194,7 @@
   let lastRawSettings = null;
   let lastGoodSettings = null;
   let settingsFresh = false;
+  let settingsEpoch = 0;
 
   function messageThemeMetaAll() {
     return { ...MESSAGE_THEME_META, ...customMessageMeta };
@@ -1100,11 +1101,30 @@
 
   let watchingSettings = false;
 
+  function applyStorageDelta(changes) {
+    settingsEpoch += 1;
+    if (!lastRawSettings) {
+      settingsFresh = false;
+      return;
+    }
+    const base = Object.assign({}, lastRawSettings);
+    Object.keys(changes || {}).forEach((key) => {
+      if (changes[key] && Object.prototype.hasOwnProperty.call(changes[key], "newValue")) {
+        base[key] = changes[key].newValue;
+      }
+    });
+    lastRawSettings = base;
+    const packs = Array.isArray(base.customThemes) ? base.customThemes : [];
+    applyCustomThemeMeta(packs);
+    lastGoodSettings = normalizeSettings(base);
+    settingsFresh = true;
+  }
+
   function watchSettings() {
     if (watchingSettings || !extensionAlive()) return;
     try {
       chrome.storage.onChanged.addListener((changes, area) => {
-        if (area === "local") settingsFresh = false;
+        if (area === "local") applyStorageDelta(changes);
       });
       watchingSettings = true;
     } catch {
@@ -1117,6 +1137,7 @@
     if (settingsFresh && lastGoodSettings) {
       return Promise.resolve(lastGoodSettings);
     }
+    const epoch = settingsEpoch;
     return new Promise((resolve) => {
       if (!extensionAlive()) {
         resolve(lastGoodSettings || normalizeSettings(DEFAULTS));
@@ -1126,6 +1147,10 @@
         chrome.storage.local.get(Object.assign({}, DEFAULTS, { customThemes: [] }), (stored) => {
           if (!extensionAlive() || (chrome.runtime.lastError && /invalidated/i.test(chrome.runtime.lastError.message || ""))) {
             resolve(lastGoodSettings || normalizeSettings(DEFAULTS));
+            return;
+          }
+          if (epoch !== settingsEpoch) {
+            resolve(lastGoodSettings || normalizeSettings(stored));
             return;
           }
           lastRawSettings = stored;
@@ -1327,4 +1352,5 @@
     loadSettings,
     saveSettings,
   };
+  watchSettings();
 })(typeof globalThis !== "undefined" ? globalThis : window);

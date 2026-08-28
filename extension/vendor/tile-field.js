@@ -25,14 +25,8 @@
   const SHOWCASE_MAX_FEATURED = 3;
   const SHOWCASE_APPROACH_S = 1.35;
   const SHOWCASE_RETREAT_S = 1.2;
-  const SHOWCASE_PRESENT_SCALE = 1.15;
   const SHOWCASE_HOLD_S = 7;
-  const SHOWCASE_PRESENT_SLOTS = [
-    new THREE.Vector3(-2.25, 0.3, 5.55),
-    new THREE.Vector3(0.0, 0.55, 5.85),
-    new THREE.Vector3(2.25, 0.3, 5.55),
-  ];
-  const MAX_TILES = 52;
+  const MAX_TILES = 55;
   const CUBE_SIZE = 0.72;
   const MIN_GAP = 0.42;
   const PLENTY_IMAGES = 6;
@@ -368,36 +362,97 @@ uniform float uImageMix;`
       };
     }
 
+    function isPortraitView() {
+      const { w, h } = viewSize();
+      return h > w;
+    }
+
+    function cameraRest() {
+      return isPortraitView() ? { x: 0, y: 0.18, z: 10.5 } : { x: 0.15, y: 0.35, z: 10.5 };
+    }
+
+    function lookAtRest() {
+      return isPortraitView() ? { x: 0, y: 0.12, z: 0 } : { x: 0, y: 0.22, z: 0 };
+    }
+
     function frustumHalfExtentsAtZ(z, margin) {
       const { w, h } = viewSize();
-      const aspect = Math.max(0.65, Math.min(2.4, w / Math.max(1, h)));
+      const aspect = Math.max(0.38, Math.min(2.8, w / Math.max(1, h)));
       const dist = Math.max(3.5, 10.5 - z);
-      const halfH = Math.tan((38 * Math.PI) / 360) * dist * (margin == null ? 0.88 : margin);
-      const halfW = halfH * aspect * (margin == null ? 0.88 : margin);
+      const m = margin == null ? 0.94 : margin;
+      const halfH = Math.tan((38 * Math.PI) / 360) * dist * m;
+      const halfW = halfH * aspect;
       return { halfW, halfH };
     }
 
-    function buildShowcaseTargets(i, count) {
-      const layers = Math.min(4, Math.max(2, Math.ceil(count / 18)));
-      const layer = i % layers;
-      const z = 0.6 + layer * 0.85 + (seededNoise(i, 43) - 0.5) * 0.2;
-      const { halfW, halfH } = frustumHalfExtentsAtZ(z, 0.86);
-      const aspect = halfW / Math.max(1e-6, halfH);
-      const cols = Math.max(3, Math.ceil(Math.sqrt(count * aspect)));
-      const rows = Math.max(3, Math.ceil(count / cols));
+    function lookCenterAtZ(z) {
+      const cam = cameraRest();
+      const look = lookAtRest();
+      const t = (cam.z - z) / cam.z;
+      return {
+        x: cam.x + (look.x - cam.x) * t,
+        y: cam.y + (look.y - cam.y) * t,
+      };
+    }
+
+    function showcaseGrid() {
+      return isPortraitView() ? { cols: 5, rows: 11 } : { cols: 9, rows: 6 };
+    }
+
+    function showcasePresentScale() {
+      return isPortraitView() ? 0.9 : 1.15;
+    }
+
+    function showcasePresentSlots() {
+      const portrait = isPortraitView();
+      const zMid = portrait ? 5.25 : 5.85;
+      const zSide = portrait ? 5.05 : 5.55;
+      const { halfW, halfH } = frustumHalfExtentsAtZ(zMid, portrait ? 0.74 : 0.7);
+      const center = lookCenterAtZ(zMid);
+      if (portrait) {
+        const spread = Math.max(0.95, halfH * 0.7);
+        return [
+          new THREE.Vector3(center.x + 0.03, center.y + spread, zSide),
+          new THREE.Vector3(center.x, center.y + 0.06, zMid + 0.2),
+          new THREE.Vector3(center.x - 0.03, center.y - spread, zSide),
+        ];
+      }
+      const spread = Math.max(1.35, halfW * 0.76);
+      return [
+        new THREE.Vector3(center.x - spread, center.y - 0.05, zSide),
+        new THREE.Vector3(center.x, center.y + 0.18, zMid),
+        new THREE.Vector3(center.x + spread, center.y - 0.05, zSide),
+      ];
+    }
+
+    function buildShowcaseTargets(i) {
+      const { cols, rows } = showcaseGrid();
       const col = i % cols;
-      const row = Math.floor(i / cols) % rows;
-      const u = cols <= 1 ? 0.5 : (col + 0.5) / cols;
-      const v = rows <= 1 ? 0.5 : (row + 0.5) / rows;
-      const pack = Math.sqrt(28 / Math.max(8, count));
-      const scale = THREE.MathUtils.clamp(0.48 * pack + seededNoise(i, 47) * 0.08, 0.38, 0.85);
-      const pad = boundingRadius(scale) * 0.55;
+      const row = Math.floor(i / cols);
+      const portrait = isPortraitView();
+      const z = 2.2 + seededNoise(i, 43) * 1.35;
+      const { halfW, halfH } = frustumHalfExtentsAtZ(z, portrait ? 0.86 : 0.96);
+      const center = lookCenterAtZ(z);
+      const stagger = row % 2 === 1 ? (portrait ? 0.1 : 0.3) : 0;
+      const edge = portrait ? 0.08 : 0.03;
+      const u = THREE.MathUtils.clamp(
+        (col + 0.5 + stagger + (seededNoise(i, 41) - 0.5) * (portrait ? 0.28 : 0.5)) / cols,
+        edge,
+        1 - edge
+      );
+      const v = THREE.MathUtils.clamp(
+        (row + 0.5 + (seededNoise(i, 42) - 0.5) * (portrait ? 0.32 : 0.5)) / rows,
+        0.03,
+        0.97
+      );
+      const scale = portrait
+        ? THREE.MathUtils.clamp(0.4 + seededNoise(i, 47) * 0.1, 0.36, 0.52)
+        : THREE.MathUtils.clamp(0.5 + seededNoise(i, 47) * 0.14, 0.46, 0.66);
+      const pad = boundingRadius(scale) * (portrait ? 0.48 : 0.35);
       const maxX = Math.max(0.2, halfW - pad);
       const maxY = Math.max(0.2, halfH - pad);
-      let x = (u - 0.5) * 2 * maxX + (seededNoise(i, 41) - 0.5) * 0.25;
-      let y = (v - 0.5) * 2 * maxY + (seededNoise(i, 42) - 0.5) * 0.2;
-      x = THREE.MathUtils.clamp(x, -maxX, maxX);
-      y = THREE.MathUtils.clamp(y, -maxY, maxY);
+      const x = center.x + (u - 0.5) * 2 * maxX;
+      const y = center.y + (v - 0.5) * 2 * maxY;
       return {
         position: new THREE.Vector3(x, y, z),
         rotation: new THREE.Euler(
@@ -407,6 +462,7 @@ uniform float uImageMix;`
         ),
         scale,
         layer: "bg",
+        interior: col > 0 && col < cols - 1 && row > 0 && row < rows - 1,
       };
     }
 
@@ -455,27 +511,23 @@ uniform float uImageMix;`
     function buildAllTargets() {
       const targets = [];
       for (let i = 0; i < MAX_TILES; i++) {
-        targets.push(activePreset === "depth" ? buildDepthTargets(i, MAX_TILES) : buildShowcaseTargets(i, MAX_TILES));
+        targets.push(activePreset === "depth" ? buildDepthTargets(i, MAX_TILES) : buildShowcaseTargets(i));
       }
       if (activePreset === "depth") {
         separateTargets(targets.filter((t) => t.layer === "fg"), 28);
         separateTargets(targets.filter((t) => t.layer === "bg"), 28);
         return targets;
       }
-      for (let i = targets.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        const tmp = targets[i];
-        targets[i] = targets[j];
-        targets[j] = tmp;
-      }
-      separateTargets(targets, 8);
+      separateTargets(targets, 2);
+      const portrait = isPortraitView();
       for (const t of targets) {
-        const { halfW, halfH } = frustumHalfExtentsAtZ(t.position.z, 0.86);
-        const pad = boundingRadius(t.scale) * 0.5;
+        const { halfW, halfH } = frustumHalfExtentsAtZ(t.position.z, portrait ? 0.86 : 0.96);
+        const center = lookCenterAtZ(t.position.z);
+        const pad = boundingRadius(t.scale) * (portrait ? 0.46 : 0.32);
         const maxX = Math.max(0.15, halfW - pad);
         const maxY = Math.max(0.15, halfH - pad);
-        t.position.x = THREE.MathUtils.clamp(t.position.x, -maxX, maxX);
-        t.position.y = THREE.MathUtils.clamp(t.position.y, -maxY, maxY);
+        t.position.x = THREE.MathUtils.clamp(t.position.x, center.x - maxX, center.x + maxX);
+        t.position.y = THREE.MathUtils.clamp(t.position.y, center.y - maxY, center.y + maxY);
       }
       return targets;
     }
@@ -546,6 +598,7 @@ uniform float uImageMix;`
         mesh,
         index: i,
         layer: target.layer || "fg",
+        interior: Boolean(target.interior),
         role: "idle",
         roleT: 0,
         roleDuration: 0.4 + Math.random() * 5.5,
@@ -822,7 +875,8 @@ uniform float uImageMix;`
     }
 
     function assignShowcasePresentAnchor(tile, slotIndex) {
-      const slot = SHOWCASE_PRESENT_SLOTS[slotIndex % SHOWCASE_PRESENT_SLOTS.length];
+      const slots = showcasePresentSlots();
+      const slot = slots[slotIndex % slots.length];
       tile.presentAnchor.set(
         slot.x + (seededNoise(tile.index, 70) - 0.5) * 0.08,
         slot.y + (seededNoise(tile.index, 71) - 0.5) * 0.06,
@@ -866,7 +920,9 @@ uniform float uImageMix;`
         if (presenting.length < SHOWCASE_MAX_FEATURED) {
           showcaseSwapTimer = 0;
           if (readyIdle.length) {
-            const tile = readyIdle[Math.floor(Math.random() * readyIdle.length)];
+            const interiorIdle = readyIdle.filter((item) => item.interior);
+            const pool = interiorIdle.length ? interiorIdle : readyIdle;
+            const tile = pool[Math.floor(Math.random() * pool.length)];
             let slotIndex = 0;
             while (usedSlots.has(slotIndex) && slotIndex < SHOWCASE_MAX_FEATURED) slotIndex += 1;
             if (slotIndex < SHOWCASE_MAX_FEATURED) {
@@ -900,7 +956,7 @@ uniform float uImageMix;`
         if (tile.role === "approach") {
           const u = smoothstep(Math.min(1, tile.roleT / SHOWCASE_APPROACH_S));
           tile.target.position.lerpVectors(tile.home.position, tile.presentAnchor, u);
-          tile.target.scale = THREE.MathUtils.lerp(tile.home.scale, SHOWCASE_PRESENT_SCALE, u);
+          tile.target.scale = THREE.MathUtils.lerp(tile.home.scale, showcasePresentScale(), u);
           tile.target.rotation.set(
             THREE.MathUtils.lerp(tile.home.rotation.x, 0.04, u),
             THREE.MathUtils.lerp(tile.home.rotation.y, 0, u),
@@ -914,14 +970,14 @@ uniform float uImageMix;`
             tile.presentAnchor.y + Math.cos(t * 0.55 + tile.phase) * 0.04,
             tile.presentAnchor.z
           );
-          tile.target.scale = SHOWCASE_PRESENT_SCALE;
+          tile.target.scale = showcasePresentScale();
           tile.target.rotation.set(0.04, 0, 0);
           return;
         }
         if (tile.role === "retreat") {
           const u = smoothstep(Math.min(1, tile.roleT / SHOWCASE_RETREAT_S));
           tile.target.position.lerpVectors(tile.presentAnchor, tile.home.position, u);
-          tile.target.scale = THREE.MathUtils.lerp(SHOWCASE_PRESENT_SCALE, tile.home.scale, u);
+          tile.target.scale = THREE.MathUtils.lerp(showcasePresentScale(), tile.home.scale, u);
           tile.target.rotation.x = THREE.MathUtils.lerp(0.04, tile.home.rotation.x, u);
           tile.target.rotation.y = THREE.MathUtils.lerp(0, tile.home.rotation.y, u);
           tile.target.rotation.z = THREE.MathUtils.lerp(0, tile.home.rotation.z, u);
@@ -935,6 +991,7 @@ uniform float uImageMix;`
         const next = targets[i];
         if (!next) return;
         tile.layer = next.layer || "bg";
+        tile.interior = Boolean(next.interior);
         tile.home.position.copy(next.position);
         tile.home.rotation.copy(next.rotation);
         tile.home.scale = next.scale;
@@ -988,11 +1045,12 @@ uniform float uImageMix;`
       if (activePreset === "showcase") updateShowcase(dt, t);
       const breathe = Math.sin(t * 0.35) * 0.04;
       if (activePreset === "showcase") {
+        const cam = cameraRest();
         group.rotation.set(0, 0, 0);
         group.position.set(0, 0, 0);
-        camera.position.x = 0.15 + Math.sin(t * 0.08) * 0.12;
-        camera.position.y = 0.35 + Math.sin(t * 0.11) * 0.08;
-        camera.position.z = 10.5;
+        camera.position.x = cam.x + Math.sin(t * 0.08) * (isPortraitView() ? 0.04 : 0.12);
+        camera.position.y = cam.y + Math.sin(t * 0.11) * (isPortraitView() ? 0.05 : 0.08);
+        camera.position.z = cam.z;
       } else {
         group.rotation.y = Math.sin(t * 0.12) * 0.1;
         group.rotation.x = Math.sin(t * 0.16) * 0.05 + breathe * 0.6;
@@ -1001,7 +1059,10 @@ uniform float uImageMix;`
         camera.position.y = 1.6 + Math.sin(t * 0.17) * 0.15;
         camera.position.z = 10.5;
       }
-      camera.lookAt(0, 0, 0);
+      if (activePreset === "showcase") {
+        const look = lookAtRest();
+        camera.lookAt(look.x, look.y, look.z);
+      } else camera.lookAt(0, 0, 0);
       const settle = 1 - Math.exp(-dt * 2.4);
       const wobbleScale = activePreset === "showcase" ? 1.15 : 0.55;
       const baseSpinMul = activePreset === "depth" ? 0.45 : 1;

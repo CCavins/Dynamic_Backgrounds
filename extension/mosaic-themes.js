@@ -785,7 +785,7 @@ html.dyn-mosaic-on .logo-tile {
   pointer-events: none;
   z-index: 4;
   background:
-    radial-gradient(ellipse 70% 60% at 50% 45%, transparent 35%, rgba(0, 0, 0, 0.55) 100%);
+    radial-gradient(ellipse 88% 78% at 50% 48%, transparent 52%, rgba(0, 0, 0, 0.38) 100%);
 }
 
 #dyn-mosaic-theme[data-theme="pedestals"] {

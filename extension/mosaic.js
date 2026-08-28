@@ -472,7 +472,7 @@
       let kind = handoff.liveKind();
       const mosaicPage = Boolean(rules.pageLooksLikeMosaic && rules.pageLooksLikeMosaic());
       const mode = handoff.currentMode();
-      if (kind === "message") return;
+      if (kind === "message" && !mosaicPage) return;
       if (kind !== "mosaic") {
         if (mosaicPage || (kind === "" && (!mode || mode === "mosaic"))) {
           kind = "mosaic";
@@ -527,12 +527,12 @@
     }
   }
 
-  function scheduleApply() {
+  function scheduleApply(delay) {
     if (applyTimer) clearTimeout(applyTimer);
     applyTimer = setTimeout(() => {
       applyTimer = 0;
       apply().catch(() => {});
-    }, 50);
+    }, delay == null ? 50 : delay);
   }
 
   const observer = new MutationObserver((records) => {
@@ -557,7 +557,11 @@
 
   try {
     chrome.storage.onChanged.addListener((changes, area) => {
-      if (area === "local") scheduleApply();
+      if (area !== "local") return;
+      if (changes.mosaicTheme || changes.enabled || changes.stageAspect) {
+        mountedTheme = "";
+      }
+      scheduleApply(0);
     });
   } catch {
     /* extension reloaded */
