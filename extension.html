@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extension — Dynamic Backgrounds</title>
+    <link rel="stylesheet" href="site.css">
+</head>
+<body>
+    <div class="wrap">
+        <header class="site-header">
+            <div class="site-brand">
+                <a href="index.html"><h1>DYNAMIC BACKGROUNDS</h1></a>
+                <p>Themes, scenes, and a Chrome extension for live output.</p>
+            </div>
+            <nav class="site-nav" aria-label="Site">
+                <a href="index.html">Themes</a>
+                <a href="backgrounds.html">Backgrounds</a>
+                <a href="extension.html" aria-current="page">Extension</a>
+                <a href="create.html">Create</a>
+            </nav>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.12.1</span></a>
+        </header>
+
+        <div class="page-intro">
+            <h2>Extension</h2>
+            <p>A Chrome add-on that restyles Vixi output pages with mosaic themes, message themes, and optional animated backgrounds.</p>
+        </div>
+
+        <article class="prose">
+            <h2>Install</h2>
+            <p>Chrome will not install from the download click. Unzip <code>extension.zip</code>, then:</p>
+            <ol>
+                <li>Open <code>chrome://extensions</code></li>
+                <li>Turn on <strong>Developer mode</strong></li>
+                <li>Click <strong>Load unpacked</strong></li>
+                <li>Select the unzipped <code>extension</code> folder</li>
+            </ol>
+            <p>After you change files in the folder, click Reload on the extension card. To rebuild the zip from the repo:</p>
+            <pre>rm -f extension.zip &amp;&amp; zip -r extension.zip extension -x "*.DS_Store"</pre>
+
+            <h2>Master on / off</h2>
+            <p>The popup switch is the kill switch. <strong>Off</strong> leaves every page alone. <strong>On</strong> applies the rest of the popup — themes, stage, chrome, and iframe rules — to matching output URLs.</p>
+
+            <h2>Mosaic vs message</h2>
+            <p>Pick one mosaic theme and one message theme. Mosaic restyles the live photo grid. Message restyles a single capture with its caption and name. <strong>Off</strong> in either dropdown keeps Vixi’s own layout for that kind.</p>
+            <p>Browse the looks on the <a href="index.html">Themes</a> page. Those tiles are a catalog, not a picker — you still choose the theme in the popup.</p>
+
+            <h2>Stage aspect</h2>
+            <p>Stage resizes Vixi’s real output canvas to a ratio, then letterboxes the leftover window in black. Presets cover 16:9, 9:16, 4:3, 1:1, 21:9, and more. Choose <strong>Custom</strong> to type any width:height. <strong>Auto</strong> still follows the window.</p>
+            <p>Themes restack for portrait. Mosaic cards stay 2:3 — they do not flip to a 3:2 crop.</p>
+
+            <h2>Background, QR, and logo</h2>
+            <p>Mosaic and message each have their own three checkboxes: Show background, Show QR code, Show logo. While a theme is on, Vixi’s background, QR, and logo stay hidden unless that kind’s toggles are on. Mosaic chrome never clones onto a message theme, and the other way around.</p>
+            <p>When the background is shown, it fills the current stage. The theme places QR and logo — default chrome is logo top-left and QR bottom-right if the theme does not set <code>data-qr</code> / <code>data-logo</code>.</p>
+
+            <h2>Any output URL vs specific rows</h2>
+            <p><strong>Specific output URLs</strong> win. Paste an output URL and an iframe (or background URL) on a row. A match always applies that iframe, even if Any output URL is blank.</p>
+            <p><strong>Any output URL</strong> is the fallback for recognized output pages that do not match a row. Leave it blank to skip unmatched pages.</p>
+            <p>Tokens and extra query params on an output URL are ignored when matching.</p>
+        </article>
+
+        <footer>Reload the unpacked extension after you update files.</footer>
+    </div>
+    <script src="site.js"></script>
+</body>
+</html>

@@ -1,8 +1,19 @@
 # Dynamic Backgrounds
 
-A gallery of full-screen animated backgrounds. Each scene is its own page with live controls for colors, motion, and density.
+Themes for live Vixi output, plus a gallery of full-screen animated backgrounds. The Chrome extension restyles matching output pages with mosaic themes, message themes, and optional iframe backgrounds.
 
 **Live site:** [ccavins.github.io/Dynamic_Backgrounds](https://ccavins.github.io/Dynamic_Backgrounds/)
+
+The site has four pages:
+
+| Page | What it is |
+| --- | --- |
+| [Themes](https://ccavins.github.io/Dynamic_Backgrounds/) | Home. Live mini-previews of every built-in message and mosaic theme |
+| [Backgrounds](https://ccavins.github.io/Dynamic_Backgrounds/backgrounds.html) | Animated scene gallery |
+| [Extension](https://ccavins.github.io/Dynamic_Backgrounds/extension.html) | Install and how the popup works |
+| [Create](https://ccavins.github.io/Dynamic_Backgrounds/create.html) | Import a custom theme JSON (start with `example-stamp.json`) |
+
+Theme tiles on the home page are a catalog, not links. They mount the real theme engines with sample captures from `samples/patriots/` when a card scrolls into view.
 
 ## Scenes
 
@@ -20,9 +31,9 @@ A gallery of full-screen animated backgrounds. Each scene is its own page with l
 | [Silk Waves](backgrounds/silk-waves.html) | Layered gradient silk that ripples across the frame |
 | [Clouds](backgrounds/clouds.html) | Soft volumetric cloud cover drifting over an open sky |
 
-## How to use
+## How to use backgrounds
 
-1. Open the [gallery](https://ccavins.github.io/Dynamic_Backgrounds/) and click a card. Thumbnails are short recorded loops of the real scenes, not live WebGL, so the gallery stays light.
+1. Open the [Backgrounds](https://ccavins.github.io/Dynamic_Backgrounds/backgrounds.html) tab and click a card. Thumbnails are short recorded loops of the real scenes, not live WebGL, so the gallery stays light.
 2. Press **Space** to open settings. Change colors, speed, density, and other scene-specific options.
 3. Press **Space** again to hide the panel. **Reset** restores the defaults.
 4. Settings are saved per background in `localStorage`, so they persist on the next visit.
@@ -44,7 +55,7 @@ Paste it on another page and layer your own content on top. The `cfg` value is t
 
 ## Chrome extension
 
-The gallery has a **Download Chrome extension** link (`extension.zip`). Chrome cannot install from that click. Unzip the file, then:
+The site header has a **Download Chrome extension** link (`extension.zip`). Chrome cannot install from that click. Unzip the file, then:
 
 1. Open `chrome://extensions`
 2. Turn on **Developer mode**
@@ -79,7 +90,7 @@ Then open http://localhost:8080. Universe loads Three.js from a CDN, so a local 
 
 ## Preview clips
 
-Gallery cards play short muted MP4 loops in `previews/`. They are cheaper than GIFs and much cheaper than running every scene live. To recapture them after a visual change:
+Background gallery cards play short muted MP4 loops in `previews/`. They are cheaper than GIFs and much cheaper than running every scene live. To recapture them after a visual change:
 
 ```bash
 python3 -m http.server 8080

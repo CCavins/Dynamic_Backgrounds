@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backgrounds — Dynamic Backgrounds</title>
+    <link rel="stylesheet" href="site.css">
+</head>
+<body>
+    <div class="wrap">
+        <header class="site-header">
+            <div class="site-brand">
+                <a href="index.html"><h1>DYNAMIC BACKGROUNDS</h1></a>
+                <p>Themes, scenes, and a Chrome extension for live output.</p>
+            </div>
+            <nav class="site-nav" aria-label="Site">
+                <a href="index.html">Themes</a>
+                <a href="backgrounds.html" aria-current="page">Backgrounds</a>
+                <a href="extension.html">Extension</a>
+                <a href="create.html">Create</a>
+            </nav>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.12.1</span></a>
+        </header>
+
+        <div class="page-intro">
+            <h2>Backgrounds</h2>
+            <p>A collection of animated, customizable background scenes.</p>
+            <div class="hints">
+                <span class="hint">Press <kbd>Space</kbd> on any background to open settings</span>
+                <span class="hint">Copy iframe from settings to embed a scene</span>
+            </div>
+        </div>
+
+        <main class="grid" style="margin-top: 40px">
+            <a class="card" href="backgrounds/universe.html">
+                <div class="preview" style="--fallback:#020108">
+                    <video src="previews/universe.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
+                </div>
+                <div class="meta">
+                    <h2>Universe</h2>
+                    <p>A drifting starfield of twinkling stars wrapped in nebula clouds.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/aurora.html">
+                <div class="preview" style="--fallback:#040a1c">
+                    <video src="previews/aurora.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
+                </div>
+                <div class="meta">
+                    <h2>Aurora</h2>
+                    <p>Northern lights ribbons flowing across a cold night sky.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/synthwave.html">
+                <div class="preview" style="--fallback:#16063a">
+                    <video src="previews/synthwave.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
+                </div>
+                <div class="meta">
+                    <h2>Synthwave</h2>
+                    <p>A retro grid racing toward a striped neon sun on the horizon.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/fluid-ink.html">
+                <div class="preview" style="--fallback:#05070f">
+                    <video src="previews/fluid-ink.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
+                </div>
+                <div class="meta">
+                    <h2>Fluid Ink</h2>
+                    <p>Swirling ink and smoke folding into itself in slow motion.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/plexus.html">
+                <div class="preview" style="--fallback:#04070e">
+                    <video src="previews/plexus.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
+                </div>
+                <div class="meta">
+                    <h2>Plexus</h2>
+                    <p>A living constellation of drifting nodes and connecting lines.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/ocean.html">
+                <div class="preview" style="--fallback:#021224">
+                    <video src="previews/ocean.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
+                </div>
+                <div class="meta">
+                    <h2>Ocean</h2>
+                    <p>Underwater light rays and rising bubbles in deep blue water.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/fireflies.html">
+                <div class="preview" style="--fallback:#04100e">
+                    <video src="previews/fireflies.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
+                </div>
+                <div class="meta">
+                    <h2>Fireflies</h2>
+                    <p>Glowing fireflies drifting through a dark midnight forest.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/lava-lamp.html">
+                <div class="preview" style="--fallback:#12081f">
+                    <video src="previews/lava-lamp.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
+                </div>
+                <div class="meta">
+                    <h2>Lava Lamp</h2>
+                    <p>Molten blobs merging and splitting in a slow hypnotic rise.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/matrix.html">
+                <div class="preview" style="--fallback:#000000">
+                    <video src="previews/matrix.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
+                </div>
+                <div class="meta">
+                    <h2>Matrix Rain</h2>
+                    <p>Cascading streams of glowing glyphs falling through the dark.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/silk-waves.html">
+                <div class="preview" style="--fallback:#070510">
+                    <video src="previews/silk-waves.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
+                </div>
+                <div class="meta">
+                    <h2>Silk Waves</h2>
+                    <p>Layered gradient waves rippling like silk in the wind.</p>
+                </div>
+            </a>
+
+            <a class="card" href="backgrounds/clouds.html">
+                <div class="preview" style="--fallback:#3576cf">
+                    <video src="previews/clouds.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
+                </div>
+                <div class="meta">
+                    <h2>Clouds</h2>
+                    <p>Soft volumetric clouds drifting across an open sky.</p>
+                </div>
+            </a>
+        </main>
+
+        <footer>Settings are saved per background in your browser</footer>
+    </div>
+    <script>
+        const observer = new IntersectionObserver((entries) => {
+            for (const entry of entries) {
+                const video = entry.target;
+                if (entry.isIntersecting) {
+                    video.play().catch(() => {});
+                } else {
+                    video.pause();
+                }
+            }
+        }, { rootMargin: "120px" });
+
+        document.querySelectorAll(".preview video").forEach((video) => observer.observe(video));
+    </script>
+    <script src="site.js"></script>
+</body>
+</html>

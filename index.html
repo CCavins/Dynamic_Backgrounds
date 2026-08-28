@@ -3,288 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Backgrounds — Gallery</title>
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-        body {
-            margin: 0;
-            min-height: 100vh;
-            background: #05050c;
-            background-image:
-                radial-gradient(ellipse 80% 50% at 50% -10%, rgba(75, 29, 128, 0.25), transparent),
-                radial-gradient(ellipse 60% 40% at 90% 110%, rgba(5, 31, 64, 0.35), transparent);
-            color: #e8e8f0;
-            font-family: "SF Mono", "Menlo", "Consolas", monospace;
-        }
-        .wrap {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 56px 28px 72px;
-        }
-        header h1 {
-            margin: 0;
-            font-size: 26px;
-            font-weight: 600;
-            letter-spacing: 6px;
-        }
-        header p {
-            margin: 10px 0 0;
-            font-size: 12px;
-            letter-spacing: 1.2px;
-            color: rgba(255, 255, 255, 0.45);
-        }
-        .hints {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 18px;
-        }
-        .hint {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 7px 14px;
-            font-size: 10px;
-            letter-spacing: 1.4px;
-            color: rgba(255, 255, 255, 0.55);
-            border: 1px solid rgba(255, 255, 255, 0.14);
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.03);
-            text-decoration: none;
-        }
-        a.hint:hover {
-            border-color: rgba(255, 255, 255, 0.3);
-            color: rgba(255, 255, 255, 0.8);
-        }
-        .hint kbd,
-        .hint .ver {
-            font: inherit;
-            font-size: 9px;
-            padding: 2px 7px;
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            border-radius: 4px;
-            color: rgba(255, 255, 255, 0.75);
-        }
-        .hint .ver {
-            border-radius: 999px;
-            letter-spacing: 0.8px;
-            color: rgba(220, 200, 255, 0.9);
-            border-color: rgba(180, 140, 255, 0.4);
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 22px;
-            margin-top: 40px;
-        }
-        .card {
-            display: block;
-            text-decoration: none;
-            color: inherit;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 14px;
-            overflow: hidden;
-            background: rgba(255, 255, 255, 0.025);
-            transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
-        }
-        .card:hover {
-            transform: translateY(-4px);
-            border-color: rgba(255, 255, 255, 0.3);
-            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
-        }
-        .preview {
-            position: relative;
-            height: 180px;
-            overflow: hidden;
-            background: var(--fallback, #05050c);
-        }
-        .preview video {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            pointer-events: none;
-        }
-        .preview::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(to top, rgba(5, 5, 12, 0.35), transparent 40%);
-            pointer-events: none;
-        }
-        .meta {
-            padding: 14px 16px 16px;
-        }
-        .meta h2 {
-            margin: 0;
-            font-size: 13px;
-            font-weight: 600;
-            letter-spacing: 2.4px;
-        }
-        .meta p {
-            margin: 6px 0 0;
-            font-size: 10.5px;
-            line-height: 1.55;
-            letter-spacing: 0.4px;
-            color: rgba(255, 255, 255, 0.45);
-        }
-        footer {
-            margin-top: 48px;
-            font-size: 10px;
-            letter-spacing: 1.2px;
-            color: rgba(255, 255, 255, 0.25);
-        }
-    </style>
+    <title>Themes — Dynamic Backgrounds</title>
+    <link rel="stylesheet" href="site.css">
 </head>
 <body>
     <div class="wrap">
-        <header>
-            <h1>BACKGROUNDS</h1>
-            <p>A collection of animated, customizable background scenes.</p>
-            <div class="hints">
-                <span class="hint">PRESS <kbd>SPACE</kbd> ON ANY BACKGROUND TO OPEN SETTINGS</span>
-                <a class="hint" href="extension.zip" download>DOWNLOAD CHROME EXTENSION <span class="ver" id="ext-version">1.12.1</span></a>
+        <header class="site-header">
+            <div class="site-brand">
+                <a href="index.html"><h1>DYNAMIC BACKGROUNDS</h1></a>
+                <p>Themes, scenes, and a Chrome extension for live output.</p>
             </div>
+            <nav class="site-nav" aria-label="Site">
+                <a href="index.html" aria-current="page">Themes</a>
+                <a href="backgrounds.html">Backgrounds</a>
+                <a href="extension.html">Extension</a>
+                <a href="create.html">Create</a>
+            </nav>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.12.1</span></a>
         </header>
 
-        <main class="grid">
-            <a class="card" href="backgrounds/universe.html">
-                <div class="preview" style="--fallback:#020108">
-                    <video src="previews/universe.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
-                </div>
-                <div class="meta">
-                    <h2>UNIVERSE</h2>
-                    <p>A drifting starfield of twinkling stars wrapped in nebula clouds.</p>
-                </div>
-            </a>
+        <div class="page-intro">
+            <h2>Themes</h2>
+            <p>Live message and mosaic looks. These tiles run the real theme engines with sample captures — they are a menu, not links.</p>
+            <div class="wip">Work in progress. Theme quality varies.</div>
+        </div>
 
-            <a class="card" href="backgrounds/aurora.html">
-                <div class="preview" style="--fallback:#040a1c">
-                    <video src="previews/aurora.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
-                </div>
+        <h2 class="section-label">Message</h2>
+        <div class="theme-grid">
+            <article class="theme-card" data-kind="message" data-theme="led-scoreboard">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-message-theme"></div></div>
                 <div class="meta">
-                    <h2>AURORA</h2>
-                    <p>Northern lights ribbons flowing across a cold night sky.</p>
+                    <h3>LED Scoreboard</h3>
+                    <p>A stadium board with matrix type and a live photo well.</p>
                 </div>
-            </a>
-
-            <a class="card" href="backgrounds/synthwave.html">
-                <div class="preview" style="--fallback:#16063a">
-                    <video src="previews/synthwave.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
-                </div>
+            </article>
+            <article class="theme-card" data-kind="message" data-theme="neon-nightclub">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-message-theme"></div></div>
                 <div class="meta">
-                    <h2>SYNTHWAVE</h2>
-                    <p>A retro grid racing toward a striped neon sun on the horizon.</p>
+                    <h3>Neon Nightclub</h3>
+                    <p>Lasers and haze around a neon caption card.</p>
                 </div>
-            </a>
-
-            <a class="card" href="backgrounds/fluid-ink.html">
-                <div class="preview" style="--fallback:#05070f">
-                    <video src="previews/fluid-ink.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
-                </div>
+            </article>
+            <article class="theme-card" data-kind="message" data-theme="ultras-tifo">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-message-theme"></div></div>
                 <div class="meta">
-                    <h2>FLUID INK</h2>
-                    <p>Swirling ink and smoke folding into itself in slow motion.</p>
+                    <h3>Ultras Tifo</h3>
+                    <p>Terrace-banner energy, big type over the capture.</p>
                 </div>
-            </a>
-
-            <a class="card" href="backgrounds/plexus.html">
-                <div class="preview" style="--fallback:#04070e">
-                    <video src="previews/plexus.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
-                </div>
+            </article>
+            <article class="theme-card" data-kind="message" data-theme="holo-card">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-message-theme"></div></div>
                 <div class="meta">
-                    <h2>PLEXUS</h2>
-                    <p>A living constellation of drifting nodes and connecting lines.</p>
+                    <h3>Holo Card</h3>
+                    <p>An iridescent trading-card frame for the photo.</p>
                 </div>
-            </a>
-
-            <a class="card" href="backgrounds/ocean.html">
-                <div class="preview" style="--fallback:#021224">
-                    <video src="previews/ocean.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
-                </div>
+            </article>
+            <article class="theme-card" data-kind="message" data-theme="broadcast-tv">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-message-theme"></div></div>
                 <div class="meta">
-                    <h2>OCEAN</h2>
-                    <p>Underwater light rays and rising bubbles in deep blue water.</p>
+                    <h3>Broadcast TV</h3>
+                    <p>A sports-broadcast lower third and monitor bezel.</p>
                 </div>
-            </a>
-
-            <a class="card" href="backgrounds/fireflies.html">
-                <div class="preview" style="--fallback:#04100e">
-                    <video src="previews/fireflies.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
-                </div>
+            </article>
+            <article class="theme-card" data-kind="message" data-theme="liquid-glass">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-message-theme"></div></div>
                 <div class="meta">
-                    <h2>FIREFLIES</h2>
-                    <p>Glowing fireflies drifting through a dark midnight forest.</p>
+                    <h3>Liquid Glass</h3>
+                    <p>WebGL bubbles drifting over frosted glass.</p>
                 </div>
-            </a>
-
-            <a class="card" href="backgrounds/lava-lamp.html">
-                <div class="preview" style="--fallback:#12081f">
-                    <video src="previews/lava-lamp.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
-                </div>
+            </article>
+            <article class="theme-card" data-kind="message" data-theme="parallax-drift">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-message-theme"></div></div>
                 <div class="meta">
-                    <h2>LAVA LAMP</h2>
-                    <p>Molten blobs merging and splitting in a slow hypnotic rise.</p>
+                    <h3>Parallax Drift</h3>
+                    <p>Depth-stacked photos that drift in space.</p>
                 </div>
-            </a>
+            </article>
+        </div>
 
-            <a class="card" href="backgrounds/matrix.html">
-                <div class="preview" style="--fallback:#000000">
-                    <video src="previews/matrix.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
-                </div>
+        <h2 class="section-label">Mosaic</h2>
+        <div class="theme-grid">
+            <article class="theme-card" data-kind="mosaic" data-theme="decks">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
                 <div class="meta">
-                    <h2>MATRIX RAIN</h2>
-                    <p>Cascading streams of glowing glyphs falling through the dark.</p>
+                    <h3>Card decks</h3>
+                    <p>Three piles that deal a new face from the side.</p>
                 </div>
-            </a>
-
-            <a class="card" href="backgrounds/silk-waves.html">
-                <div class="preview" style="--fallback:#070510">
-                    <video src="previews/silk-waves.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
-                </div>
+            </article>
+            <article class="theme-card" data-kind="mosaic" data-theme="spotlight">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
                 <div class="meta">
-                    <h2>SILK WAVES</h2>
-                    <p>Layered gradient waves rippling like silk in the wind.</p>
+                    <h3>Spotlight</h3>
+                    <p>One hero photo with a moving strip underneath.</p>
                 </div>
-            </a>
-
-            <a class="card" href="backgrounds/clouds.html">
-                <div class="preview" style="--fallback:#3576cf">
-                    <video src="previews/clouds.mp4" muted loop playsinline preload="metadata" aria-hidden="true"></video>
-                </div>
+            </article>
+            <article class="theme-card" data-kind="mosaic" data-theme="coverflow">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
                 <div class="meta">
-                    <h2>CLOUDS</h2>
-                    <p>Soft volumetric clouds drifting across an open sky.</p>
+                    <h3>Coverflow</h3>
+                    <p>A perspective carousel of captures.</p>
                 </div>
-            </a>
-        </main>
+            </article>
+            <article class="theme-card" data-kind="mosaic" data-theme="fan">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
+                <div class="meta">
+                    <h3>Fan</h3>
+                    <p>Cards fanned out from a single point.</p>
+                </div>
+            </article>
+            <article class="theme-card" data-kind="mosaic" data-theme="filmstrip">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
+                <div class="meta">
+                    <h3>Filmstrip</h3>
+                    <p>Horizontal frames advancing like film.</p>
+                </div>
+            </article>
+            <article class="theme-card" data-kind="mosaic" data-theme="scatter">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
+                <div class="meta">
+                    <h3>Scatter</h3>
+                    <p>Loose prints tossed across the stage.</p>
+                </div>
+            </article>
+            <article class="theme-card" data-kind="mosaic" data-theme="cascade">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
+                <div class="meta">
+                    <h3>Cascade</h3>
+                    <p>Columns of photos stacking and sliding down.</p>
+                </div>
+            </article>
+            <article class="theme-card" data-kind="mosaic" data-theme="orbit">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
+                <div class="meta">
+                    <h3>Orbit</h3>
+                    <p>Captures circling a shared center.</p>
+                </div>
+            </article>
+            <article class="theme-card" data-kind="mosaic" data-theme="billboard">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
+                <div class="meta">
+                    <h3>Billboard</h3>
+                    <p>Oversized posters that rotate in and out.</p>
+                </div>
+            </article>
+            <article class="theme-card" data-kind="mosaic" data-theme="reels">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
+                <div class="meta">
+                    <h3>Reels</h3>
+                    <p>Vertical slots spinning to a new photo.</p>
+                </div>
+            </article>
+            <article class="theme-card" data-kind="mosaic" data-theme="polaroid">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
+                <div class="meta">
+                    <h3>Polaroid wall</h3>
+                    <p>Tilted prints pinned across a wall.</p>
+                </div>
+            </article>
+            <article class="theme-card" data-kind="mosaic" data-theme="flipwall">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
+                <div class="meta">
+                    <h3>3D flip wall</h3>
+                    <p>A grid of tiles that flip to the next shot.</p>
+                </div>
+            </article>
+            <article class="theme-card" data-kind="mosaic" data-theme="livewall">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
+                <div class="meta">
+                    <h3>Live mosaic</h3>
+                    <p>A tight live grid that keeps filling in.</p>
+                </div>
+            </article>
+            <article class="theme-card" data-kind="mosaic" data-theme="cubes">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
+                <div class="meta">
+                    <h3>Cube field</h3>
+                    <p>Photo cubes turning in a shallow 3D field.</p>
+                </div>
+            </article>
+            <article class="theme-card" data-kind="mosaic" data-theme="pedestals">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
+                <div class="meta">
+                    <h3>Pedestals</h3>
+                    <p>Captures standing on lit pedestals.</p>
+                </div>
+            </article>
+        </div>
 
-        <footer>SETTINGS ARE SAVED PER BACKGROUND IN YOUR BROWSER</footer>
+        <footer>LIVE TILES USE SAMPLE CAPTURES. INSTALL THE EXTENSION TO RUN THEM ON AN OUTPUT PAGE.</footer>
     </div>
-    <script>
-        const observer = new IntersectionObserver((entries) => {
-            for (const entry of entries) {
-                const video = entry.target;
-                if (entry.isIntersecting) {
-                    video.play().catch(() => {});
-                } else {
-                    video.pause();
-                }
-            }
-        }, { rootMargin: '120px' });
-
-        document.querySelectorAll('.preview video').forEach((video) => observer.observe(video));
-
-        fetch('extension/manifest.json')
-            .then((res) => res.json())
-            .then((manifest) => {
-                const el = document.getElementById('ext-version');
-                if (el && manifest && manifest.version) el.textContent = manifest.version;
-            })
-            .catch(() => {});
-    </script>
+    <script src="extension/rules.js"></script>
+    <script src="extension/message-themes.js"></script>
+    <script src="extension/mosaic-themes.js"></script>
+    <script src="extension/engines/api.js"></script>
+    <script src="extension/engines/example-aurora.js"></script>
+    <script src="extension/engines/example-orbit-swap.js"></script>
+    <script src="site-preview.js"></script>
+    <script src="site.js"></script>
 </body>
 </html>

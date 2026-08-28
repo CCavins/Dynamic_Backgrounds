@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create — Dynamic Backgrounds</title>
+    <link rel="stylesheet" href="site.css">
+</head>
+<body>
+    <div class="wrap">
+        <header class="site-header">
+            <div class="site-brand">
+                <a href="index.html"><h1>DYNAMIC BACKGROUNDS</h1></a>
+                <p>Themes, scenes, and a Chrome extension for live output.</p>
+            </div>
+            <nav class="site-nav" aria-label="Site">
+                <a href="index.html">Themes</a>
+                <a href="backgrounds.html">Backgrounds</a>
+                <a href="extension.html">Extension</a>
+                <a href="create.html" aria-current="page">Create</a>
+            </nav>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.12.1</span></a>
+        </header>
+
+        <div class="page-intro">
+            <h2>Create</h2>
+            <p>Build a message or mosaic theme as JSON (and optional JS), then import it from the popup. Imported themes stay in Chrome storage and show up in the dropdowns with (imported) after the name.</p>
+        </div>
+
+        <article class="prose">
+            <h2>Start with a test pack</h2>
+            <p>Download the postage-stamp message card first. It is JSON only — no engine file — so it is the safest import to try.</p>
+            <a class="btn" href="themes/example-stamp.json" download>Download example-stamp.json</a>
+
+            <h2>Import from the popup</h2>
+            <ol>
+                <li>Reload the unpacked extension (or reinstall <code>extension.zip</code>).</li>
+                <li>Open the extension popup.</li>
+                <li>Under <strong>Imported themes</strong>, click <strong>Import theme.json + engine.js</strong>.</li>
+                <li>Choose one JSON, or a JSON plus its <code>engine.js</code>.</li>
+                <li>Select the imported theme in <strong>Message theme</strong> or <strong>Mosaic theme</strong>.</li>
+                <li>Under Stage, pick a canvas ratio. Under Mosaic and Message, turn Show background / QR / logo on only for that kind.</li>
+                <li>Open a Vixi output page.</li>
+            </ol>
+            <p>A pack that includes JS runs on matching output pages. Only import engines you wrote or trust. The popup warns the first time. Remove an imported theme from the same section — if it was selected, the dropdown returns to Off.</p>
+
+            <h2>Other examples</h2>
+            <ul class="pack-list">
+                <li><a href="themes/example-stamp.json" download><code>example-stamp.json</code></a> — postage-stamp message card (JSON only)</li>
+                <li><a href="themes/example-ribbon.json" download><code>example-ribbon.json</code></a> — diagonal photo ribbon (JSON only)</li>
+                <li><code>example-engine.json</code> + <code>example-aurora.js</code> — message card with a canvas aurora</li>
+                <li><code>example-mosaic-engine.json</code> + <code>example-orbit-swap.js</code> — orbiting mosaic with photo swaps</li>
+                <li><code>tmpl-*.json</code> — full HTML/CSS ports of the built-in themes</li>
+            </ul>
+            <p>To preview without a live output, open <a href="themes/preview.html">themes/preview.html</a>.</p>
+
+            <h2>Hand this to an AI</h2>
+            <p>Attach <a href="themes/SPEC.md">themes/SPEC.md</a> and the closest example, then paste:</p>
+            <pre>You are writing a Dynamic Backgrounds theme pack. Read themes/SPEC.md and clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine".</pre>
+            <p>Then describe the look. The spec lists every field, clamp, reserved id, reject rule, and engine hook.</p>
+            <p>Limits: up to 24 imported themes. CSS max 100 KB, HTML max 50 KB, engine JS max ~200 KB. Importing the same <code>id</code> again replaces the previous pack.</p>
+        </article>
+
+        <footer>Full contract is in themes/SPEC.md</footer>
+    </div>
+    <script src="site.js"></script>
+</body>
+</html>
