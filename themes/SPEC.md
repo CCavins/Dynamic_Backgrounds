@@ -199,7 +199,7 @@ BGThemeEngines.define({
 The same file works:
 
 - shipped as `extension/engines/my-theme.js` (listed in `extension/engines.json`, then `node scripts/sync-engine-manifest.cjs`)
-- sideloaded: popup compiles it with `new Function("BGThemeEngines", source)` in the isolated content-script world
+- sideloaded: stored in Chrome storage. Output pages use a bundled file if the engine id is already in the extension (`engines/*.js`). `new Function` is only used on pages that allow it (local preview). Chrome’s extension CSP blocks eval in the popup and in content scripts.
 
 `id` and `kind` must be string literals in the define object so the importer can peek them.
 

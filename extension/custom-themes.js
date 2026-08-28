@@ -248,12 +248,36 @@
     return { id, kind: kindMatch[1] };
   }
 
-  function canCompileEngines() {
+  function isExtensionPage() {
     try {
-      return location.protocol !== "chrome-extension:";
+      return location.protocol === "chrome-extension:";
     } catch {
-      return true;
+      return false;
     }
+  }
+
+  // Isolated content scripts inherit the extension CSP, which blocks
+  // new Function / eval. Bundled engines are loaded as real files instead.
+  function isIsolatedContentScript() {
+    try {
+      return Boolean(
+        typeof chrome !== "undefined" &&
+          chrome.runtime &&
+          chrome.runtime.id &&
+          location.protocol !== "chrome-extension:"
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  function canCompileEngines() {
+    return !isExtensionPage() && !isIsolatedContentScript();
+  }
+
+  function isEvalCspError(err) {
+    const msg = String(err && err.message ? err.message : err);
+    return /unsafe-eval|Content Security Policy|Evaluating a string as JavaScript/i.test(msg);
   }
 
   function compileSideloadSource(source) {
@@ -262,9 +286,9 @@
     if (!api || typeof api.define !== "function") {
       throw new Error("Engine API is not loaded.");
     }
-    if (!canCompileEngines()) {
-      throw new Error("Engine compile is skipped on extension pages.");
-    }
+    const existing = api.get(meta.id);
+    if (existing) return existing;
+    if (!canCompileEngines()) return null;
     const fn = new Function("BGThemeEngines", String(source));
     fn(api);
     const def = api.get(meta.id);
@@ -279,13 +303,16 @@
 
   function registerSideloadEngines(records) {
     const api = root.BGThemeEngines;
-    if (!api || !canCompileEngines()) return;
+    if (!api) return;
     Object.keys(records || {}).forEach((id) => {
+      if (api.get(id)) return;
       const rec = records[id];
       if (!rec || !rec.source) return;
+      if (!canCompileEngines()) return;
       try {
         compileSideloadSource(rec.source);
       } catch (err) {
+        if (isEvalCspError(err)) return;
         console.warn("[Dynamic Backgrounds] custom engine failed:", id, err && err.message);
       }
     });
