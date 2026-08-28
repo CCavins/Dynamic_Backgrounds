@@ -19,7 +19,7 @@
                 <a href="extension.html">Extension</a>
                 <a href="create.html" aria-current="page">Create</a>
             </nav>
-            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.14.2</span></a>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.14.3</span></a>
         </header>
 
         <div class="page-intro">
@@ -30,7 +30,7 @@
         <article class="prose">
             <h2>Start with a test pack</h2>
             <p>Download the postage-stamp message card first. It is JSON only — no engine file — so it is the safest import to try.</p>
-            <a class="btn" href="themes/example-stamp.json" download>Download example-stamp.json</a>
+            <a class="btn" href="themes/message-stamp.json" download>Download message-stamp.json</a>
 
             <h2>Import from the popup</h2>
             <ol>
@@ -46,18 +46,18 @@
 
             <h2>Other examples</h2>
             <ul class="pack-list">
-                <li><a href="themes/example-stamp.json" download><code>example-stamp.json</code></a> — postage-stamp message card (JSON only)</li>
-                <li><a href="themes/example-ribbon.json" download><code>example-ribbon.json</code></a> — diagonal photo ribbon (JSON only)</li>
+                <li><a href="themes/message-stamp.json" download><code>message-stamp.json</code></a> — postage-stamp message card (JSON only)</li>
+                <li><a href="themes/mosaic-ribbon.json" download><code>mosaic-ribbon.json</code></a> — diagonal photo ribbon (JSON only)</li>
                 <li>
-                    <a href="themes/example-engine.json" download><code>example-engine.json</code></a>
+                    <a href="themes/message-aurora.json" download><code>message-aurora.json</code></a>
                     +
-                    <a href="themes/example-aurora.js" download><code>example-aurora.js</code></a>
+                    <a href="themes/message-aurora-engine.js" download><code>message-aurora-engine.js</code></a>
                     — message card with a canvas aurora
                 </li>
                 <li>
-                    <a href="themes/example-mosaic-engine.json" download><code>example-mosaic-engine.json</code></a>
+                    <a href="themes/mosaic-orbit-swap.json" download><code>mosaic-orbit-swap.json</code></a>
                     +
-                    <a href="themes/example-orbit-swap.js" download><code>example-orbit-swap.js</code></a>
+                    <a href="themes/mosaic-orbit-swap-engine.js" download><code>mosaic-orbit-swap-engine.js</code></a>
                     — orbiting mosaic with photo swaps
                 </li>
                 <li><code>tmpl-*.json</code> — full HTML/CSS ports of the built-in themes</li>
@@ -70,7 +70,7 @@
 
             <h2>Hand this to an AI</h2>
             <p>Attach <a href="themes/SPEC.md">themes/SPEC.md</a> and the closest example, then paste:</p>
-            <pre>You are writing a Dynamic Backgrounds theme pack. Read themes/SPEC.md and clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine". Prefer data-qr / data-logo slots and dyn-show-qr / dyn-show-logo layout variants when the brief mentions QR or logo.</pre>
+            <pre>You are writing a Dynamic Backgrounds theme pack. Read themes/SPEC.md and clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine". Prefer data-qr / data-logo slots and dyn-show-qr / dyn-show-logo layout variants when the brief mentions QR or logo. Suggested names: message-&lt;name&gt;.json / message-&lt;name&gt;-engine.js or mosaic-&lt;name&gt;.json / mosaic-&lt;name&gt;-engine.js (optional).</pre>
             <p>Then describe the look. The spec lists every field, clamp, reserved id, reject rule, and engine hook.</p>
             <p>Limits: up to 24 imported themes. CSS max 100 KB, HTML max 50 KB, engine JS max ~200 KB. Importing the same <code>id</code> again replaces the previous pack.</p>
         </article>

@@ -1,8 +1,8 @@
 /**
  * Dynamic Backgrounds theme engine
- * id: example-aurora
+ * id: message-aurora-engine
  * kind: message
- * Pairs with: themes/example-engine.json
+ * Pairs with: themes/message-aurora.json
  *
  * Hooks used: mount, applySettings, show, hide, unmount
  * Helpers used: BGMessageThemes.ensureFitStage, applyVars, commonShowPrep,
@@ -13,7 +13,7 @@
  * sideloaded from the popup with the JSON pack.
  */
 BGThemeEngines.define({
-  id: "example-aurora",
+  id: "message-aurora-engine",
   kind: "message",
 
   mount(themeRoot, settings) {

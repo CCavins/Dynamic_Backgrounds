@@ -18,7 +18,7 @@ Two ways to implement:
 | Approach | Files | Use when |
 | --- | --- | --- |
 | JSON only | `my-theme.json` | Layout, typography, colors, CSS motion. Mosaic layouts `grid`, `row`, `scatter`, `ribbon` |
-| JSON + engine | `my-theme.json` + `my-theme.js` | Canvas, WebGL, custom tick/dealing, physics, or any JS beyond CSS |
+| JSON + engine | `my-theme.json` + `my-theme-engine.js` | Canvas, WebGL, custom tick/dealing, physics, or any JS beyond CSS |
 
 JSON cannot run `<script>`, `javascript:` URLs, or inline handlers. Those are rejected. The JS engine is the only way to run code.
 
@@ -31,19 +31,31 @@ Decision tree:
 ## Deliverable files
 
 - `my-theme.json` — required. Must parse as the schema below.
-- `my-theme.js` — required only when the pack uses a new engine. Classic script. Calls `BGThemeEngines.define({...})`.
+- `my-theme-engine.js` — required only when the pack uses a new engine. Classic script. Calls `BGThemeEngines.define({...})`.
 - Import in the extension popup: select the JSON, or the JSON **and** the JS together. One JSON, at most one JS.
 - `"engine"` in the JSON must match `id` in `BGThemeEngines.define`.
-- `"engineFile"` is an optional human hint (`example-aurora.js`). It is never fetched.
+- `"engineFile"` is an optional human hint (`message-aurora-engine.js`). It is never fetched.
+
+**Suggested naming (optional, not enforced):** prefix the pack with its kind, and append `-engine` on the JS file / engine id.
+
+| Role | Pattern | Example |
+| --- | --- | --- |
+| Message JSON | `message-<name>.json` | `message-aurora.json` (`id`: `message-aurora`) |
+| Message engine | `message-<name>-engine.js` | `message-aurora-engine.js` (`engine`: `message-aurora-engine`) |
+| Mosaic JSON | `mosaic-<name>.json` | `mosaic-orbit-swap.json` |
+| Mosaic engine | `mosaic-<name>-engine.js` | `mosaic-orbit-swap-engine.js` |
+| JSON only | same kind prefix, no `-engine` file | `message-stamp.json`, `mosaic-ribbon.json` |
+
+Any valid `id` / `engine` that passes the regex and reserved-id checks is fine — this pattern is only for keeping packs easy to spot.
 
 Clone these examples:
 
 | Goal | JSON | Engine |
 | --- | --- | --- |
-| JSON-only message | `example-stamp.json` | none |
-| JSON-only mosaic | `example-ribbon.json` | none |
-| Message + JS engine | `example-engine.json` | `example-aurora.js` (same file as `../extension/engines/example-aurora.js`) |
-| Mosaic + JS engine | `example-mosaic-engine.json` | `example-orbit-swap.js` (same file as `../extension/engines/example-orbit-swap.js`) |
+| JSON-only message | `message-stamp.json` | none |
+| JSON-only mosaic | `mosaic-ribbon.json` | none |
+| Message + JS engine | `message-aurora.json` | `message-aurora-engine.js` (same file as `../extension/engines/message-aurora-engine.js`) |
+| Mosaic + JS engine | `mosaic-orbit-swap.json` | `mosaic-orbit-swap-engine.js` (same file as `../extension/engines/mosaic-orbit-swap-engine.js`) |
 
 Full HTML/CSS ports of built-ins (no JS): `tmpl-*.json`.
 
@@ -247,7 +259,7 @@ BGThemeEngines.define({
 
 The same file works:
 
-- shipped as `extension/engines/my-theme.js` (listed in `extension/engines.json`, then `node scripts/sync-engine-manifest.cjs`)
+- shipped as `extension/engines/my-theme-engine.js` (listed in `extension/engines.json`, then `node scripts/sync-engine-manifest.cjs`)
 - sideloaded: stored in Chrome storage. Output pages use a bundled file if the engine id is already in the extension (`engines/*.js`). `new Function` is only used on pages that allow it (local preview). Chrome’s extension CSP blocks eval in the popup and in content scripts.
 
 `id` and `kind` must be string literals in the define object so the importer can peek them.

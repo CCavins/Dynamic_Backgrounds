@@ -1,6 +1,6 @@
 {
   "engines": [
-    "example-aurora.js",
-    "example-orbit-swap.js"
+    "message-aurora-engine.js",
+    "mosaic-orbit-swap-engine.js"
   ]
 }

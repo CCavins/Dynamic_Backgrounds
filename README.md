@@ -11,7 +11,7 @@ The site has four pages:
 | [Themes](https://ccavins.github.io/Dynamic_Backgrounds/) | Home. Theme catalog; hover runs one live engine preview |
 | [Backgrounds](https://ccavins.github.io/Dynamic_Backgrounds/backgrounds.html) | Animated scene gallery |
 | [Extension](https://ccavins.github.io/Dynamic_Backgrounds/extension.html) | Install and how the popup works |
-| [Create](https://ccavins.github.io/Dynamic_Backgrounds/create.html) | Import a custom theme JSON (start with `example-stamp.json`) |
+| [Create](https://ccavins.github.io/Dynamic_Backgrounds/create.html) | Import a custom theme JSON (start with `message-stamp.json`) |
 
 Theme tiles on the home page are a catalog, not links. Idle cards show a quiet pattern placeholder. Hover (or keyboard focus) mounts the real theme engine for that tile only — at most one live preview at a time — and tears it down when you leave or when the tab is hidden. WebGL (Cube field / Depth Field) loads only when those tiles are previewed.
 

@@ -12,14 +12,14 @@ To have a model build a pack:
 
 1. Attach [SPEC.md](SPEC.md) (the contract).
 2. Attach the closest example:
-   - JSON-only message: `example-stamp.json`
-   - JSON-only mosaic: `example-ribbon.json`
-   - Message with JS: `example-engine.json` + `example-aurora.js`
-   - Mosaic with JS: `example-mosaic-engine.json` + `example-orbit-swap.js`
+   - JSON-only message: `message-stamp.json`
+   - JSON-only mosaic: `mosaic-ribbon.json`
+   - Message with JS: `message-aurora.json` + `message-aurora-engine.js`
+   - Mosaic with JS: `mosaic-orbit-swap.json` + `mosaic-orbit-swap-engine.js`
 3. Paste this prompt, then describe the look:
 
 ```
-You are writing a Dynamic Backgrounds theme pack. Read themes/SPEC.md and clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine". Prefer data-qr / data-logo slots and dyn-show-qr / dyn-show-logo layout variants when the brief mentions QR or logo.
+You are writing a Dynamic Backgrounds theme pack. Read themes/SPEC.md and clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine". Prefer data-qr / data-logo slots and dyn-show-qr / dyn-show-logo layout variants when the brief mentions QR or logo. Suggested file names: message-<name>.json / message-<name>-engine.js or mosaic-<name>.json / mosaic-<name>-engine.js (optional, not required).
 ```
 
 ## Import
@@ -36,10 +36,10 @@ A pack that includes JS runs on matching output pages. Only import engines you w
 
 Examples to try:
 
-- `example-stamp.json` — postage-stamp message card (JSON only)
-- `example-ribbon.json` — diagonal photo ribbon (JSON only)
-- `example-engine.json` + `example-aurora.js` — message card with a canvas aurora (same JS as `extension/engines/example-aurora.js`)
-- `example-mosaic-engine.json` + `example-orbit-swap.js` — orbiting mosaic with photo swaps (same JS as `extension/engines/example-orbit-swap.js`)
+- `message-stamp.json` — postage-stamp message card (JSON only)
+- `mosaic-ribbon.json` — diagonal photo ribbon (JSON only)
+- `message-aurora.json` + `message-aurora-engine.js` — message card with a canvas aurora (same JS as `extension/engines/message-aurora-engine.js`)
+- `mosaic-orbit-swap.json` + `mosaic-orbit-swap-engine.js` — orbiting mosaic with photo swaps (same JS as `extension/engines/mosaic-orbit-swap-engine.js`)
 - `tmpl-*.json` — full HTML/CSS ports of the built-in themes
 
 To preview without a live output, open `preview.html` in a browser.
@@ -57,7 +57,7 @@ While a theme is on, Vixi’s stock background / QR / logo stay hidden unless **
 | Never show brand marks | Omit slots and leave Show QR / Show logo off |
 | Different layouts when chrome is on/off | Use root classes `dyn-show-qr`, `dyn-show-logo`, `dyn-show-bg` (see SPEC) |
 
-Built-in mosaics whose names end in `*` (Card decks*, Polaroid wall*, …) already reflow when QR/logo are enabled. Prefer **placing** content away from the chrome rail rather than clipping with `overflow: hidden` mid-stage — a hard cut through photos looks wrong.
+Built-in mosaics whose names end in `*` (Card decks*, Polaroid wall*, …) already reflow when QR/logo are enabled. Prefer **placing** content away from the chrome rail rather than clipping with `overflow: hidden` mid-stage — a hard cut through photos looks wrong. Circular layouts (Orbit Swap) can put logo and QR in the top corners so they sit in empty space without a brand reflow.
 
 ## Mosaic photo pool
 
