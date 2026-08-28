@@ -208,6 +208,15 @@ a.hint:hover {
     border-radius: 14px;
     overflow: hidden;
     background: rgba(255, 255, 255, 0.025);
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.theme-card:hover,
+.theme-card:focus-visible,
+.theme-card.is-live {
+    border-color: rgba(255, 255, 255, 0.28);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4);
 }
 
 .theme-stage {
@@ -218,10 +227,57 @@ a.hint:hover {
     pointer-events: none;
 }
 
+.theme-poster {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background-color: #08080f;
+    background-image:
+        radial-gradient(ellipse 70% 55% at 50% 40%, rgba(88, 48, 140, 0.18), transparent 70%),
+        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: auto, 28px 28px, 28px 28px;
+    background-position: center, center, center;
+}
+
+.theme-poster::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 20% 80%, rgba(5, 40, 80, 0.35), transparent 45%),
+        radial-gradient(circle at 85% 20%, rgba(60, 20, 90, 0.22), transparent 40%);
+    pointer-events: none;
+}
+
+.theme-poster-hint {
+    position: relative;
+    z-index: 1;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(8, 8, 16, 0.72);
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.theme-card.is-live .theme-poster {
+    opacity: 0;
+    visibility: hidden;
+}
+
 .theme-stage .dyn-message-theme,
 .theme-stage .dyn-mosaic-theme {
     position: absolute;
     inset: 0;
+    z-index: 1;
 }
 
 .card {

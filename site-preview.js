@@ -2,6 +2,8 @@
     const SAMPLE_DIR = "samples/patriots/";
     const CSV_URL = SAMPLE_DIR + "captures.csv";
     const MESSAGE_CYCLE_MS = 5600;
+    const LIVE_LEAVE_MS = 450;
+    const MAX_LIVE = 1;
 
     const messageApi = globalThis.BGMessageThemes;
     const mosaicApi = globalThis.BGMosaicThemes;
@@ -99,6 +101,37 @@
         return row || { src: "", name: "", message: "" };
     }
 
+    function needsWebGL(id) {
+        return id === "cubes" || id === "cubes-brand" || id === "depthfield";
+    }
+
+    let webglPromise = null;
+    function ensureWebGL() {
+        if (globalThis.THREE && globalThis.BGTileField) return Promise.resolve();
+        if (webglPromise) return webglPromise;
+        webglPromise = (async () => {
+            const load = (src) =>
+                new Promise((resolve, reject) => {
+                    if (document.querySelector('script[src="' + src + '"]')) {
+                        resolve();
+                        return;
+                    }
+                    const el = document.createElement("script");
+                    el.src = src;
+                    el.onload = () => resolve();
+                    el.onerror = () => reject(new Error("Failed to load " + src));
+                    document.head.appendChild(el);
+                });
+            if (!globalThis.THREE) await load("extension/vendor/three.min.js");
+            if (!globalThis.THREE.RoundedBoxGeometry) await load("extension/vendor/RoundedBoxGeometry.js");
+            if (!globalThis.BGTileField) await load("extension/vendor/tile-field.js");
+        })().catch((err) => {
+            webglPromise = null;
+            throw err;
+        });
+        return webglPromise;
+    }
+
     function unmountTile(tile) {
         if (!tile || !tile.mounted) return;
         if (tile.cycleTimer) {
@@ -122,9 +155,14 @@
             }
         }
         tile.root.replaceChildren();
-        tile.root.classList.remove("on", "off", "idle", "held", "no-copy", "ticks-live");
+        tile.root.className = tile.kind === "mosaic" ? "dyn-mosaic-theme" : "dyn-message-theme";
+        tile.root.removeAttribute("data-theme");
+        tile.root.removeAttribute("data-engine");
         tile.state = null;
+        tile.def = null;
         tile.mounted = false;
+        tile.card.classList.remove("is-live");
+        if (tile.poster) tile.poster.hidden = false;
     }
 
     function mountMessage(tile, captures) {
@@ -157,6 +195,8 @@
             }
         }, MESSAGE_CYCLE_MS);
         tile.mounted = true;
+        tile.card.classList.add("is-live");
+        if (tile.poster) tile.poster.hidden = true;
     }
 
     function mountMosaic(tile, photos) {
@@ -164,10 +204,19 @@
         if (!def) return;
         tile.def = def;
         tile.root.dataset.theme = tile.id;
+        if (String(tile.id).endsWith("-brand")) {
+            tile.root.dataset.engine = tile.id.replace(/-brand$/, "");
+        }
         const pool = shuffle(photos);
         const api = {
             nextUrl() {
                 return pool[Math.floor(Math.random() * pool.length)] || "";
+            },
+            isRetiring() {
+                return false;
+            },
+            hasIncoming() {
+                return false;
             },
         };
         tile.state = def.mount(tile.root, pool, api);
@@ -178,45 +227,127 @@
             }, def.interval || 2400);
         }
         tile.mounted = true;
+        tile.card.classList.add("is-live");
+        if (tile.poster) tile.poster.hidden = true;
+    }
+
+    function buildPoster(tile) {
+        const stage = tile.card.querySelector(".theme-stage");
+        if (!stage) return;
+        const poster = document.createElement("div");
+        poster.className = "theme-poster";
+        poster.setAttribute("aria-hidden", "true");
+        const hint = document.createElement("div");
+        hint.className = "theme-poster-hint";
+        hint.textContent = "Hover to preview";
+        poster.appendChild(hint);
+        stage.insertBefore(poster, tile.root);
+        tile.poster = poster;
     }
 
     function bindTiles(captures) {
-        const photos = captures.map((row) => row.src);
-        const tiles = [...document.querySelectorAll(".theme-card[data-kind][data-theme]")].map((card, index) => {
-            const kind = card.getAttribute("data-kind");
-            const id = card.getAttribute("data-theme");
-            const root = card.querySelector(kind === "mosaic" ? ".dyn-mosaic-theme" : ".dyn-message-theme");
-            return {
-                card,
-                kind,
-                id,
-                root,
-                row: index,
-                mounted: false,
-                def: null,
-                state: null,
-                settings: null,
-                cycleTimer: 0,
-                mosaicTimer: 0,
-                ro: null,
-            };
-        }).filter((tile) => tile.root);
+        const photos = captures.map((row) => row.src).filter(Boolean);
+        const tiles = [...document.querySelectorAll(".theme-card[data-kind][data-theme]")]
+            .map((card, index) => {
+                const kind = card.getAttribute("data-kind");
+                const id = card.getAttribute("data-theme");
+                const root = card.querySelector(
+                    kind === "mosaic" ? ".dyn-mosaic-theme" : ".dyn-message-theme"
+                );
+                return {
+                    card,
+                    kind,
+                    id,
+                    root,
+                    row: index,
+                    mounted: false,
+                    def: null,
+                    state: null,
+                    settings: null,
+                    cycleTimer: 0,
+                    mosaicTimer: 0,
+                    ro: null,
+                    poster: null,
+                    leaveTimer: 0,
+                    wantLive: false,
+                };
+            })
+            .filter((tile) => tile.root);
 
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                const tile = tiles.find((item) => item.card === entry.target);
-                if (!tile) return;
-                if (entry.isIntersecting) {
-                    if (tile.mounted) return;
-                    if (tile.kind === "mosaic") mountMosaic(tile, photos);
-                    else mountMessage(tile, captures);
-                } else {
-                    unmountTile(tile);
-                }
+        let liveCount = 0;
+
+        function stopLive(tile) {
+            if (tile.leaveTimer) {
+                clearTimeout(tile.leaveTimer);
+                tile.leaveTimer = 0;
+            }
+            if (!tile.mounted) return;
+            unmountTile(tile);
+            liveCount = Math.max(0, liveCount - 1);
+        }
+
+        function stopAllLive() {
+            tiles.forEach((tile) => {
+                tile.wantLive = false;
+                stopLive(tile);
             });
-        }, { rootMargin: "80px", threshold: 0.12 });
+        }
 
-        tiles.forEach((tile) => observer.observe(tile.card));
+        async function startLive(tile) {
+            if (document.hidden || tile.mounted) return;
+            while (liveCount >= MAX_LIVE) {
+                const other = tiles.find((item) => item.mounted && item !== tile);
+                if (!other) break;
+                other.wantLive = false;
+                stopLive(other);
+            }
+            if (needsWebGL(tile.id)) {
+                try {
+                    await ensureWebGL();
+                } catch {
+                    return;
+                }
+            }
+            if (!tile.wantLive || document.hidden || tile.mounted) return;
+            if (tile.kind === "mosaic") mountMosaic(tile, photos);
+            else mountMessage(tile, captures);
+            if (tile.mounted) liveCount += 1;
+        }
+
+        function requestLive(tile) {
+            tile.wantLive = true;
+            if (tile.leaveTimer) {
+                clearTimeout(tile.leaveTimer);
+                tile.leaveTimer = 0;
+            }
+            startLive(tile);
+        }
+
+        function releaseLive(tile) {
+            tile.wantLive = false;
+            if (tile.leaveTimer) clearTimeout(tile.leaveTimer);
+            tile.leaveTimer = setTimeout(() => {
+                tile.leaveTimer = 0;
+                if (!tile.wantLive) stopLive(tile);
+            }, LIVE_LEAVE_MS);
+        }
+
+        tiles.forEach((tile) => {
+            buildPoster(tile);
+            tile.card.addEventListener("pointerenter", () => requestLive(tile));
+            tile.card.addEventListener("pointerleave", () => releaseLive(tile));
+            tile.card.addEventListener("focusin", () => requestLive(tile));
+            tile.card.addEventListener("focusout", (event) => {
+                if (!tile.card.contains(event.relatedTarget)) releaseLive(tile);
+            });
+            if (!tile.card.hasAttribute("tabindex")) tile.card.tabIndex = 0;
+        });
+
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden) stopAllLive();
+        });
+
+        window.addEventListener("pagehide", stopAllLive);
     }
 
     fetch(CSV_URL)
@@ -227,11 +358,13 @@
             const fileIdx = header.indexOf("captures");
             const nameIdx = header.indexOf("name");
             const msgIdx = header.indexOf("message");
-            const captures = rows.map((row) => ({
-                src: SAMPLE_DIR + (row[fileIdx] || "").trim(),
-                name: (row[nameIdx] || "").trim(),
-                message: (row[msgIdx] || "").trim(),
-            })).filter((row) => row.src && row.src !== SAMPLE_DIR);
+            const captures = rows
+                .map((row) => ({
+                    src: SAMPLE_DIR + (row[fileIdx] || "").trim(),
+                    name: (row[nameIdx] || "").trim(),
+                    message: (row[msgIdx] || "").trim(),
+                }))
+                .filter((row) => row.src && row.src !== SAMPLE_DIR);
             bindTiles(captures);
         })
         .catch(() => bindTiles([]));
