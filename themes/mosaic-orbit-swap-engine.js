@@ -30,6 +30,27 @@ BGThemeEngines.define({
         return card;
       };
 
+    // Layout must not depend on pack CSS (relative .dyn-card otherwise
+    // expands to a single full-bleed photo).
+    let style = root.querySelector("style[data-orbit-engine]");
+    if (!style) {
+      style = document.createElement("style");
+      style.setAttribute("data-orbit-engine", "");
+      style.textContent = [
+        ".orbit-stage{position:absolute;inset:0;container-type:size;}",
+        ".orbit-ring{position:absolute;inset:0;animation:orbit-swap-spin 48s linear infinite;}",
+        ".orbit-ring .dyn-card{position:absolute!important;left:50%;top:50%;margin:0;border-radius:14px;overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.45);outline:3px solid rgba(255,255,255,.85);transition:opacity .28s ease;}",
+        ".orbit-ring .dyn-card.is-swap{opacity:.15;}",
+        ".orbit-ring .dyn-card img{width:100%;height:100%;object-fit:cover;display:block;}",
+        ".orbit-chrome{position:absolute;z-index:5;width:min(12%,140px);aspect-ratio:1;pointer-events:none;}",
+        ".orbit-logo{top:3.2%;left:3.2%;}",
+        ".orbit-qr{top:3.2%;right:3.2%;}",
+        ".orbit-chrome img,.orbit-chrome canvas,.orbit-chrome svg{width:100%;height:100%;object-fit:contain;display:block;}",
+        "@keyframes orbit-swap-spin{to{transform:rotate(360deg);}}",
+      ].join("");
+      root.appendChild(style);
+    }
+
     const stage = document.createElement("div");
     stage.className = "orbit-stage";
 
@@ -67,8 +88,10 @@ BGThemeEngines.define({
     const relayout = () => layoutCards(cards, ring);
     relayout();
     requestAnimationFrame(relayout);
+    requestAnimationFrame(() => requestAnimationFrame(relayout));
     if (typeof ResizeObserver !== "undefined") {
       state.ro = new ResizeObserver(relayout);
+      state.ro.observe(stage);
       state.ro.observe(ring);
     }
     return state;
@@ -110,23 +133,25 @@ function layoutCards(cards, ring) {
   const H = ring.clientHeight;
   if (!W || !H) return;
 
-  // True circle in the stage, sized so rotated 2:3 cards stay inside.
+  // Inscribe a circle in the stage; size 2:3 cards so they stay inside at any ratio.
   const short = Math.min(W, H);
-  const cardH = Math.max(48, short * 0.26);
+  const cardH = Math.max(40, Math.min(short * 0.2, short * 0.38));
   const cardW = cardH * (2 / 3);
   const halfDiag = Math.hypot(cardW, cardH) / 2;
-  const pad = Math.max(8, short * 0.03);
-  const radius = Math.max(0, Math.min(W, H) / 2 - halfDiag - pad);
+  const pad = Math.max(14, short * 0.055);
+  const radius = Math.max(0, short / 2 - halfDiag - pad);
+  const n = cards.length;
 
   cards.forEach((card, i) => {
-    const a = (Math.PI * 2 * i) / cards.length - Math.PI / 2;
-    const x = W / 2 + Math.cos(a) * radius;
-    const y = H / 2 + Math.sin(a) * radius;
+    const deg = (360 * i) / n - 90;
+    card.style.position = "absolute";
+    card.style.left = "50%";
+    card.style.top = "50%";
     card.style.width = cardW.toFixed(1) + "px";
     card.style.height = cardH.toFixed(1) + "px";
-    card.style.left = x.toFixed(1) + "px";
-    card.style.top = y.toFixed(1) + "px";
+    card.style.margin = "0";
+    // Rotate into orbit slot, then tip so the card faces the ring path.
     card.style.transform =
-      "translate(-50%, -50%) rotate(" + ((a * 180) / Math.PI + 90).toFixed(1) + "deg)";
+      "rotate(" + deg.toFixed(1) + "deg) translateY(" + (-radius).toFixed(1) + "px) rotate(90deg)";
   });
 }
