@@ -37,7 +37,10 @@
     "depthfield",
     "pedestals",
   ]);
-  const RESERVED = new Set(["off", ...MESSAGE_ENGINES, ...MOSAIC_ENGINES]);
+  const BUNDLED_ENGINES = new Set([
+    "message-aurora-engine",
+    "mosaic-orbit-swap-engine",
+  ]);
 
   let registeredIds = { message: [], mosaic: [] };
   const changeListeners = [];
@@ -450,13 +453,18 @@
 
   function compileFromEngine(pack, kind) {
     const source = () => engineTheme(kind, pack.engine);
-    const fromRegistry = Boolean(registryEngine(kind, pack.engine));
     if (kind === "message") {
       return {
         engine: pack.engine,
         mount(themeRoot, settings) {
+          const def = source();
+          if (!def || typeof def.mount !== "function") {
+            throw new Error(
+              'Message engine "' + pack.engine + '" is not loaded. Update/reload the extension.'
+            );
+          }
           themeRoot.dataset.engine = pack.engine;
-          if (fromRegistry && pack.html) {
+          if (registryEngine(kind, pack.engine) && pack.html) {
             const helpers = root.BGMessageThemes || {};
             const stage = helpers.ensureFitStage
               ? helpers.ensureFitStage(themeRoot)
@@ -465,7 +473,7 @@
               stage.innerHTML = pack.html;
             }
           }
-          return source().mount(themeRoot, settings);
+          return def.mount(themeRoot, settings);
         },
         applySettings(themeRoot, state, settings) {
           const def = source();
@@ -485,16 +493,24 @@
     }
     return {
       engine: pack.engine,
-      interval: pack.interval || (source() && source().interval) || 2500,
+      interval: Number(pack.interval) || 2500,
       mount(mosaicRoot, pool, api) {
+        const def = source();
+        if (!def || typeof def.mount !== "function") {
+          throw new Error(
+            'Mosaic engine "' +
+              pack.engine +
+              '" is not loaded. Update/reload the extension — output pages cannot eval sideloaded engines.'
+          );
+        }
         mosaicRoot.dataset.engine = pack.engine;
-        if (fromRegistry && pack.html) {
+        if (pack.html) {
           const wrap = document.createElement("div");
           wrap.className = "dyn-custom-chrome";
           wrap.innerHTML = pack.html;
           mosaicRoot.appendChild(wrap);
         }
-        return source().mount(mosaicRoot, pool, api);
+        return def.mount(mosaicRoot, pool, api);
       },
       tick(mosaicRoot, pool, state, api) {
         const def = source();
@@ -508,7 +524,7 @@
   }
 
   function compileMessage(pack) {
-    if (pack.engine && engineTheme("message", pack.engine)) {
+    if (pack.engine) {
       return compileFromEngine(pack, "message");
     }
     const helpers = () => root.BGMessageThemes || {};
@@ -604,7 +620,7 @@
   }
 
   function compileMosaic(pack) {
-    if (pack.engine && engineTheme("mosaic", pack.engine)) {
+    if (pack.engine) {
       return compileFromEngine(pack, "mosaic");
     }
     const count =
@@ -720,7 +736,7 @@
     if (pack.engine && !engineTheme(pack.kind, pack.engine) && !engineSource) {
       const builtin =
         pack.kind === "message" ? MESSAGE_ENGINES.has(pack.engine) : MOSAIC_ENGINES.has(pack.engine);
-      if (!builtin) {
+      if (!builtin && !BUNDLED_ENGINES.has(pack.engine)) {
         throw new Error("Unknown engine. Import the .js file with the JSON.");
       }
     }
