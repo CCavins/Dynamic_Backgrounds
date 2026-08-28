@@ -41,6 +41,7 @@
     "message-aurora-engine",
     "mosaic-orbit-swap-engine",
   ]);
+  const RESERVED = new Set(["off", ...MESSAGE_ENGINES, ...MOSAIC_ENGINES]);
 
   let registeredIds = { message: [], mosaic: [] };
   const changeListeners = [];
@@ -776,7 +777,12 @@
         const engines = await rules.loadCustomEngines();
         if (engines[removed.engine]) {
           delete engines[removed.engine];
-          if (root.BGThemeEngines && root.BGThemeEngines.unregister) {
+          // Never unregister shipped example engines — only drop the stored copy.
+          if (
+            !BUNDLED_ENGINES.has(removed.engine) &&
+            root.BGThemeEngines &&
+            root.BGThemeEngines.unregister
+          ) {
             root.BGThemeEngines.unregister(removed.engine);
           }
           await rules.saveCustomEngines(engines);

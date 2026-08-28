@@ -20,7 +20,7 @@
   enginesApi.define({
     id: "mosaic-orbit-swap-engine",
     kind: "mosaic",
-    interval: 2400,
+    interval: 4200,
 
     mount(themeRoot, pool, hostApi) {
       const mosaicApi = global.BGMosaicThemes || {};
@@ -43,8 +43,7 @@
         style.textContent = [
           ".orbit-stage{position:absolute;inset:0;container-type:size;}",
           ".orbit-ring{position:absolute;inset:0;}",
-          ".orbit-ring .dyn-card{position:absolute!important;left:50%;top:50%;margin:0;border-radius:14px;overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.45);outline:3px solid rgba(255,255,255,.85);transition:opacity .28s ease,box-shadow .35s ease;will-change:transform;}",
-          ".orbit-ring .dyn-card.is-front{z-index:24;box-shadow:0 28px 60px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.2);}",
+          ".orbit-ring .dyn-card{position:absolute!important;left:50%;top:50%;margin:0;border-radius:14px;overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.45);outline:3px solid rgba(255,255,255,.85);transition:opacity .28s ease;will-change:transform;}",
           ".orbit-ring .dyn-card.is-swap{opacity:.15;}",
           ".orbit-ring .dyn-card img{width:100%;height:100%;object-fit:cover;display:block;}",
           ".orbit-chrome{position:absolute;z-index:5;width:min(12%,140px);aspect-ratio:1;pointer-events:none;}",
@@ -107,14 +106,19 @@
         const W = ring.clientWidth;
         const H = ring.clientHeight;
         if (!W || !H) return false;
+        // ~75% larger than the prior 0.20 short-side card, kept on a true
+        // centered circle so no edge is clipped more than another.
         const short = Math.min(W, H);
-        const cardH = Math.max(40, Math.min(short * 0.2, short * 0.38));
+        const cardH = Math.max(56, Math.min(short * 0.35, short * 0.42));
         const cardW = cardH * (2 / 3);
         const halfDiag = Math.hypot(cardW, cardH) / 2;
-        const pad = Math.max(14, short * 0.055);
+        const pad = Math.max(12, short * 0.04);
+        const maxRadius = short / 2 - halfDiag - pad;
+        // Pull in toward center (tighter ring) while staying inside the stage.
+        const radius = Math.max(0, Math.min(maxRadius, short * 0.28));
         state.cardW = cardW;
         state.cardH = cardH;
-        state.radius = Math.max(0, short / 2 - halfDiag - pad);
+        state.radius = radius;
         cards.forEach((card) => {
           card.style.position = "absolute";
           card.style.left = "50%";
@@ -133,10 +137,8 @@
           const deg = state.angle + i * step;
           const wrapped = ((deg % 360) + 360) % 360;
           const dist = Math.min(wrapped, 360 - wrapped);
-          const front = dist < step * 0.55;
-          card.classList.toggle("is-front", front);
-          card.style.zIndex = front ? "24" : String(Math.round(8 - dist / 45));
-          const scale = front ? 1 : 0.88;
+          // Z-order only — keep size constant all the way around.
+          card.style.zIndex = String(Math.round(20 - dist / 18));
           card.style.transform =
             "rotate(" +
             deg.toFixed(2) +
@@ -144,9 +146,7 @@
             (-state.radius).toFixed(1) +
             "px) rotate(" +
             (-deg).toFixed(2) +
-            "deg) scale(" +
-            scale +
-            ")";
+            "deg)";
         });
       };
 

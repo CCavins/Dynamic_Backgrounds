@@ -6,7 +6,7 @@
   "label": "Orbit Swap",
   "engine": "mosaic-orbit-swap-engine",
   "engineFile": "mosaic-orbit-swap-engine.js",
-  "interval": 2400,
+  "interval": 4200,
   "count": 6,
   "css": "#dyn-mosaic-theme[data-theme=\"mosaic-orbit-swap\"]{background:radial-gradient(70% 60% at 50% 50%,#2a1830,#120c14 70%)}#dyn-mosaic-theme[data-theme=\"mosaic-orbit-swap\"] .orbit-chrome{position:absolute;z-index:5;width:min(12%,140px);aspect-ratio:1;pointer-events:none}#dyn-mosaic-theme[data-theme=\"mosaic-orbit-swap\"] .orbit-logo{top:3.2%;left:3.2%}#dyn-mosaic-theme[data-theme=\"mosaic-orbit-swap\"] .orbit-qr{top:3.2%;right:3.2%}#dyn-mosaic-theme[data-theme=\"mosaic-orbit-swap\"] .orbit-chrome img,#dyn-mosaic-theme[data-theme=\"mosaic-orbit-swap\"] .orbit-chrome canvas,#dyn-mosaic-theme[data-theme=\"mosaic-orbit-swap\"] .orbit-chrome svg{width:100%;height:100%;object-fit:contain;display:block}"
 }

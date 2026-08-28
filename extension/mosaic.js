@@ -488,13 +488,20 @@
   function themeManagesFeed(theme) {
     // These themes own card enter/exit animations. mosaic.js must not fadeSetImg
     // their imgs — that flashes without the theme transition.
-    return theme === "polaroid" ||
+    if (
+      theme === "polaroid" ||
       theme === "polaroid-brand" ||
       theme === "flipwall" ||
       theme === "flipwall-brand" ||
       theme === "cubes" ||
       theme === "cubes-brand" ||
-      theme === "depthfield";
+      theme === "depthfield"
+    ) {
+      return true;
+    }
+    // Engine-driven custom mosaics (Orbit Swap, etc.) own their photo swaps.
+    const def = (themeApi && themeApi.themes && themeApi.themes[theme]) || (active && active.def);
+    return Boolean(def && def.engine);
   }
 
   function reconcileOverlay(root) {
