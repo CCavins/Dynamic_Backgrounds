@@ -467,7 +467,10 @@
         return;
       }
       if (jsFiles.length > 1) {
-        if (importStatus) importStatus.textContent = "Select at most one engine.js.";
+        if (importStatus) {
+          importStatus.textContent =
+            "Select at most one engine.js (the theme’s matching *-engine.js). Import each pack separately.";
+        }
         return;
       }
       try {

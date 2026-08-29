@@ -247,7 +247,13 @@
     if (looksLikeModule(text)) {
       throw new Error("Engine must be a classic script, not a module. Do not use import/export.");
     }
-    if (!/BGThemeEngines\s*\.\s*define\s*\(/.test(text)) {
+    // Accept BGThemeEngines.define(...) or enginesApi.define(...) after
+    // const enginesApi = global.BGThemeEngines / globalThis.BGThemeEngines.
+    const hasDefine =
+      /BGThemeEngines\s*\.\s*define\s*\(/.test(text) ||
+      (/\benginesApi\s*\.\s*define\s*\(/.test(text) &&
+        /\benginesApi\s*=\s*(?:global(?:This)?|window)\s*\.\s*BGThemeEngines\b/.test(text));
+    if (!hasDefine) {
       throw new Error("Engine must call BGThemeEngines.define({ id, kind, ... }).");
     }
     const idMatch = text.match(/\bid\s*:\s*["']([a-z][a-z0-9-]{1,40})["']/);
