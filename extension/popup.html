@@ -131,15 +131,24 @@
     <button type="button" id="add-rule" class="v2-btn v2-btn-primary">Add output URL</button>
   </section>
 
-  <section>
-    <h2>Imported themes</h2>
-    <p class="help">Sideload a theme JSON, or JSON plus engine.js. See themes/README.md and themes/SPEC.md.</p>
+  <section class="import-section">
+    <div class="section-head">
+      <h2>Imported themes</h2>
+      <span id="custom-theme-count" class="section-count" hidden></span>
+    </div>
+    <div class="import-panel">
+      <ol class="import-steps">
+        <li>Select one or many theme <code>.json</code> files (and their <code>*-engine.js</code> files if needed).</li>
+        <li>Matching is automatic by <code>engine</code> / filename (e.g. <code>mosaic-xmas-tree.json</code> ↔ <code>mosaic-xmas-tree-engine.js</code>).</li>
+        <li>Standalone JSON packs import without an engine. Same <code>id</code> replaces.</li>
+      </ol>
+      <label class="v2-btn v2-btn-secondary import-btn">
+        Import packs…
+        <input type="file" id="import-theme" accept=".json,.js,application/json,text/javascript" multiple hidden>
+      </label>
+      <p class="import-status" id="import-status" role="status"></p>
+    </div>
     <div id="custom-themes" class="custom-theme-list"></div>
-    <label class="v2-btn v2-btn-secondary import-btn">
-      Import theme.json + engine.js
-      <input type="file" id="import-theme" accept=".json,.js,application/json,text/javascript" multiple hidden>
-    </label>
-    <p class="help" id="import-status"></p>
   </section>
 
   <template id="rule-template">

@@ -758,14 +758,18 @@
       }
       pack.engine = meta.id;
     }
+    const rules = root.BGExtensionRules;
     if (pack.engine && !engineTheme(pack.kind, pack.engine) && !engineSource) {
       const builtin =
         pack.kind === "message" ? MESSAGE_ENGINES.has(pack.engine) : MOSAIC_ENGINES.has(pack.engine);
       if (!builtin && !BUNDLED_ENGINES.has(pack.engine)) {
-        throw new Error("Unknown engine. Import the .js file with the JSON.");
+        const stored =
+          rules && rules.loadCustomEngines ? await rules.loadCustomEngines() : {};
+        if (!stored[pack.engine]) {
+          throw new Error("Unknown engine. Import the .js file with the JSON.");
+        }
       }
     }
-    const rules = root.BGExtensionRules;
     const current = rules ? await rules.loadCustomThemes() : [];
     if (current.length >= MAX_PACKS && !current.some((item) => item.id === pack.id)) {
       throw new Error("Too many imported themes. Remove one first.");
@@ -782,6 +786,10 @@
         }
       }
     }
+    const now = new Date().toISOString();
+    const previous = current.find((item) => item.id === pack.id);
+    pack.importedAt = (previous && previous.importedAt) || now;
+    pack.updatedAt = now;
     const next = current.filter((item) => item.id !== pack.id);
     next.push(pack);
     if (rules) await rules.saveCustomThemes(next);

@@ -120,6 +120,26 @@
       if (!scatter || typeof scatter.mount !== "function") {
         throw new Error("Built-in scatter mosaic theme is required for mosaic-xmas-snowfall-engine");
       }
+
+      // Scatter's size CSS is scoped to data-theme="scatter". This pack uses a
+      // custom theme id, so inject equivalent card sizing here.
+      let style = themeRoot.querySelector("style[data-xmas-snowfall-engine]");
+      if (!style) {
+        style = document.createElement("style");
+        style.setAttribute("data-xmas-snowfall-engine", "");
+        style.textContent = [
+          '#dyn-mosaic-theme[data-theme="mosaic-xmas-snowfall"]{overflow:hidden;}',
+          '#dyn-mosaic-theme[data-theme="mosaic-xmas-snowfall"] .dyn-card{',
+          "position:absolute!important;width:min(16vw,230px);aspect-ratio:2/3;height:auto;",
+          "transition:transform .95s cubic-bezier(.22,.8,.2,1);",
+          "}",
+          '#dyn-mosaic-theme.dyn-portrait[data-theme="mosaic-xmas-snowfall"] .dyn-card{',
+          "width:min(38cqw,230px);",
+          "}",
+        ].join("");
+        themeRoot.appendChild(style);
+      }
+
       const state = scatter.mount(themeRoot, pool, hostApi) || {};
       state._scatter = scatter;
       state.api = hostApi;

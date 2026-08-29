@@ -23,12 +23,45 @@
   const addRule = document.getElementById("add-rule");
   const template = document.getElementById("rule-template");
   const customList = document.getElementById("custom-themes");
+  const customThemeCount = document.getElementById("custom-theme-count");
   const importInput = document.getElementById("import-theme");
   const importStatus = document.getElementById("import-status");
 
   let persistTimer = 0;
   let cachedSettings = null;
   let lastMessageTheme = "off";
+
+  function isChristmasPack(id, label) {
+    return /xmas|christmas/i.test(String(id || "") + " " + String(label || ""));
+  }
+
+  function setImportStatus(message, tone) {
+    if (!importStatus) return;
+    importStatus.textContent = message || "";
+    importStatus.classList.remove("is-ok", "is-error", "is-warn");
+    if (tone) importStatus.classList.add(tone);
+  }
+
+  function themeSelectGroup(id, meta) {
+    if (meta && meta.custom) {
+      return isChristmasPack(id, meta.label) ? "Christmas" : "Imported";
+    }
+    return "Built-in";
+  }
+
+  function addOptGroup(select, label, items) {
+    if (!items.length) return;
+    items.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+    const group = document.createElement("optgroup");
+    group.label = label;
+    items.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.id;
+      option.textContent = item.label;
+      group.appendChild(option);
+    });
+    select.appendChild(group);
+  }
 
   const CHEVRON =
     '<svg class="v2-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 9.5 12 15l5.5-5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -57,7 +90,8 @@
     if (!wrap) return;
     const menu = wrap.querySelector(".v2-select-menu");
     menu.replaceChildren();
-    [...select.options].forEach((opt) => {
+
+    function addOptionBtn(opt) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "v2-select-option";
@@ -71,6 +105,18 @@
         syncSelectUI(select);
       });
       menu.appendChild(btn);
+    }
+
+    [...select.children].forEach((child) => {
+      if (child.tagName === "OPTGROUP") {
+        const head = document.createElement("div");
+        head.className = "v2-select-group";
+        head.textContent = child.label || "";
+        menu.appendChild(head);
+        [...child.children].forEach(addOptionBtn);
+        return;
+      }
+      if (child.tagName === "OPTION") addOptionBtn(child);
     });
     syncSelectUI(select);
   }
@@ -128,74 +174,182 @@
     select.appendChild(option);
   }
 
-  function fillMosaicThemeOptions() {
-    const current = mosaicTheme.value;
-    mosaicTheme.replaceChildren();
-    addThemeOption(mosaicTheme, "off", "Off");
-    const meta = rulesApi.mosaicThemeMetaAll ? rulesApi.mosaicThemeMetaAll() : rulesApi.MOSAIC_THEME_META || {};
-    Object.keys(meta).forEach((id) => {
-      addThemeOption(mosaicTheme, id, meta[id].custom ? (meta[id].label || id) + " (imported)" : meta[id].label || id);
+  function fillThemeSelect(select, meta) {
+    const current = select.value;
+    select.replaceChildren();
+    addThemeOption(select, "off", "Off");
+    const groups = { "Built-in": [], Christmas: [], Imported: [] };
+    Object.keys(meta || {}).forEach((id) => {
+      const entry = meta[id] || {};
+      const label = entry.label || id;
+      const group = themeSelectGroup(id, entry);
+      groups[group].push({ id, label });
     });
-    if ([...mosaicTheme.options].some((opt) => opt.value === current)) mosaicTheme.value = current;
-    enhanceSelect(mosaicTheme);
+    addOptGroup(select, "Built-in", groups["Built-in"]);
+    addOptGroup(select, "Christmas", groups.Christmas);
+    addOptGroup(select, "Imported", groups.Imported);
+    if ([...select.options].some((opt) => opt.value === current)) select.value = current;
+    enhanceSelect(select);
+  }
+
+  function fillMosaicThemeOptions() {
+    const meta = rulesApi.mosaicThemeMetaAll
+      ? rulesApi.mosaicThemeMetaAll()
+      : rulesApi.MOSAIC_THEME_META || {};
+    fillThemeSelect(mosaicTheme, meta);
   }
 
   function fillMessageThemeOptions() {
-    const current = messageTheme.value;
-    const meta = rulesApi.messageThemeMetaAll ? rulesApi.messageThemeMetaAll() : rulesApi.MESSAGE_THEME_META || {};
-    messageTheme.replaceChildren();
-    addThemeOption(messageTheme, "off", "Off");
-    Object.keys(meta).forEach((id) => {
-      addThemeOption(messageTheme, id, meta[id].custom ? (meta[id].label || id) + " (imported)" : meta[id].label || id);
+    const meta = rulesApi.messageThemeMetaAll
+      ? rulesApi.messageThemeMetaAll()
+      : rulesApi.MESSAGE_THEME_META || {};
+    fillThemeSelect(messageTheme, meta);
+  }
+
+  function packSortKey(pack) {
+    return String(pack.label || pack.id || "").toLowerCase();
+  }
+
+  function formatImportStamp(iso) {
+    if (!iso) return "";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
     });
-    if ([...messageTheme.options].some((opt) => opt.value === current)) messageTheme.value = current;
-    enhanceSelect(messageTheme);
+  }
+
+  function appendCustomThemeRow(parent, pack) {
+    const row = document.createElement("div");
+    row.className = "custom-theme-row";
+
+    const main = document.createElement("div");
+    main.className = "custom-theme-main";
+
+    const title = document.createElement("div");
+    title.className = "custom-theme-title";
+    title.textContent = pack.label || pack.id;
+
+    const meta = document.createElement("div");
+    meta.className = "custom-theme-meta";
+    const badges = document.createElement("div");
+    badges.className = "custom-theme-badges";
+
+    const kindBadge = document.createElement("span");
+    kindBadge.className = "theme-badge";
+    kindBadge.textContent = pack.kind === "message" ? "Message" : "Mosaic";
+    badges.appendChild(kindBadge);
+
+    if (pack.engine) {
+      const eng = document.createElement("span");
+      eng.className = "theme-badge theme-badge-engine";
+      eng.textContent = "Engine";
+      badges.appendChild(eng);
+    }
+
+    const idLine = document.createElement("code");
+    idLine.className = "custom-theme-id";
+    idLine.textContent = pack.id;
+
+    meta.appendChild(badges);
+    meta.appendChild(idLine);
+
+    const stampIso = pack.updatedAt || pack.importedAt;
+    const stampText = formatImportStamp(stampIso);
+    if (stampText) {
+      const stamp = document.createElement("div");
+      stamp.className = "custom-theme-stamp";
+      const replaced =
+        pack.importedAt &&
+        pack.updatedAt &&
+        pack.importedAt !== pack.updatedAt;
+      stamp.textContent = (replaced ? "Updated " : "Imported ") + stampText;
+      meta.appendChild(stamp);
+    }
+
+    main.appendChild(title);
+    main.appendChild(meta);
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "v2-btn v2-btn-destructive";
+    remove.textContent = "Remove";
+    remove.addEventListener("click", async () => {
+      if (!customApi) return;
+      const ok = window.confirm(
+        'Remove "' + pack.label + '"?\n\nThis cannot be undone. You can import the theme again later.'
+      );
+      if (!ok) return;
+      const next = await customApi.removePack(pack.id);
+      if (messageTheme.value === pack.id) {
+        messageTheme.value = "off";
+        lastMessageTheme = "off";
+        renderThemeSettings("off");
+      }
+      if (mosaicTheme.value === pack.id) mosaicTheme.value = "off";
+      fillMosaicThemeOptions();
+      fillMessageThemeOptions();
+      syncSelectUI(mosaicTheme);
+      syncSelectUI(messageTheme);
+      renderCustomList(next);
+      persist();
+      setImportStatus("Removed " + pack.label + ".", "is-warn");
+    });
+
+    row.appendChild(main);
+    row.appendChild(remove);
+    parent.appendChild(row);
+  }
+
+  function appendPackSection(parent, title, packs) {
+    if (!packs.length) return;
+    const section = document.createElement("div");
+    section.className = "custom-theme-group";
+    const heading = document.createElement("h3");
+    heading.className = "custom-theme-group-title";
+    heading.textContent = title + " · " + packs.length;
+    section.appendChild(heading);
+    packs
+      .slice()
+      .sort((a, b) => packSortKey(a).localeCompare(packSortKey(b)))
+      .forEach((pack) => appendCustomThemeRow(section, pack));
+    parent.appendChild(section);
   }
 
   function renderCustomList(packs) {
     if (!customList) return;
     customList.replaceChildren();
-    if (!packs.length) {
+    const list = packs || [];
+    if (customThemeCount) {
+      if (list.length) {
+        customThemeCount.hidden = false;
+        customThemeCount.textContent = String(list.length);
+      } else {
+        customThemeCount.hidden = true;
+        customThemeCount.textContent = "";
+      }
+    }
+    if (!list.length) {
       const empty = document.createElement("p");
-      empty.className = "help";
-      empty.textContent = "No imported themes yet.";
+      empty.className = "help custom-theme-empty";
+      empty.textContent = "No imported themes yet. Use Import pack… above.";
       customList.appendChild(empty);
       return;
     }
-    packs.forEach((pack) => {
-      const row = document.createElement("div");
-      row.className = "custom-theme-row";
-      const name = document.createElement("span");
-      name.textContent =
-        pack.label +
-        " · " +
-        pack.kind +
-        (pack.engine ? " · has engine" : "");
-      const remove = document.createElement("button");
-      remove.type = "button";
-      remove.className = "v2-btn v2-btn-destructive";
-      remove.textContent = "Remove";
-      remove.addEventListener("click", async () => {
-        if (!customApi) return;
-        const ok = window.confirm(
-          'Remove "' + pack.label + '"?\n\nThis cannot be undone. You can import the theme again later.'
-        );
-        if (!ok) return;
-        const next = await customApi.removePack(pack.id);
-        if (messageTheme.value === pack.id) messageTheme.value = "off";
-        if (mosaicTheme.value === pack.id) mosaicTheme.value = "off";
-        fillMosaicThemeOptions();
-        fillMessageThemeOptions();
-        syncSelectUI(mosaicTheme);
-        syncSelectUI(messageTheme);
-        renderCustomList(next);
-        persist();
-        if (importStatus) importStatus.textContent = "Removed " + pack.label + ".";
-      });
-      row.appendChild(name);
-      row.appendChild(remove);
-      customList.appendChild(row);
-    });
+    appendPackSection(
+      customList,
+      "Mosaic",
+      list.filter((p) => p.kind === "mosaic")
+    );
+    appendPackSection(
+      customList,
+      "Message",
+      list.filter((p) => p.kind === "message")
+    );
   }
 
   function colorRow(key, label, value) {
@@ -453,65 +607,185 @@
     addRuleRow({});
   });
 
+  function fileBaseName(file) {
+    return String(file && file.name ? file.name : "").replace(/^.*[/\\]/, "");
+  }
+
+  function findEngineForPack(pack, engines) {
+    if (!pack || !pack.engine || !engines.length) return null;
+    const engineFile = String(pack.engineFile || "").toLowerCase();
+    const engineId = String(pack.engine || "").toLowerCase();
+    const idEngineName = String(pack.id || "").toLowerCase() + "-engine.js";
+    const byFile = engineFile
+      ? engines.find((item) => item.name.toLowerCase() === engineFile)
+      : null;
+    if (byFile) return byFile;
+    const byId = engines.find((item) => String(item.meta.id || "").toLowerCase() === engineId);
+    if (byId) return byId;
+    return (
+      engines.find((item) => item.name.toLowerCase() === idEngineName) ||
+      engines.find((item) => item.name.toLowerCase().replace(/\.js$/, "") === engineId) ||
+      null
+    );
+  }
+
+  async function planThemeImports(files) {
+    const jsonFiles = files.filter((file) => /\.json$/i.test(file.name));
+    const jsFiles = files.filter((file) => /\.js$/i.test(file.name));
+    if (!jsonFiles.length) {
+      throw new Error("Select at least one theme .json file.");
+    }
+
+    const engines = [];
+    const notes = [];
+    for (const file of jsFiles) {
+      const name = fileBaseName(file);
+      if (/snow-particles/i.test(name)) {
+        notes.push("Skipped " + name + " (helper — not an importable engine).");
+        continue;
+      }
+      const text = await file.text();
+      try {
+        const meta = customApi.peekEngineMeta(text);
+        engines.push({ file, text, meta, name });
+      } catch (err) {
+        notes.push(
+          "Skipped " + name + " (" + ((err && err.message) || "not a theme engine") + ")."
+        );
+      }
+    }
+
+    const used = new Set();
+    const jobs = [];
+    const errors = [];
+    for (const file of jsonFiles) {
+      const name = fileBaseName(file);
+      let raw = "";
+      let pack = null;
+      try {
+        raw = await file.text();
+        pack = customApi.parsePack(raw);
+      } catch (err) {
+        errors.push(name + ": " + ((err && err.message) || "invalid theme"));
+        continue;
+      }
+      const match = findEngineForPack(pack, engines);
+      if (match) used.add(match.name);
+      jobs.push({
+        raw,
+        pack,
+        jsonName: name,
+        engineSource: match ? match.text : "",
+        engineName: match ? match.name : "",
+      });
+    }
+
+    engines.forEach((item) => {
+      if (!used.has(item.name)) {
+        notes.push("Unused engine " + item.name + " (no matching theme .json in this selection).");
+      }
+    });
+
+    return { jobs, errors, notes };
+  }
+
   if (importInput && customApi) {
     importInput.addEventListener("change", async () => {
       const files = [...(importInput.files || [])];
       importInput.value = "";
       if (!files.length) return;
-      const jsonFiles = files.filter((file) => /\.json$/i.test(file.name));
-      const jsFiles = files.filter((file) => /\.js$/i.test(file.name));
-      if (jsonFiles.length !== 1) {
-        if (importStatus) {
-          importStatus.textContent = "Select one theme.json and an optional engine.js.";
-        }
-        return;
-      }
-      if (jsFiles.length > 1) {
-        if (importStatus) {
-          importStatus.textContent =
-            "Select at most one engine.js (the theme’s matching *-engine.js). Import each pack separately.";
-        }
-        return;
-      }
+      let plan;
       try {
-        if (jsFiles[0]) {
-          const seen = rulesApi.loadCustomEngineWarningSeen
-            ? await rulesApi.loadCustomEngineWarningSeen()
-            : false;
-          if (!seen) {
-            const ok = window.confirm(
-              "This pack includes JavaScript that will run on matching output pages. Only import engines you wrote or trust."
-            );
-            if (!ok) return;
-            if (rulesApi.saveCustomEngineWarningSeen) {
-              await rulesApi.saveCustomEngineWarningSeen();
-            }
+        plan = await planThemeImports(files);
+      } catch (err) {
+        setImportStatus(err && err.message ? err.message : "Import failed.", "is-error");
+        return;
+      }
+
+      if (!plan.jobs.length) {
+        setImportStatus(
+          (plan.errors[0] || "No valid theme packs in that selection.") +
+            (plan.notes.length ? " " + plan.notes[0] : ""),
+          "is-error"
+        );
+        return;
+      }
+
+      const needsEngineConfirm = plan.jobs.some((job) => job.engineSource);
+      if (needsEngineConfirm) {
+        const seen = rulesApi.loadCustomEngineWarningSeen
+          ? await rulesApi.loadCustomEngineWarningSeen()
+          : false;
+        if (!seen) {
+          const ok = window.confirm(
+            "One or more packs include JavaScript that will run on matching output pages. Only import engines you wrote or trust."
+          );
+          if (!ok) return;
+          if (rulesApi.saveCustomEngineWarningSeen) {
+            await rulesApi.saveCustomEngineWarningSeen();
           }
         }
-        const pack = await customApi.importPack(
-          await jsonFiles[0].text(),
-          jsFiles[0] ? await jsFiles[0].text() : ""
-        );
+      }
+
+      try {
+        const existing = rulesApi.loadCustomThemes ? await rulesApi.loadCustomThemes() : [];
+        const existingIds = new Set(existing.map((item) => item.id));
+        const imported = [];
+        const replaced = [];
+        const failed = plan.errors.slice();
+
+        for (const job of plan.jobs) {
+          try {
+            const pack = await customApi.importPack(job.raw, job.engineSource);
+            if (existingIds.has(pack.id)) replaced.push(pack);
+            else imported.push(pack);
+            existingIds.add(pack.id);
+          } catch (err) {
+            failed.push(
+              job.jsonName + ": " + ((err && err.message) || "import failed")
+            );
+          }
+        }
+
         fillMosaicThemeOptions();
         fillMessageThemeOptions();
-        if (pack.kind === "message") {
-          messageTheme.value = pack.id;
-          lastMessageTheme = pack.id;
-          renderThemeSettings(pack.id);
-        } else {
-          mosaicTheme.value = pack.id;
+        const last = replaced[replaced.length - 1] || imported[imported.length - 1] || null;
+        if (last) {
+          if (last.kind === "message") {
+            messageTheme.value = last.id;
+            lastMessageTheme = last.id;
+            renderThemeSettings(last.id);
+          } else {
+            mosaicTheme.value = last.id;
+          }
         }
         syncSelectUI(mosaicTheme);
         syncSelectUI(messageTheme);
         persist();
         const packs = await rulesApi.loadCustomThemes();
         renderCustomList(packs);
-        if (importStatus) {
-          importStatus.textContent =
-            "Imported " + pack.label + (pack.engine ? " with engine." : ".");
+
+        const parts = [];
+        if (imported.length) parts.push("Imported " + imported.length);
+        if (replaced.length) parts.push("replaced " + replaced.length);
+        if (failed.length) parts.push(failed.length + " failed");
+        let message = parts.join(", ") + ".";
+        if (imported.length + replaced.length === 1 && last) {
+          message =
+            (replaced.length ? "Replaced " : "Imported ") +
+            last.label +
+            (last.engine ? " (with engine)" : "") +
+            ".";
         }
+        const extras = plan.notes.concat(failed).slice(0, 3);
+        if (extras.length) message += " " + extras.join(" ");
+        const okCount = imported.length + replaced.length;
+        setImportStatus(
+          message,
+          failed.length && !okCount ? "is-error" : failed.length ? "is-warn" : "is-ok"
+        );
       } catch (err) {
-        if (importStatus) importStatus.textContent = err && err.message ? err.message : "Import failed.";
+        setImportStatus(err && err.message ? err.message : "Import failed.", "is-error");
       }
     });
   }
