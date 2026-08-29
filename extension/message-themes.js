@@ -867,6 +867,7 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   --s-hot:  color-mix(in srgb, var(--secondary) 40%, white);
   --s-soft: color-mix(in srgb, var(--secondary) 50%, transparent);
   --s-haze: color-mix(in srgb, var(--secondary) 26%, transparent);
+  --holo-rest: rotateY(-11deg) rotateX(5deg) translate3d(-0.35vw, 0.45vh, 10px) scale(1);
   background: #05040a;
 }
 #dyn-message-theme[data-theme="holo-card"] .dyn-stage {
@@ -905,6 +906,7 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   aspect-ratio: 3 / 4.15;
   transform-style: preserve-3d;
   transform-origin: 50% 55%;
+  transform: var(--holo-rest);
   opacity: 0;
   backface-visibility: hidden;
 }
@@ -965,6 +967,7 @@ html.dyn-message-on .mosaic-layout > .asset-view {
       var(--primary), var(--secondary), #ffe9a8, #ff7ad9, var(--primary));
   opacity: 0.32;
   backface-visibility: hidden;
+  transform: translate3d(-7%, -4%, 0);
 }
 #dyn-message-theme[data-theme="holo-card"] .glare {
   position: absolute;
@@ -1107,7 +1110,7 @@ html.dyn-message-on .mosaic-layout > .asset-view {
 @keyframes dynHoloCardIn {
   0%   { opacity: 0; transform: rotateY(48deg) rotateX(10deg) translate3d(6vw, 4vh, -140px) scale(0.84); filter: brightness(1.8); }
   62%  { opacity: 1; filter: brightness(1.15); }
-  100% { opacity: 1; transform: rotateY(-6deg) rotateX(3deg) translate3d(0,0,0) scale(1); filter: brightness(1); }
+  100% { opacity: 1; transform: var(--holo-rest); filter: none; }
 }
 @keyframes dynHoloCopyIn {
   from { opacity: 0; transform: translateX(3.2vw); filter: blur(8px); }
@@ -1115,18 +1118,15 @@ html.dyn-message-on .mosaic-layout > .asset-view {
 }
 #dyn-message-theme[data-theme="holo-card"].on .rig {
   opacity: 1;
-  animation: dynHoloCardIn var(--reveal-ms) cubic-bezier(.18,1.12,.28,1) both;
+  animation: dynHoloCardIn var(--reveal-ms) cubic-bezier(.22,.82,.24,1) both;
 }
 #dyn-message-theme[data-theme="holo-card"].on .copy {
   opacity: 1;
   animation: dynHoloCopyIn calc(var(--reveal-ms) * 0.72) calc(var(--reveal-ms) * 0.28) cubic-bezier(.2,.9,.3,1) both;
 }
 @keyframes dynHoloOrbit {
-  0%   { transform: rotateY(-11deg) rotateX(5deg) translate3d(-0.35vw, 0.45vh, 10px); }
-  35%  { transform: rotateY(2deg) rotateX(-1deg) translate3d(0.25vw, -0.55vh, 4px); }
-  50%  { transform: rotateY(10deg) rotateX(-4deg) translate3d(0.45vw, -1.15vh, 14px); }
-  78%  { transform: rotateY(-3deg) rotateX(2deg) translate3d(-0.15vw, 0.15vh, 6px); }
-  100% { transform: rotateY(-11deg) rotateX(5deg) translate3d(-0.35vw, 0.45vh, 10px); }
+  from { transform: var(--holo-rest); }
+  to   { transform: rotateY(10deg) rotateX(-4deg) translate3d(0.45vw, -1.15vh, 14px) scale(1); }
 }
 @keyframes dynHoloGlare {
   0%   { transform: translate3d(-150%, 0, 0); }
@@ -1141,9 +1141,10 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   100% { background-position: 100% 50%; }
 }
 #dyn-message-theme[data-theme="holo-card"].on.idle .rig {
-  animation: dynHoloOrbit 12s ease-in-out infinite;
+  animation: dynHoloOrbit 6s linear infinite alternate;
   opacity: 1;
   filter: none;
+  transform: var(--holo-rest);
   will-change: transform;
 }
 #dyn-message-theme[data-theme="holo-card"].on.idle .copy { animation: none; opacity: 1; transform: none; filter: none; }
@@ -1152,9 +1153,9 @@ html.dyn-message-on .mosaic-layout > .asset-view {
 #dyn-message-theme[data-theme="holo-card"].on.idle .foil { animation: dynHoloFoil 18s ease-in-out infinite alternate; }
 #dyn-message-theme[data-theme="holo-card"].on.idle .msg-fit span { animation: dynHoloSheen 8s ease-in-out infinite alternate; }
 @keyframes dynHoloCardOut {
-  0%   { opacity: 1; transform: rotateY(0deg) scale(1); filter: brightness(1); }
+  0%   { opacity: 1; transform: var(--holo-rest); filter: none; }
   28%  { filter: brightness(1.6); }
-  100% { opacity: 0; transform: rotateY(-62deg) translateX(-8vw) scale(0.88); filter: brightness(2.2); }
+  100% { opacity: 0; transform: rotateY(-62deg) rotateX(5deg) translate3d(-8vw, 0.45vh, 10px) scale(0.88); filter: brightness(2.2); }
 }
 @keyframes dynHoloCopyOut {
   to { opacity: 0; transform: translateX(-2.4vw); filter: blur(6px); }
