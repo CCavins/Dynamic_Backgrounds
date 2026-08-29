@@ -2,27 +2,243 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Custom theme preview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theme preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  html, body { margin: 0; height: 100%; background: #1b1b1b; color: #fff; font-family: Inter, sans-serif; }
-  #bar { position: fixed; top: 12px; left: 12px; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px; max-width: 78%; }
-  #bar button { min-height: 36px; padding: 6px 12px; border: 0; border-radius: 8px; background: #d52265; color: #fff; font: 500 13px Inter, sans-serif; cursor: pointer; }
-  #bar button.aspect { background: #333; }
-  #bar button.aspect.is-on { background: #fec651; color: #1b1b1b; }
-  #bar .aspect-custom { display: flex; align-items: center; gap: 6px; background: #333; border-radius: 8px; padding: 0 8px; min-height: 36px; }
-  #bar .aspect-custom input { width: 52px; height: 28px; border: 0; border-radius: 6px; background: #1b1b1b; color: #fff; text-align: center; font: 500 13px Inter, sans-serif; }
-  #bar .aspect-custom.is-on { background: #fec651; color: #1b1b1b; }
-  #bar .aspect-custom.is-on input { background: #fff; color: #1b1b1b; }
-  #dyn-message-theme, #dyn-mosaic-theme { position: absolute; inset: 0; }
+  :root {
+    --dock-bg: rgba(12, 12, 18, 0.88);
+    --dock-border: rgba(255, 255, 255, 0.12);
+    --dock-text: #f4f4f7;
+    --dock-muted: rgba(255, 255, 255, 0.55);
+    --dock-accent: #d52265;
+    --dock-focus: #fec651;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #000;
+    color: var(--dock-text);
+    font-family: Inter, system-ui, sans-serif;
+    overflow: hidden;
+  }
+
+  #stage {
+    position: fixed;
+    inset: 0;
+    background: #000;
+  }
+
+  #dyn-message-theme,
+  #dyn-mosaic-theme {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    container-type: size;
+  }
+
   #dyn-mosaic-theme { display: none; }
-  body.mosaic #dyn-message-theme { display: none; }
-  body.mosaic #dyn-mosaic-theme { display: block; }
+  body.is-mosaic #dyn-message-theme { display: none; }
+  body.is-mosaic #dyn-mosaic-theme { display: block; }
+
+  #dock {
+    position: fixed;
+    z-index: 40;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .dock-panel {
+    pointer-events: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 12px 16px;
+    max-width: min(920px, 100%);
+    padding: 12px 14px;
+    border: 1px solid var(--dock-border);
+    border-radius: 16px;
+    background: var(--dock-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  }
+
+  .dock-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .dock-field > span {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dock-muted);
+  }
+
+  .dock-field-theme { flex: 1 1 240px; }
+  .dock-field-aspect { flex: 0 1 180px; }
+  .dock-field-custom { flex: 0 0 auto; display: none; }
+  .dock-field-custom.is-open { display: flex; }
+
+  .dock-panel select,
+  .dock-panel input {
+    height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--dock-text);
+    font: 500 13px Inter, system-ui, sans-serif;
+    outline: none;
+  }
+
+  .dock-panel select {
+    min-width: 0;
+    width: 100%;
+    padding: 0 34px 0 12px;
+    appearance: none;
+    background-image:
+      linear-gradient(45deg, transparent 50%, rgba(255,255,255,.7) 50%),
+      linear-gradient(135deg, rgba(255,255,255,.7) 50%, transparent 50%);
+    background-position:
+      calc(100% - 18px) 16px,
+      calc(100% - 12px) 16px;
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+  }
+
+  .dock-panel select:focus,
+  .dock-panel input:focus {
+    border-color: var(--dock-focus);
+  }
+
+  .dock-ratio {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .dock-ratio input {
+    width: 56px;
+    text-align: center;
+    padding: 0 6px;
+  }
+
+  .dock-ratio span {
+    color: var(--dock-muted);
+    font-size: 13px;
+  }
+
+  .dock-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .dock-btn {
+    height: 38px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--dock-text);
+    font: 500 13px Inter, system-ui, sans-serif;
+    cursor: pointer;
+  }
+
+  .dock-btn:hover { background: rgba(255, 255, 255, 0.16); }
+  .dock-btn-primary { background: var(--dock-accent); }
+  .dock-btn-primary:hover { filter: brightness(1.08); }
+
+  .dock-meta {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 40;
+    max-width: min(420px, calc(100% - 32px));
+    padding: 10px 12px;
+    border: 1px solid var(--dock-border);
+    border-radius: 12px;
+    background: var(--dock-bg);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .dock-meta strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .dock-meta p {
+    margin: 3px 0 0;
+    font-size: 12px;
+    color: var(--dock-muted);
+  }
+
+  .dock-meta a {
+    color: #fec651;
+    text-decoration: none;
+  }
+
+  .dock-meta a:hover { text-decoration: underline; }
+
+  @media (max-width: 720px) {
+    .dock-panel { width: 100%; }
+    .dock-actions { width: 100%; margin-left: 0; }
+    .dock-btn { flex: 1; }
+  }
 </style>
 </head>
 <body>
-<div id="bar"></div>
-<div id="dyn-message-theme"></div>
-<div id="dyn-mosaic-theme"></div>
+  <div id="stage" aria-hidden="true">
+    <div id="dyn-message-theme"></div>
+    <div id="dyn-mosaic-theme"></div>
+  </div>
+
+  <aside class="dock-meta" id="meta">
+    <strong id="meta-title">Theme preview</strong>
+    <p id="meta-sub">Loading sample captures…</p>
+  </aside>
+
+  <div id="dock">
+    <div class="dock-panel">
+      <label class="dock-field dock-field-theme">
+        <span>Theme</span>
+        <select id="theme-select"></select>
+      </label>
+      <label class="dock-field dock-field-aspect">
+        <span>Aspect</span>
+        <select id="aspect-select"></select>
+      </label>
+      <div class="dock-field dock-field-custom" id="custom-aspect">
+        <span>Custom ratio</span>
+        <div class="dock-ratio">
+          <input id="aspect-w" type="number" min="1" max="9999" step="any" inputmode="decimal" value="16" aria-label="Width">
+          <span>:</span>
+          <input id="aspect-h" type="number" min="1" max="9999" step="any" inputmode="decimal" value="9" aria-label="Height">
+        </div>
+      </div>
+      <div class="dock-actions">
+        <button type="button" class="dock-btn" id="prev-theme" title="Previous theme">Prev</button>
+        <button type="button" class="dock-btn dock-btn-primary" id="next-theme" title="Next theme">Next</button>
+      </div>
+    </div>
+  </div>
+
 <script src="../extension/rules.js"></script>
 <script src="../extension/message-themes.js"></script>
 <script src="../extension/vendor/three.min.js"></script>
@@ -30,231 +246,508 @@
 <script src="../extension/vendor/tile-field.js"></script>
 <script src="../extension/mosaic-themes.js"></script>
 <script src="../extension/engines/api.js"></script>
-<script src="../extension/engines/xmas-snow-particles.js?v=1.16.3"></script>
-<script src="../extension/engines/message-aurora-engine.js?v=1.16.3"></script>
-<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.16.3"></script>
-<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.16.3"></script>
-<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.16.3"></script>
-<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.16.3"></script>
-<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.16.3"></script>
+<script src="../extension/engines/xmas-snow-particles.js?v=1.16.4"></script>
+<script src="../extension/engines/message-aurora-engine.js?v=1.16.4"></script>
+<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.16.4"></script>
+<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.16.4"></script>
+<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.16.4"></script>
+<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.16.4"></script>
+<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.16.4"></script>
 <script src="../extension/custom-themes.js"></script>
 <script>
 (async () => {
+  const SAMPLE_DIR = "../samples/patriots/";
+  const CSV_URL = SAMPLE_DIR + "captures.csv";
+  const MESSAGE_CYCLE_MS = 5600;
+
   const messageApi = globalThis.BGMessageThemes;
   const mosaicApi = globalThis.BGMosaicThemes;
   const customApi = globalThis.BGCustomThemes;
-  const style = document.createElement("style");
-  style.textContent = messageApi.STYLE + "\n" + mosaicApi.STYLE;
-  document.head.appendChild(style);
-  const fonts = document.createElement("link");
-  fonts.rel = "stylesheet";
-  fonts.href = messageApi.FONTS;
-  document.head.appendChild(fonts);
+  const rules = globalThis.BGExtensionRules;
+  if (!messageApi || !mosaicApi || !rules) return;
 
-  const files = [
+  // Match homepage tile previews: size against the stage box, not the window.
+  function rewriteThemeCss(css) {
+    return String(css || "")
+      .replace(/(\d*\.?\d+)vh\b/g, "$1cqh")
+      .replace(/(\d*\.?\d+)vw\b/g, "$1cqw");
+  }
+  const style = document.createElement("style");
+  style.textContent = rewriteThemeCss(messageApi.STYLE) + "\n" + rewriteThemeCss(mosaicApi.STYLE);
+  document.head.appendChild(style);
+  if (messageApi.FONTS) {
+    const fonts = document.createElement("link");
+    fonts.rel = "stylesheet";
+    fonts.href = messageApi.FONTS;
+    document.head.appendChild(fonts);
+  }
+
+  const CUSTOM_FILES = [
     ["message-stamp.json", "Stamp message"],
     ["mosaic-ribbon.json", "Ribbon mosaic"],
     ["message-aurora.json", "Aurora engine"],
-    ["mosaic-orbit-swap.json", "Orbit engine"],
-    ["message-xmas-bauble.json", "Xmas Bauble"],
-    ["message-xmas-postcard.json", "Xmas Postcard"],
-    ["message-xmas-mantel.json", "Xmas Mantel"],
-    ["mosaic-xmas-wreath.json", "Xmas Wreath"],
-    ["mosaic-xmas-tree.json", "Xmas Tree"],
-    ["mosaic-xmas-snowfall.json", "Xmas Snowfall"],
-    ["tmpl-card-decks.json", "Card decks"],
-    ["tmpl-live-mosaic.json", "Live mosaic"],
-    ["tmpl-polaroid-wall.json", "Polaroid wall"],
-    ["tmpl-neon-nightclub.json", "Neon Nightclub"],
-    ["tmpl-led-scoreboard.json", "LED Scoreboard"],
-    ["tmpl-liquid-glass.json", "Liquid Glass"],
-    ["tmpl-parallax-drift.json", "Parallax Drift"],
+    ["mosaic-orbit-swap.json", "Orbit Swap engine"],
+    ["message-xmas-bauble.json", "Christmas Bauble"],
+    ["message-xmas-postcard.json", "Christmas Postcard"],
+    ["message-xmas-mantel.json", "Christmas Mantel"],
+    ["mosaic-xmas-wreath.json", "Christmas Wreath"],
+    ["mosaic-xmas-tree.json", "Christmas Tree"],
+    ["mosaic-xmas-snowfall.json", "Christmas Snowfall"],
+    ["tmpl-card-decks.json", "Template · Card decks"],
+    ["tmpl-live-mosaic.json", "Template · Live mosaic"],
+    ["tmpl-polaroid-wall.json", "Template · Polaroid wall"],
+    ["tmpl-neon-nightclub.json", "Template · Neon Nightclub"],
+    ["tmpl-led-scoreboard.json", "Template · LED Scoreboard"],
+    ["tmpl-liquid-glass.json", "Template · Liquid Glass"],
+    ["tmpl-parallax-drift.json", "Template · Parallax Drift"],
   ];
-  const rawPacks = await Promise.all(files.map(([file]) => fetch(file).then((r) => r.json())));
-  const packs = rawPacks.map((raw) => customApi.parsePack(raw));
-  customApi.registerPacks(packs);
 
-  function mockPhoto(seed) {
-    const c = document.createElement("canvas");
-    c.width = 720; c.height = 960;
-    const g = c.getContext("2d");
-    const a = [210, 60 + seed * 20, 90];
-    const b = [40, 80, 160 + seed * 8];
-    const grad = g.createLinearGradient(0, 0, 720, 960);
-    grad.addColorStop(0, `rgb(${a})`);
-    grad.addColorStop(1, `rgb(${b})`);
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 720, 960);
-    g.fillStyle = "rgba(255,255,255,.2)";
-    g.beginPath();
-    g.arc(360, 380, 140, 0, 7);
-    g.fill();
-    return c.toDataURL("image/jpeg", 0.85);
+  const customPacks = [];
+  const settled = await Promise.all(
+    CUSTOM_FILES.map(([file]) =>
+      fetch(file)
+        .then((r) => {
+          if (!r.ok) throw new Error(file);
+          return r.json();
+        })
+        .then((raw) => ({ file, raw }))
+        .catch(() => null)
+    )
+  );
+  settled.forEach((item, i) => {
+    if (!item) return;
+    try {
+      const pack = customApi.parsePack(item.raw);
+      if (pack.css) pack.css = rewriteThemeCss(pack.css);
+      customPacks.push({
+        kind: pack.kind,
+        id: pack.id,
+        label: CUSTOM_FILES[i][1] || pack.label || pack.id,
+        pack,
+        custom: true,
+      });
+    } catch {
+      /* skip bad pack */
+    }
+  });
+  if (customPacks.length) customApi.registerPacks(customPacks.map((item) => item.pack));
+
+  function parseCsv(text) {
+    const rows = [];
+    let row = [];
+    let field = "";
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i += 1) {
+      const ch = text[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (text[i + 1] === '"') {
+            field += '"';
+            i += 1;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          field += ch;
+        }
+      } else if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ",") {
+        row.push(field);
+        field = "";
+      } else if (ch === "\n" || ch === "\r") {
+        if (ch === "\r" && text[i + 1] === "\n") i += 1;
+        row.push(field);
+        field = "";
+        if (row.some((cell) => cell)) rows.push(row);
+        row = [];
+      } else {
+        field += ch;
+      }
+    }
+    if (field || row.length) {
+      row.push(field);
+      if (row.some((cell) => cell)) rows.push(row);
+    }
+    return rows;
   }
 
-  const photos = Array.from({ length: 8 }, (_, i) => mockPhoto(i));
-  const messageRoot = document.getElementById("dyn-message-theme");
-  const mosaicRoot = document.getElementById("dyn-mosaic-theme");
-  const bar = document.getElementById("bar");
-  const rules = globalThis.BGExtensionRules;
-  let messageState = null;
-  let mosaicState = null;
-  let mosaicTimer = 0;
-  let stageMode = "auto";
-  let currentShow = null;
-
-  function settingsFor(pack) {
-    const out = { revealMs: pack.revealMs || 1000 };
-    Object.keys(pack.settings || {}).forEach((key) => {
-      out[key] = pack.settings[key].default;
-    });
+  function shuffle(list) {
+    const out = list.slice();
+    for (let i = out.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = out[i];
+      out[i] = out[j];
+      out[j] = tmp;
+    }
     return out;
   }
 
-  function applyAspect() {
-    if (rules && rules.setStageAspect) rules.setStageAspect(stageMode);
-    if (rules && rules.applyStageFrame) {
-      rules.applyStageFrame(mosaicRoot, stageMode);
-      rules.applyStageFrame(messageRoot, stageMode);
-    }
+  let captures = [];
+  try {
+    const text = await fetch(CSV_URL).then((r) => r.text());
+    const rows = parseCsv(text);
+    const header = rows.shift() || [];
+    const fileIdx = header.indexOf("captures");
+    const nameIdx = header.indexOf("name");
+    const msgIdx = header.indexOf("message");
+    captures = rows
+      .map((row) => ({
+        src: SAMPLE_DIR + (row[fileIdx] || "").trim(),
+        name: (row[nameIdx] || "").trim(),
+        message: (row[msgIdx] || "").trim(),
+      }))
+      .filter((row) => row.src && row.src !== SAMPLE_DIR);
+  } catch {
+    captures = [];
   }
 
-  function showPack(pack) {
-    currentShow = () => showPack(pack);
+  const photos = captures.map((row) => row.src).filter(Boolean);
+
+  const catalog = [];
+  Object.keys(rules.MESSAGE_THEME_META || {}).forEach((id) => {
+    catalog.push({
+      kind: "message",
+      id,
+      label: rules.MESSAGE_THEME_META[id].label || id,
+      custom: false,
+    });
+  });
+  Object.keys(rules.MOSAIC_THEME_META || {}).forEach((id) => {
+    catalog.push({
+      kind: "mosaic",
+      id,
+      label: rules.MOSAIC_THEME_META[id].label || id,
+      custom: false,
+    });
+  });
+  customPacks.forEach((item) => {
+    if (catalog.some((entry) => entry.id === item.id)) return;
+    catalog.push(item);
+  });
+
+  const themeSelect = document.getElementById("theme-select");
+  const aspectSelect = document.getElementById("aspect-select");
+  const customAspect = document.getElementById("custom-aspect");
+  const aspectW = document.getElementById("aspect-w");
+  const aspectH = document.getElementById("aspect-h");
+  const metaTitle = document.getElementById("meta-title");
+  const metaSub = document.getElementById("meta-sub");
+  const messageRoot = document.getElementById("dyn-message-theme");
+  const mosaicRoot = document.getElementById("dyn-mosaic-theme");
+
+  function addGroup(select, label, items) {
+    if (!items.length) return;
+    const group = document.createElement("optgroup");
+    group.label = label;
+    items
+      .slice()
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }))
+      .forEach((item) => {
+        const opt = document.createElement("option");
+        opt.value = item.kind + ":" + item.id;
+        opt.textContent = item.label;
+        group.appendChild(opt);
+      });
+    select.appendChild(group);
+  }
+
+  addGroup(
+    themeSelect,
+    "Message · built-in",
+    catalog.filter((item) => item.kind === "message" && !item.custom)
+  );
+  addGroup(
+    themeSelect,
+    "Mosaic · built-in",
+    catalog.filter((item) => item.kind === "mosaic" && !item.custom)
+  );
+  addGroup(
+    themeSelect,
+    "Imported / examples",
+    catalog.filter((item) => item.custom)
+  );
+
+  (rules.STAGE_ASPECT_PRESETS || []).forEach((preset) => {
+    const opt = document.createElement("option");
+    opt.value = preset.value;
+    opt.textContent = preset.label;
+    aspectSelect.appendChild(opt);
+  });
+  const customOpt = document.createElement("option");
+  customOpt.value = "custom";
+  customOpt.textContent = "Custom — set width : height";
+  aspectSelect.appendChild(customOpt);
+
+  let stageMode = "16:9";
+  let active = null;
+  let messageState = null;
+  let mosaicState = null;
+  let messageTimer = 0;
+  let mosaicTimer = 0;
+  let captureIndex = 0;
+  let resizeRo = null;
+
+  function clearTimers() {
+    if (messageTimer) {
+      clearInterval(messageTimer);
+      messageTimer = 0;
+    }
     if (mosaicTimer) {
       clearInterval(mosaicTimer);
       mosaicTimer = 0;
     }
+    if (resizeRo) {
+      resizeRo.disconnect();
+      resizeRo = null;
+    }
+  }
+
+  function unmountCurrent() {
+    clearTimers();
     if (mosaicState && mosaicApi.themes[mosaicState.id] && mosaicApi.themes[mosaicState.id].unmount) {
-      mosaicApi.themes[mosaicState.id].unmount(mosaicRoot, mosaicState.state);
+      try {
+        mosaicApi.themes[mosaicState.id].unmount(mosaicRoot, mosaicState.state);
+      } catch {
+        /* already gone */
+      }
+    }
+    if (messageState && messageApi.themes[messageState.id] && messageApi.themes[messageState.id].unmount) {
+      try {
+        messageApi.themes[messageState.id].unmount(messageRoot, messageState.state);
+      } catch {
+        /* already gone */
+      }
     }
     mosaicRoot.replaceChildren();
+    messageRoot.replaceChildren();
     mosaicState = null;
-    if (pack.kind === "mosaic") {
-      if (messageState && messageApi.themes[messageState.id] && messageApi.themes[messageState.id].unmount) {
-        messageApi.themes[messageState.id].unmount(messageRoot, messageState.state);
-      }
-      messageState = null;
-      document.body.classList.add("mosaic");
-      mosaicRoot.dataset.theme = pack.id;
-      if (pack.engine) mosaicRoot.dataset.engine = pack.engine;
-      else delete mosaicRoot.dataset.engine;
-      applyAspect();
-      const def = mosaicApi.themes[pack.id];
-      if (!def) return;
-      const api = {
-        nextUrl() { return photos[Math.floor(Math.random() * photos.length)]; },
+    messageState = null;
+    mosaicRoot.removeAttribute("data-theme");
+    mosaicRoot.removeAttribute("data-engine");
+    messageRoot.removeAttribute("data-theme");
+    messageRoot.removeAttribute("data-engine");
+  }
+
+  function settingsFor(id, pack) {
+    if (pack && pack.settings) {
+      const out = { revealMs: pack.revealMs || 1000 };
+      Object.keys(pack.settings).forEach((key) => {
+        out[key] = pack.settings[key].default;
+      });
+      return out;
+    }
+    const meta = rules.MESSAGE_THEME_META && rules.MESSAGE_THEME_META[id];
+    const defaults = (meta && meta.defaults) || {};
+    return {
+      primary: defaults.primary || "#d52265",
+      secondary: defaults.secondary || "#fec651",
+      background: defaults.background,
+      motion: defaults.motion,
+      revealMs: defaults.revealMs || 1000,
+    };
+  }
+
+  function captureAt(index) {
+    if (!captures.length) {
+      return {
+        src: "",
+        name: "Sam & Jo",
+        message: "Wish you were here — the lights went on and the whole room went quiet.",
       };
-      const state = def.mount(mosaicRoot, photos, api);
-      mosaicState = { id: pack.id, state };
+    }
+    return captures[((index % captures.length) + captures.length) % captures.length];
+  }
+
+  function resolvedAspect() {
+    if (stageMode === "custom") {
+      return rules.normalizeStageAspect(aspectW.value + ":" + aspectH.value);
+    }
+    return stageMode;
+  }
+
+  function applyAspect() {
+    const mode = resolvedAspect();
+    if (rules.setStageAspect) rules.setStageAspect(mode);
+    const activeRoot = document.body.classList.contains("is-mosaic") ? mosaicRoot : messageRoot;
+    if (rules.applyStageFrame) {
+      rules.applyStageFrame(mosaicRoot, mode);
+      rules.applyStageFrame(messageRoot, mode);
+      // Keep the inactive root from also letterboxing as a second box.
+      if (activeRoot === mosaicRoot) messageRoot.classList.remove("dyn-stage-letterbox");
+      else mosaicRoot.classList.remove("dyn-stage-letterbox");
+    }
+  }
+
+  function updateMeta(entry) {
+    metaTitle.textContent = entry.label;
+    const kind = entry.kind === "mosaic" ? "Mosaic" : "Message";
+    const source = entry.custom ? "example pack" : "built-in";
+    const photoNote = photos.length
+      ? photos.length + " sample photos (same as homepage)"
+      : "no sample photos loaded";
+    metaSub.innerHTML =
+      kind +
+      " · " +
+      source +
+      " · " +
+      photoNote +
+      ' · <a href="../index.html">Back to gallery</a>';
+  }
+
+  function mountEntry(entry) {
+    unmountCurrent();
+    active = entry;
+    updateMeta(entry);
+    themeSelect.value = entry.kind + ":" + entry.id;
+    document.body.classList.toggle("is-mosaic", entry.kind === "mosaic");
+    applyAspect();
+
+    if (entry.kind === "mosaic") {
+      mosaicRoot.dataset.theme = entry.id;
+      if (String(entry.id).endsWith("-brand")) {
+        mosaicRoot.dataset.engine = entry.id.replace(/-brand$/, "");
+      } else if (entry.pack && entry.pack.engine) {
+        mosaicRoot.dataset.engine = entry.pack.engine;
+      } else {
+        delete mosaicRoot.dataset.engine;
+      }
+      const def = mosaicApi.themes[entry.id];
+      if (!def) {
+        metaSub.textContent = "Theme engine not found.";
+        return;
+      }
+      const pool = photos.length ? shuffle(photos) : [];
+      const api = {
+        nextUrl() {
+          return pool[Math.floor(Math.random() * pool.length)] || "";
+        },
+        isRetiring() {
+          return false;
+        },
+        hasIncoming() {
+          return false;
+        },
+      };
+      const state = def.mount(mosaicRoot, pool, api);
+      mosaicState = { id: entry.id, state };
       if (def.tick) {
-        mosaicTimer = setInterval(() => def.tick(mosaicRoot, photos, state, api), def.interval || pack.interval || 2400);
+        mosaicTimer = setInterval(() => {
+          def.tick(mosaicRoot, pool, state, api);
+        }, def.interval || (entry.pack && entry.pack.interval) || 2400);
       }
       return;
     }
-    applyAspect();
-    if (messageState && messageApi.themes[messageState.id] && messageApi.themes[messageState.id].unmount) {
-      messageApi.themes[messageState.id].unmount(messageRoot, messageState.state);
-    }
-    document.body.classList.remove("mosaic");
-    messageRoot.dataset.theme = pack.id;
-    if (pack.engine) messageRoot.dataset.engine = pack.engine;
+
+    messageRoot.dataset.theme = entry.id;
+    if (entry.pack && entry.pack.engine) messageRoot.dataset.engine = entry.pack.engine;
     else delete messageRoot.dataset.engine;
-    messageRoot.replaceChildren();
-    const def = messageApi.themes[pack.id];
-    if (!def) return;
-    const settings = settingsFor(pack);
+    const def = messageApi.themes[entry.id];
+    if (!def) {
+      metaSub.textContent = "Theme engine not found.";
+      return;
+    }
+    const settings = settingsFor(entry.id, entry.pack);
     const state = def.mount(messageRoot, settings);
-    messageState = { id: pack.id, state };
+    messageState = { id: entry.id, state };
     if (def.applySettings) def.applySettings(messageRoot, state, settings);
-    def.show(messageRoot, {
-      src: photos[0],
-      message: "Wish you were here — the lights went on and the whole room went quiet.",
-      name: "Sam & Jo",
-    }, state, settings);
-  }
-
-  function addBtn(label, onClick, className) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = label;
-    if (className) btn.className = className;
-    btn.onclick = onClick;
-    bar.appendChild(btn);
-    return btn;
-  }
-
-  const aspectBtns = {};
-  const customWrap = document.createElement("div");
-  customWrap.className = "aspect-custom";
-  const customW = document.createElement("input");
-  const customH = document.createElement("input");
-  customW.type = customH.type = "number";
-  customW.min = customH.min = "1";
-  customW.step = customH.step = "any";
-  customW.value = "16";
-  customH.value = "9";
-  customW.title = "Width";
-  customH.title = "Height";
-  customWrap.append(customW, document.createTextNode(":"), customH);
-  function markAspect(mode) {
-    Object.keys(aspectBtns).forEach((key) => {
-      aspectBtns[key].classList.toggle("is-on", key === mode);
-    });
-    customWrap.classList.toggle("is-on", mode === "custom");
-  }
-  function applyCustomAspect() {
-    const next = rules && rules.normalizeStageAspect
-      ? rules.normalizeStageAspect(customW.value + ":" + customH.value)
-      : "auto";
-    if (next === "auto") return;
-    stageMode = next;
-    markAspect("custom");
-    if (currentShow) currentShow();
-  }
-  ["auto", "16:9", "9:16", "4:3", "1:1", "21:9"].forEach((mode) => {
-    aspectBtns[mode] = addBtn(mode === "auto" ? "Auto" : mode, () => {
-      stageMode = mode;
-      markAspect(mode);
-      if (mode !== "auto" && rules && rules.parseStageAspect) {
-        const parsed = rules.parseStageAspect(mode);
-        if (parsed && parsed.mode !== "auto") {
-          customW.value = parsed.aw;
-          customH.value = parsed.ah;
-        }
+    const show = (cap) => def.show(messageRoot, cap, state, settings);
+    show(captureAt(captureIndex));
+    if (typeof ResizeObserver !== "undefined" && messageApi.ensureFitStage) {
+      resizeRo = new ResizeObserver(() => messageApi.ensureFitStage(messageRoot));
+      resizeRo.observe(messageRoot);
+    }
+    messageTimer = setInterval(() => {
+      captureIndex += 1;
+      const next = captureAt(captureIndex);
+      if (def.hide) {
+        Promise.resolve(def.hide(messageRoot, state)).then(() => show(next)).catch(() => show(next));
+      } else {
+        show(next);
       }
-      if (currentShow) currentShow();
-    }, "aspect");
-  });
-  bar.appendChild(customWrap);
-  customW.addEventListener("change", applyCustomAspect);
-  customH.addEventListener("change", applyCustomAspect);
-  aspectBtns.auto.classList.add("is-on");
+    }, MESSAGE_CYCLE_MS);
+  }
 
-  files.forEach(([, label], i) => {
-    addBtn(label, () => showPack(packs[i]));
+  function findEntry(value) {
+    const [kind, id] = String(value || "").split(":");
+    return catalog.find((item) => item.kind === kind && item.id === id) || catalog[0];
+  }
+
+  function syncCustomAspectUI() {
+    const isCustom = aspectSelect.value === "custom";
+    customAspect.classList.toggle("is-open", isCustom);
+  }
+
+  function setAspectFromUI() {
+    if (aspectSelect.value === "custom") {
+      stageMode = "custom";
+    } else {
+      stageMode = aspectSelect.value;
+      const parsed = rules.parseStageAspect && rules.parseStageAspect(stageMode);
+      if (parsed && parsed.mode !== "auto") {
+        aspectW.value = parsed.aw;
+        aspectH.value = parsed.ah;
+      }
+    }
+    syncCustomAspectUI();
+    if (active) mountEntry(active);
+    else applyAspect();
+  }
+
+  themeSelect.addEventListener("change", () => {
+    const entry = findEntry(themeSelect.value);
+    if (entry) mountEntry(entry);
+  });
+  aspectSelect.addEventListener("change", setAspectFromUI);
+  aspectW.addEventListener("change", () => {
+    if (aspectSelect.value !== "custom") aspectSelect.value = "custom";
+    stageMode = "custom";
+    syncCustomAspectUI();
+    if (active) mountEntry(active);
+  });
+  aspectH.addEventListener("change", () => {
+    if (aspectSelect.value !== "custom") aspectSelect.value = "custom";
+    stageMode = "custom";
+    syncCustomAspectUI();
+    if (active) mountEntry(active);
   });
 
-  [
-    ["LED (built-in)", "message", "led-scoreboard"],
-    ["Broadcast (built-in)", "message", "broadcast-tv"],
-    ["Decks (built-in)", "mosaic", "decks"],
-    ["Flipwall (built-in)", "mosaic", "flipwall"],
-  ].forEach(([label, kind, id]) => {
-    addBtn(label, () => {
-      if (kind === "mosaic") {
-        showPack({ kind: "mosaic", id, engine: "", interval: mosaicApi.themes[id] && mosaicApi.themes[id].interval });
-        return;
-      }
-      const fake = { kind: "message", id, engine: "", settings: {}, revealMs: 1000 };
-      showPack(fake);
-    });
+  document.getElementById("prev-theme").addEventListener("click", () => {
+    const opts = [...themeSelect.options];
+    const i = opts.findIndex((opt) => opt.value === themeSelect.value);
+    const next = opts[(i - 1 + opts.length) % opts.length];
+    themeSelect.value = next.value;
+    mountEntry(findEntry(next.value));
+  });
+  document.getElementById("next-theme").addEventListener("click", () => {
+    const opts = [...themeSelect.options];
+    const i = opts.findIndex((opt) => opt.value === themeSelect.value);
+    const next = opts[(i + 1) % opts.length];
+    themeSelect.value = next.value;
+    mountEntry(findEntry(next.value));
   });
 
   window.addEventListener("resize", () => {
-    if (currentShow) currentShow();
+    applyAspect();
   });
-  showPack(packs[0]);
+
+  const params = new URLSearchParams(location.search);
+  const want = params.get("theme");
+  const wantAspect = params.get("aspect");
+  if (wantAspect && (wantAspect === "custom" || (rules.STAGE_ASPECTS || []).includes(wantAspect))) {
+    aspectSelect.value = wantAspect === "auto" ? "auto" : wantAspect;
+  } else {
+    aspectSelect.value = "16:9";
+  }
+  stageMode = aspectSelect.value;
+  syncCustomAspectUI();
+
+  let start =
+    (want && catalog.find((item) => item.id === want)) ||
+    catalog.find((item) => item.id === "led-scoreboard") ||
+    catalog[0];
+  if (start) mountEntry(start);
+  else metaSub.textContent = "No themes available.";
 })();
 </script>
 </body>
