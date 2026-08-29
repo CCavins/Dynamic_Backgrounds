@@ -177,6 +177,10 @@
       remove.textContent = "Remove";
       remove.addEventListener("click", async () => {
         if (!customApi) return;
+        const ok = window.confirm(
+          'Remove "' + pack.label + '"?\n\nThis cannot be undone. You can import the theme again later.'
+        );
+        if (!ok) return;
         const next = await customApi.removePack(pack.id);
         if (messageTheme.value === pack.id) messageTheme.value = "off";
         if (mosaicTheme.value === pack.id) mosaicTheme.value = "off";
