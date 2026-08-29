@@ -43,9 +43,11 @@
         style.textContent = [
           ".orbit-stage{position:absolute;inset:0;container-type:size;}",
           ".orbit-ring{position:absolute;inset:0;}",
-          ".orbit-ring .dyn-card{position:absolute!important;left:50%;top:50%;margin:0;border-radius:14px;overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.45);outline:3px solid rgba(255,255,255,.85);transition:opacity .28s ease;will-change:transform;}",
-          ".orbit-ring .dyn-card.is-swap{opacity:.15;}",
-          ".orbit-ring .dyn-card img{width:100%;height:100%;object-fit:cover;display:block;}",
+          ".orbit-ring .dyn-card{position:absolute!important;left:50%;top:50%;margin:0;border-radius:14px;overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.45);outline:3px solid rgba(255,255,255,.85);will-change:transform;}",
+          ".orbit-ring .dyn-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}",
+          ".orbit-ring .dyn-card img.orbit-base{z-index:0;}",
+          ".orbit-ring .dyn-card img.orbit-next{z-index:1;opacity:0;transition:opacity .55s ease;}",
+          ".orbit-ring .dyn-card img.orbit-next.is-in{opacity:1;}",
           ".orbit-chrome{position:absolute;z-index:5;width:min(12%,140px);aspect-ratio:1;pointer-events:none;}",
           ".orbit-logo{top:3.2%;left:3.2%;}",
           ".orbit-qr{top:3.2%;right:3.2%;}",
@@ -83,6 +85,8 @@
       for (let i = 0; i < count; i += 1) {
         const src = urls[i % Math.max(urls.length, 1)] || "";
         const card = makeCard(src);
+        const base = card.querySelector("img");
+        if (base) base.classList.add("orbit-base");
         ring.appendChild(card);
         cards.push(card);
       }
@@ -179,18 +183,56 @@
     tick(_themeRoot, pool, state, hostApi) {
       if (!state || !state.cards || !state.cards.length) return;
       const card = state.cards[Math.floor(Math.random() * state.cards.length)];
-      const img = card.querySelector("img");
+      if (card.dataset.orbitDissolving === "1") return;
+      const base =
+        card.querySelector("img.orbit-base") || card.querySelector("img");
       const nextApi = hostApi || state.api;
       const src =
         nextApi && typeof nextApi.nextUrl === "function"
-          ? nextApi.nextUrl(img && img.src)
+          ? nextApi.nextUrl(base && base.src)
           : (pool && pool[Math.floor(Math.random() * pool.length)]) || "";
-      if (!img || !src) return;
-      card.classList.add("is-swap");
-      window.setTimeout(() => {
-        img.src = src;
-        card.classList.remove("is-swap");
-      }, 220);
+      if (!base || !src) return;
+      if ((base.currentSrc || base.src) === src) return;
+
+      card.dataset.orbitDissolving = "1";
+      let next = card.querySelector("img.orbit-next");
+      if (!next) {
+        next = document.createElement("img");
+        next.className = "orbit-next";
+        next.alt = "";
+        card.appendChild(next);
+      }
+      next.classList.remove("is-in");
+      next.style.opacity = "";
+
+      const finish = () => {
+        base.src = src;
+        next.classList.remove("is-in");
+        next.removeAttribute("src");
+        next.src = "";
+        card.dataset.orbitDissolving = "0";
+      };
+
+      const startDissolve = () => {
+        // Force a frame so opacity 0 → 1 transitions.
+        void next.offsetWidth;
+        next.classList.add("is-in");
+        window.setTimeout(finish, 580);
+      };
+
+      if (next.src === src && next.complete && next.naturalWidth > 0) {
+        startDissolve();
+        return;
+      }
+      next.onload = () => {
+        next.onload = null;
+        startDissolve();
+      };
+      next.onerror = () => {
+        next.onerror = null;
+        card.dataset.orbitDissolving = "0";
+      };
+      next.src = src;
     },
 
     unmount(themeRoot, state) {
