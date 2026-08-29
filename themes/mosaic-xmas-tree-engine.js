@@ -13,24 +13,29 @@
     throw new Error("BGThemeEngines is not loaded before mosaic-xmas-tree-engine.js");
   }
 
-  // Rows: 1, 2, 3, 4. Spacing opened a bit for larger cards.
+  // Rows: 1, 2, 3, 4. Pulled in and down so the star has headroom;
+  // the bottom row keeps the same height from the stage bottom.
   function treeSlots(portrait) {
+    const y0 = portrait ? 20 : 26;
+    const y1 = portrait ? 41 : 45;
+    const y2 = portrait ? 61 : 64;
+    const y3 = portrait ? 82 : 84;
     const rows = [
-      [{ x: 50, y: portrait ? 13 : 15 }],
+      [{ x: 50, y: y0 }],
       [
-        { x: 38, y: portrait ? 36 : 38 },
-        { x: 62, y: portrait ? 36 : 38 },
+        { x: 41, y: y1 },
+        { x: 59, y: y1 },
       ],
       [
-        { x: 28, y: portrait ? 59 : 61 },
-        { x: 50, y: portrait ? 59 : 61 },
-        { x: 72, y: portrait ? 59 : 61 },
+        { x: 32, y: y2 },
+        { x: 50, y: y2 },
+        { x: 68, y: y2 },
       ],
       [
-        { x: 20, y: portrait ? 82 : 84 },
-        { x: 40, y: portrait ? 82 : 84 },
-        { x: 60, y: portrait ? 82 : 84 },
-        { x: 80, y: portrait ? 82 : 84 },
+        { x: 24, y: y3 },
+        { x: 41.5, y: y3 },
+        { x: 58.5, y: y3 },
+        { x: 76, y: y3 },
       ],
     ];
     const out = [];
@@ -276,8 +281,7 @@
         const portrait = H > W;
         state.portrait = portrait;
         const short = Math.min(W, H);
-        // ~30% larger than the previous tree card scale.
-        const cardH = Math.max(64, Math.min(short * (portrait ? 0.195 : 0.234), H * 0.26));
+        const cardH = Math.max(64, Math.min(short * (portrait ? 0.178 : 0.214), H * 0.238));
         const cardW = cardH * (2 / 3);
         const layout = treeSlots(portrait);
         const cardHPct = (cardH / H) * 100;
@@ -294,14 +298,17 @@
           card.style.transform =
             "translate(-50%, -50%) rotate(" + slot.rot.toFixed(1) + "deg)";
         });
-        // Star sits mostly above the top card; only ~10% of the star overlaps it.
-        const topSlot = layout[0];
-        const starPx = Math.min(W * (portrait ? 0.13 : 0.12), portrait ? 128 : 136);
-        const starHPct = (starPx / H) * 100;
-        const topCardTop = topSlot.y - cardHPct * 0.5;
+        // Pin the star to the top of the stage with a little headroom so the
+        // whole star stays on screen above the top photo.
+        const topPadPct = portrait ? 3.0 : 3.2;
+        const starPx = Math.min(
+          W * (portrait ? 0.13 : 0.12),
+          H * (portrait ? 0.095 : 0.10),
+          portrait ? 128 : 136
+        );
         star.style.width = starPx.toFixed(1) + "px";
         star.style.left = "50%";
-        star.style.top = (topCardTop - starHPct * 0.9).toFixed(2) + "%";
+        star.style.top = topPadPct.toFixed(2) + "%";
         star.style.transform = "translateX(-50%)";
         layoutDecor(layout, cardWPct, cardHPct);
         return true;
