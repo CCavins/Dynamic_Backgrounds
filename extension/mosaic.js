@@ -495,6 +495,8 @@
       theme === "flipwall-brand" ||
       theme === "cubes" ||
       theme === "cubes-brand" ||
+      theme === "fan" ||
+      theme === "fan-brand" ||
       theme === "depthfield"
     ) {
       return true;

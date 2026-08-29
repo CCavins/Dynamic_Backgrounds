@@ -418,17 +418,26 @@ html.dyn-mosaic-on .logo-tile {
   perspective: 1600px;
   perspective-origin: 50% 58%;
 }
-#dyn-mosaic-theme[data-theme="fan"] .dyn-fan {
+#dyn-mosaic-theme[data-theme="fan"] .dyn-fan,
+#dyn-mosaic-theme[data-theme="fan-brand"] .dyn-fan {
   position: relative;
   width: min(52vw, 640px);
   height: min(62vh, 680px);
   transform-style: preserve-3d;
-  transition: transform 0.55s cubic-bezier(0.22, 0.8, 0.2, 1);
+  transition: transform 0.62s cubic-bezier(0.55, 0.08, 0.35, 1);
 }
-#dyn-mosaic-theme[data-theme="fan"] .dyn-fan.is-midflip {
-  transform: rotateY(90deg);
+#dyn-mosaic-theme[data-theme="fan"] .dyn-fan.is-flipping,
+#dyn-mosaic-theme[data-theme="fan-brand"] .dyn-fan.is-flipping {
+  animation: dyn-fan-flip 0.96s cubic-bezier(0.55, 0.08, 0.35, 1) both;
 }
-#dyn-mosaic-theme[data-theme="fan"] .dyn-card {
+@keyframes dyn-fan-flip {
+  0% { transform: rotateY(0deg); }
+  46% { transform: rotateY(90deg); }
+  50% { transform: rotateY(-90deg); }
+  100% { transform: rotateY(0deg); }
+}
+#dyn-mosaic-theme[data-theme="fan"] .dyn-card,
+#dyn-mosaic-theme[data-theme="fan-brand"] .dyn-card {
   position: absolute;
   left: 50%;
   bottom: 0;
@@ -436,8 +445,12 @@ html.dyn-mosaic-on .logo-tile {
   aspect-ratio: 2 / 3;
   margin-left: calc(min(24vw, 340px) / -2);
   transform-origin: 50% 100%;
-  transition: transform 0.9s cubic-bezier(0.22, 0.8, 0.2, 1);
+  transition: transform 0.9s cubic-bezier(0.22, 0.8, 0.2, 1), opacity 0.4s ease;
   backface-visibility: hidden;
+}
+#dyn-mosaic-theme[data-theme="fan"] .dyn-card.is-tucked,
+#dyn-mosaic-theme[data-theme="fan-brand"] .dyn-card.is-tucked {
+  opacity: 0;
 }
 
 #dyn-mosaic-theme[data-theme="filmstrip"] {
@@ -969,11 +982,13 @@ html.dyn-mosaic-on .logo-tile {
   margin-left: calc(min(48cqw, 360px) / -2);
   margin-top: calc(min(48cqw, 360px) * -0.75);
 }
-#dyn-mosaic-theme.dyn-portrait[data-theme="fan"] .dyn-fan {
+#dyn-mosaic-theme.dyn-portrait[data-theme="fan"] .dyn-fan,
+#dyn-mosaic-theme.dyn-portrait[data-theme="fan-brand"] .dyn-fan {
   width: min(86cqw, 640px);
   height: min(58cqh, 880px);
 }
-#dyn-mosaic-theme.dyn-portrait[data-theme="fan"] .dyn-card {
+#dyn-mosaic-theme.dyn-portrait[data-theme="fan"] .dyn-card,
+#dyn-mosaic-theme.dyn-portrait[data-theme="fan-brand"] .dyn-card {
   width: min(46cqw, 340px);
   margin-left: calc(min(46cqw, 340px) / -2);
 }
@@ -982,12 +997,16 @@ html.dyn-mosaic-on .logo-tile {
   padding: 0;
   align-items: stretch;
   justify-content: stretch;
+  perspective: 1600px;
+  perspective-origin: 50% 58%;
 }
 #dyn-mosaic-theme[data-theme="fan-brand"] .dyn-brand-frame {
   display: flex;
   align-items: flex-end;
   justify-content: center;
   padding: 6% 5% 14% 5%;
+  perspective: 1600px;
+  perspective-origin: 50% 58%;
 }
 #dyn-mosaic-theme[data-theme="fan-brand"] .dyn-brand-frame.is-reserved {
   right: 22%;
@@ -1206,6 +1225,7 @@ html.dyn-mosaic-on .logo-tile {
       const rot = (t - 0.5) * span;
       const dist = Math.abs(t - 0.5);
       const isFront = i === front;
+      card.classList.remove("is-tucked");
       card.style.zIndex = isFront ? "50" : String(Math.round(40 - dist * 60));
       card.style.transform =
         "rotate(" + rot.toFixed(2) + "deg) translateY(" + (isFront ? -4 : dist * 6).toFixed(2) + "%)";
@@ -1213,15 +1233,89 @@ html.dyn-mosaic-on .logo-tile {
     });
   }
 
-  function layoutFanStacked(cards) {
+  function layoutFanStacked(cards, frontIndex) {
     const n = cards.length;
+    const front = frontIndex == null ? Math.floor(n / 2) : frontIndex;
     cards.forEach((card, i) => {
-      const fromTop = n - 1 - i;
-      const rot = (i - (n - 1) / 2) * 0.55;
-      card.style.zIndex = String(10 + i);
-      card.style.transform =
-        "rotate(" + rot.toFixed(2) + "deg) translateY(" + (-fromTop * 0.35).toFixed(2) + "%)";
-      card.dataset.rot = String(rot);
+      const isFront = i === front;
+      card.classList.toggle("is-tucked", !isFront);
+      card.style.zIndex = isFront ? "50" : String(10 + i);
+      card.style.transform = "rotate(0deg) translateY(0)";
+      card.dataset.rot = "0";
+    });
+  }
+
+  function fanAlive(state) {
+    return Boolean(state && !state.stopped && state.fan && state.fan.isConnected);
+  }
+
+  function preloadFanUrls(urls) {
+    (urls || []).forEach((src) => {
+      if (!src) return;
+      const img = new Image();
+      img.src = src;
+    });
+  }
+
+  function applyFanSet(state, urls) {
+    (urls || []).forEach((src, i) => {
+      const card = state.cards[i];
+      if (!card || !src) return;
+      setImg(card, src);
+      state.urls[i] = src;
+    });
+  }
+
+  function flipFanPile(state, onHidden, onDone) {
+    const fan = state.fan;
+    if (!fan) {
+      if (typeof onDone === "function") onDone();
+      return;
+    }
+    fan.classList.remove("is-flipping");
+    void fan.offsetWidth;
+    fan.classList.add("is-flipping");
+    fanLater(state, 460, () => {
+      if (!fanAlive(state)) return;
+      if (typeof onHidden === "function") onHidden();
+    });
+    fanLater(state, 980, () => {
+      if (fan.isConnected) fan.classList.remove("is-flipping");
+      if (!fanAlive(state)) return;
+      if (typeof onDone === "function") onDone();
+    });
+  }
+
+  function runFanCycle(state) {
+    if (!fanAlive(state) || state.running) return;
+    state.running = true;
+    const reserved = fanChromeReserved(state.mountRoot);
+    layoutFan(state.cards, state.front, { reserved });
+    fanLater(state, 920 + 2400, () => {
+      if (!fanAlive(state)) {
+        state.running = false;
+        return;
+      }
+      const nextUrls = pickFanSet(state.poolRef || [], state.api, state.cards.length, state.urls);
+      preloadFanUrls(nextUrls);
+      layoutFanStacked(state.cards, state.front);
+      fanLater(state, 920, () => {
+        if (!fanAlive(state)) {
+          state.running = false;
+          return;
+        }
+        flipFanPile(
+          state,
+          () => applyFanSet(state, nextUrls),
+          () => {
+            fanLater(state, 720, () => {
+              state.running = false;
+              if (!fanAlive(state)) return;
+              runFanCycle(state);
+            });
+          }
+        );
+      });
     });
   }
 
@@ -1568,10 +1662,10 @@ html.dyn-mosaic-on .logo-tile {
     },
 
     fan: {
-      // Hold while fanned; the cycle itself is driven by timers so visible
-      // cards never dissolve — only the stacked flip swaps the set.
-      interval: 5800,
-      mount(root, pool) {
+      // Self-timed: one card → fan out → hold → fold to the same card →
+      // full flip to a new face → hold the new card → repeat.
+      interval: 8000,
+      mount(root, pool, api) {
         const fan = document.createElement("div");
         fan.className = "dyn-fan";
         const count = 6;
@@ -1583,59 +1677,35 @@ html.dyn-mosaic-on .logo-tile {
         });
         root.appendChild(fan);
         const front = Math.floor(count / 2);
-        const reserved = fanChromeReserved(root);
-        layoutFan(cards, front, { reserved });
-        return { fan, cards, urls, front, busy: false, timers: [], mountRoot: root };
+        const state = {
+          fan,
+          cards,
+          urls,
+          front,
+          stopped: false,
+          running: false,
+          timers: [],
+          mountRoot: root,
+          poolRef: pool,
+          api,
+        };
+        layoutFanStacked(cards, front);
+        fanLater(state, 800, () => runFanCycle(state));
+        return state;
       },
-      tick(root, pool, state, api) {
-        if (!state || !state.cards || !state.cards.length || state.busy) return;
-        state.busy = true;
-        clearFanTimers(state);
-        const mountRoot = state.mountRoot || root;
-
-        // 1) Collapse the fan into a single pile (only the top face shows).
-        layoutFanStacked(state.cards);
-
-        fanLater(state, 920, () => {
-          if (!state.fan || !state.fan.isConnected) {
-            state.busy = false;
-            return;
-          }
-          // 2) Flip the pile edge-on, swap every face while hidden, then land.
-          state.fan.classList.add("is-midflip");
-          fanLater(state, 280, () => {
-            if (!state.fan || !state.fan.isConnected) {
-              state.busy = false;
-              return;
-            }
-            const nextUrls = pickFanSet(pool, api, state.cards.length, state.urls);
-            nextUrls.forEach((src, i) => {
-              const card = state.cards[i];
-              if (!card || !src) return;
-              setImg(card, src);
-              state.urls[i] = src;
-            });
-            state.front = Math.floor(state.cards.length / 2);
-            // Keep stacked while finishing the flip so nothing peeks mid-swap.
-            layoutFanStacked(state.cards);
-            state.fan.classList.remove("is-midflip");
-            fanLater(state, 560, () => {
-              if (!state.fan || !state.fan.isConnected) {
-                state.busy = false;
-                return;
-              }
-              // 3) Fan the new set back open.
-              layoutFan(state.cards, state.front, { reserved: fanChromeReserved(mountRoot) });
-              fanLater(state, 920, () => {
-                state.busy = false;
-              });
-            });
-          });
-        });
+      tick(_root, pool, state, api) {
+        if (!state) return;
+        state.poolRef = pool;
+        if (api) state.api = api;
+        if (state.stopped || state.running || !state.cards || !state.cards.length) return;
+        runFanCycle(state);
       },
       unmount(_root, state) {
+        if (state) {
+          state.stopped = true;
+          state.running = false;
+        }
         clearFanTimers(state);
-        if (state) state.busy = false;
       },
     },
 
