@@ -13,24 +13,24 @@
     throw new Error("BGThemeEngines is not loaded before mosaic-xmas-tree-engine.js");
   }
 
-  // Rows: 1, 2, 3, 4. Vertical spacing keeps cards from stacking over each other.
+  // Rows: 1, 2, 3, 4. Spacing opened a bit for larger cards.
   function treeSlots(portrait) {
     const rows = [
-      [{ x: 50, y: portrait ? 12 : 14 }],
+      [{ x: 50, y: portrait ? 13 : 15 }],
       [
-        { x: 38, y: portrait ? 34 : 36 },
-        { x: 62, y: portrait ? 34 : 36 },
+        { x: 38, y: portrait ? 36 : 38 },
+        { x: 62, y: portrait ? 36 : 38 },
       ],
       [
-        { x: 28, y: portrait ? 56 : 58 },
-        { x: 50, y: portrait ? 56 : 58 },
-        { x: 72, y: portrait ? 56 : 58 },
+        { x: 28, y: portrait ? 59 : 61 },
+        { x: 50, y: portrait ? 59 : 61 },
+        { x: 72, y: portrait ? 59 : 61 },
       ],
       [
-        { x: 20, y: portrait ? 78 : 80 },
-        { x: 40, y: portrait ? 78 : 80 },
-        { x: 60, y: portrait ? 78 : 80 },
-        { x: 80, y: portrait ? 78 : 80 },
+        { x: 20, y: portrait ? 82 : 84 },
+        { x: 40, y: portrait ? 82 : 84 },
+        { x: 60, y: portrait ? 82 : 84 },
+        { x: 80, y: portrait ? 82 : 84 },
       ],
     ];
     const out = [];
@@ -82,7 +82,8 @@
       .slice(0, 6);
   }
 
-  // Lights anchored to card rims: top corners + midpoints between neighbor tops.
+  // Lights on card rims. Top photo uses bottom corners so the star stays clear;
+  // other rows use top corners + midpoints between neighbors.
   function lightSlotsFromCards(layout, cardWPct, cardHPct) {
     const colors = ["c-red", "c-gold", "c-green", "c-blue", "c-pink"];
     const delays = ["", "d2", "d3", "d4"];
@@ -91,11 +92,18 @@
     layout.forEach((slot) => {
       if (slot.row == null || slot.row < 0 || slot.row > 3) return;
       byRow[slot.row].push(slot);
+      if (slot.row === 0) {
+        const bottom = slot.y + cardHPct * 0.5;
+        pts.push({ x: slot.x - cardWPct * 0.5, y: bottom });
+        pts.push({ x: slot.x + cardWPct * 0.5, y: bottom });
+        return;
+      }
       const top = slot.y - cardHPct * 0.5;
       pts.push({ x: slot.x - cardWPct * 0.5, y: top });
       pts.push({ x: slot.x + cardWPct * 0.5, y: top });
     });
-    byRow.forEach((row) => {
+    byRow.forEach((row, rowIndex) => {
+      if (rowIndex === 0) return;
       row.sort((a, b) => a.x - b.x);
       for (let i = 0; i < row.length - 1; i += 1) {
         const top = row[i].y - cardHPct * 0.5;
@@ -225,6 +233,7 @@
         stage,
         field,
         decor,
+        star,
         cards,
         hangEls,
         lightEls,
@@ -267,10 +276,12 @@
         const portrait = H > W;
         state.portrait = portrait;
         const short = Math.min(W, H);
-        // Sized to fit 4 rows with clear gaps (not stacked).
-        const cardH = Math.max(56, Math.min(short * (portrait ? 0.15 : 0.18), H * 0.2));
+        // ~30% larger than the previous tree card scale.
+        const cardH = Math.max(64, Math.min(short * (portrait ? 0.195 : 0.234), H * 0.26));
         const cardW = cardH * (2 / 3);
         const layout = treeSlots(portrait);
+        const cardHPct = (cardH / H) * 100;
+        const cardWPct = (cardW / W) * 100;
         cards.forEach((card, i) => {
           const slot = layout[i] || layout[layout.length - 1];
           card.style.position = "absolute";
@@ -283,7 +294,16 @@
           card.style.transform =
             "translate(-50%, -50%) rotate(" + slot.rot.toFixed(1) + "deg)";
         });
-        layoutDecor(layout, (cardW / W) * 100, (cardH / H) * 100);
+        // Star sits mostly above the top card; only ~10% of the star overlaps it.
+        const topSlot = layout[0];
+        const starPx = Math.min(W * (portrait ? 0.13 : 0.12), portrait ? 128 : 136);
+        const starHPct = (starPx / H) * 100;
+        const topCardTop = topSlot.y - cardHPct * 0.5;
+        star.style.width = starPx.toFixed(1) + "px";
+        star.style.left = "50%";
+        star.style.top = (topCardTop - starHPct * 0.9).toFixed(2) + "%";
+        star.style.transform = "translateX(-50%)";
+        layoutDecor(layout, cardWPct, cardHPct);
         return true;
       };
 
