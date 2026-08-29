@@ -106,16 +106,16 @@
         const W = ring.clientWidth;
         const H = ring.clientHeight;
         if (!W || !H) return false;
-        // ~75% larger than the prior 0.20 short-side card, kept on a true
-        // centered circle so no edge is clipped more than another.
+        // Cards ~10% smaller than 0.35 short-side; orbit center is stage
+        // center via translate(-50%,-50%) on each card.
         const short = Math.min(W, H);
-        const cardH = Math.max(56, Math.min(short * 0.35, short * 0.42));
+        const cardH = Math.max(56, Math.min(short * 0.315, short * 0.378));
         const cardW = cardH * (2 / 3);
         const halfDiag = Math.hypot(cardW, cardH) / 2;
         const pad = Math.max(12, short * 0.04);
         const maxRadius = short / 2 - halfDiag - pad;
-        // Pull in toward center (tighter ring) while staying inside the stage.
-        const radius = Math.max(0, Math.min(maxRadius, short * 0.28));
+        // Slightly farther from center while staying inside the stage.
+        const radius = Math.max(0, Math.min(maxRadius, short * 0.32));
         state.cardW = cardW;
         state.cardH = cardH;
         state.radius = radius;
@@ -140,7 +140,7 @@
           // Z-order only — keep size constant all the way around.
           card.style.zIndex = String(Math.round(20 - dist / 18));
           card.style.transform =
-            "rotate(" +
+            "translate(-50%, -50%) rotate(" +
             deg.toFixed(2) +
             "deg) translateY(" +
             (-state.radius).toFixed(1) +
