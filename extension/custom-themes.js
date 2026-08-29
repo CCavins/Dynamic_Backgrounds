@@ -40,6 +40,10 @@
   const BUNDLED_ENGINES = new Set([
     "message-aurora-engine",
     "mosaic-orbit-swap-engine",
+    "mosaic-xmas-wreath-engine",
+    "mosaic-xmas-tree-engine",
+    "mosaic-xmas-snowfall-engine",
+    "message-xmas-bauble-engine",
   ]);
   const RESERVED = new Set(["off", ...MESSAGE_ENGINES, ...MOSAIC_ENGINES]);
 
@@ -480,8 +484,22 @@
           const def = source();
           if (def && def.applySettings) def.applySettings(themeRoot, state, settings);
         },
-        show(themeRoot, capture, state, settings) {
-          return source().show(themeRoot, capture, state, settings);
+        async show(themeRoot, capture, state, settings) {
+          const def = source();
+          const result = def.show(themeRoot, capture, state, settings);
+          await Promise.resolve(result);
+          const helpers = root.BGMessageThemes || {};
+          if (document.fonts && document.fonts.ready) {
+            await Promise.race([document.fonts.ready.catch(() => {}), wait(800)]);
+          }
+          const fit = helpers.fitText;
+          if (fit && pack.fit && pack.fit.length) {
+            pack.fit.forEach((rule) => {
+              const box = themeRoot.querySelector(rule.box);
+              const text = themeRoot.querySelector(rule.text);
+              if (box && text) fit(box, text, rule.max, rule.min);
+            });
+          }
         },
         hide(themeRoot, state) {
           return source().hide(themeRoot, state);

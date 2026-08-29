@@ -40,6 +40,10 @@ Examples to try:
 - `mosaic-ribbon.json` — diagonal photo ribbon (JSON only)
 - `message-aurora.json` + `message-aurora-engine.js` — message card with a canvas aurora (same JS as `extension/engines/message-aurora-engine.js`)
 - `mosaic-orbit-swap.json` + `mosaic-orbit-swap-engine.js` — orbiting mosaic with photo swaps (same JS as `extension/engines/mosaic-orbit-swap-engine.js`)
+- `message-xmas-bauble.json` (+ `message-xmas-bauble-engine`) / `message-xmas-postcard.json` / `message-xmas-mantel.json` — Christmas message options
+- `mosaic-xmas-snowfall.json` (+ `mosaic-xmas-snowfall-engine`) — scatter mosaic with particles.js–style canvas snow
+- `mosaic-xmas-wreath.json` + `mosaic-xmas-wreath-engine.js` — Christmas wreath mosaic
+- `mosaic-xmas-tree.json` + `mosaic-xmas-tree-engine.js` — Christmas tree mosaic
 - `tmpl-*.json` — full HTML/CSS ports of the built-in themes
 
 To preview without a live output, open `preview.html` in a browser.

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dynamic Backgrounds",
-  "version": "1.14.10",
+  "version": "1.15.6",
   "description": "Apply a Dynamic Backgrounds iframe, mosaic themes, and message themes to matching output URLs.",
   "action": {
     "default_popup": "popup.html",
@@ -39,8 +39,13 @@
         "mosaic-themes.js",
         "message-themes.js",
         "engines/api.js",
+        "engines/xmas-snow-particles.js",
         "engines/message-aurora-engine.js",
         "engines/mosaic-orbit-swap-engine.js",
+        "engines/mosaic-xmas-wreath-engine.js",
+        "engines/mosaic-xmas-tree-engine.js",
+        "engines/mosaic-xmas-snowfall-engine.js",
+        "engines/message-xmas-bauble-engine.js",
         "custom-themes.js",
         "mosaic.js",
         "message.js"

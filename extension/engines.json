@@ -1,6 +1,11 @@
 {
   "engines": [
+    "xmas-snow-particles.js",
     "message-aurora-engine.js",
-    "mosaic-orbit-swap-engine.js"
+    "mosaic-orbit-swap-engine.js",
+    "mosaic-xmas-wreath-engine.js",
+    "mosaic-xmas-tree-engine.js",
+    "mosaic-xmas-snowfall-engine.js",
+    "message-xmas-bauble-engine.js"
   ]
 }
