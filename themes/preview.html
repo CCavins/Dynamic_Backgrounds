@@ -42,9 +42,10 @@
     container-type: size;
   }
 
-  #dyn-mosaic-theme { display: none; }
-  body.is-mosaic #dyn-message-theme { display: none; }
-  body.is-mosaic #dyn-mosaic-theme { display: block; }
+  /* Hide the inactive root only — never force display:block, or theme
+     flex/grid layouts (decks, spotlight, etc.) lose to this rule. */
+  body.is-mosaic #dyn-message-theme { display: none !important; }
+  body:not(.is-mosaic) #dyn-mosaic-theme { display: none !important; }
 
   #dock {
     position: fixed;
@@ -342,13 +343,13 @@
 <script src="../extension/vendor/tile-field.js"></script>
 <script src="../extension/mosaic-themes.js"></script>
 <script src="../extension/engines/api.js"></script>
-<script src="../extension/engines/xmas-snow-particles.js?v=1.16.5"></script>
-<script src="../extension/engines/message-aurora-engine.js?v=1.16.5"></script>
-<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.16.5"></script>
-<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.16.5"></script>
-<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.16.5"></script>
-<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.16.5"></script>
-<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.16.5"></script>
+<script src="../extension/engines/xmas-snow-particles.js?v=1.16.6"></script>
+<script src="../extension/engines/message-aurora-engine.js?v=1.16.6"></script>
+<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.16.6"></script>
+<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.16.6"></script>
+<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.16.6"></script>
+<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.16.6"></script>
+<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.16.6"></script>
 <script src="../extension/custom-themes.js"></script>
 <script>
 (async () => {
@@ -609,6 +610,18 @@
     }
   }
 
+  function resetThemeRoot(root) {
+    if (!root) return;
+    const keep = [];
+    if (root.classList.contains("dyn-stage-letterbox")) keep.push("dyn-stage-letterbox");
+    if (root.classList.contains("dyn-portrait")) keep.push("dyn-portrait");
+    root.className = keep.join(" ");
+    root.removeAttribute("data-theme");
+    root.removeAttribute("data-engine");
+    root.removeAttribute("data-aspect");
+    root.replaceChildren();
+  }
+
   function unmountCurrent() {
     clearTimers();
     if (mosaicState && mosaicApi.themes[mosaicState.id] && mosaicApi.themes[mosaicState.id].unmount) {
@@ -625,14 +638,10 @@
         /* already gone */
       }
     }
-    mosaicRoot.replaceChildren();
-    messageRoot.replaceChildren();
+    resetThemeRoot(mosaicRoot);
+    resetThemeRoot(messageRoot);
     mosaicState = null;
     messageState = null;
-    mosaicRoot.removeAttribute("data-theme");
-    mosaicRoot.removeAttribute("data-engine");
-    messageRoot.removeAttribute("data-theme");
-    messageRoot.removeAttribute("data-engine");
   }
 
   function settingsFor(id, pack) {
