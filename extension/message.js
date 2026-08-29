@@ -178,13 +178,6 @@
 
   function parkOverlay() {
     const root = document.getElementById(OVERLAY_ID);
-    if (active && root && typeof active.def.hide === "function") {
-      try {
-        active.def.hide(root, active.state, lastThemeSettings);
-      } catch {
-        /* ignore */
-      }
-    }
     if (root) root.classList.add("is-parked");
     document.documentElement.classList.remove("dyn-message-on");
   }
@@ -497,6 +490,12 @@
       scheduleApply();
     }, 250);
   });
+
+  if (typeof handoff.onLiveKind === "function") {
+    handoff.onLiveKind((kind) => {
+      if (kind === "message") scheduleApply(0);
+    });
+  }
 
   apply().catch(() => {});
 })();

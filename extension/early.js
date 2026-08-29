@@ -9,13 +9,19 @@
   const STYLE_ID = "dyn-theme-cover-early";
   const CSS =
     "html.dyn-cover-message .capture-content-layer," +
-    "html.dyn-cover-message .message-layer{" +
+    "html.dyn-cover-message .message-layer," +
+    "html.dyn-cover-message .message-content," +
+    "html.dyn-cover-message .v2-message{" +
       "visibility:hidden!important;opacity:0!important;" +
     "}" +
+    "html.dyn-cover-mosaic .mosaic-layout," +
     "html.dyn-cover-mosaic .mosaic-tile-slot," +
     "html.dyn-cover-mosaic .mosaic-asset," +
-    "html.dyn-cover-mosaic .mosaic-image{" +
-      "opacity:0!important;pointer-events:none!important;" +
+    "html.dyn-cover-mosaic .mosaic-image," +
+    "html.dyn-cover-mosaic .v2-mosaic-swap-tile," +
+    "html.dyn-cover-mosaic .v2-mosaic-face," +
+    "html.dyn-cover-mosaic .v2-asset-tile{" +
+      "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
     "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .v2-qr-tile," +
     "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .qr-tile," +

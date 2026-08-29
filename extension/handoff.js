@@ -6,13 +6,19 @@
   const HOST_ID = "dyn-theme-host";
   const COVER_CSS =
     "html.dyn-cover-message .capture-content-layer," +
-    "html.dyn-cover-message .message-layer{" +
+    "html.dyn-cover-message .message-layer," +
+    "html.dyn-cover-message .message-content," +
+    "html.dyn-cover-message .v2-message{" +
       "visibility:hidden!important;opacity:0!important;" +
     "}" +
+    "html.dyn-cover-mosaic .mosaic-layout," +
     "html.dyn-cover-mosaic .mosaic-tile-slot," +
     "html.dyn-cover-mosaic .mosaic-asset," +
-    "html.dyn-cover-mosaic .mosaic-image{" +
-      "opacity:0!important;pointer-events:none!important;" +
+    "html.dyn-cover-mosaic .mosaic-image," +
+    "html.dyn-cover-mosaic .v2-mosaic-swap-tile," +
+    "html.dyn-cover-mosaic .v2-mosaic-face," +
+    "html.dyn-cover-mosaic .v2-asset-tile{" +
+      "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
     "html.dyn-kind-mosaic .v2-qr-tile," +
     "html.dyn-kind-mosaic .qr-tile," +
@@ -78,6 +84,14 @@
     "html.dyn-kind-native .output-wrapper > .asset-view{" +
       "visibility:visible!important;opacity:1!important;" +
     "}" +
+    "html.dyn-hold .output-app{" +
+      "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
+    "}" +
+    "html.dyn-hold #dyn-theme-host," +
+    "html.dyn-hold #dyn-mosaic-theme:not(.is-parked)," +
+    "html.dyn-hold #dyn-message-theme:not(.is-parked){" +
+      "visibility:visible!important;opacity:1!important;" +
+    "}" +
     /* Incoming mosaic must sit under the live message while the message exits,
        otherwise decks/polaroids paint on top of the fading message beat. */
     "html.dyn-handoff-to-mosaic #dyn-mosaic-theme{" +
@@ -131,9 +145,12 @@
     "[data-qr][hidden],[data-logo][hidden]{display:none!important;}";
 
   const actors = { message: null, mosaic: null };
+  const kindListeners = [];
   let mode = "";
   let chain = Promise.resolve();
   let lastSettings = null;
+  let seenKind = "";
+  let watchingKind = false;
 
   function ensureCoverStyle() {
     let style = document.getElementById(COVER_STYLE_ID);
@@ -157,7 +174,8 @@
     const eitherTheme = msgThemeOn || mosThemeOn;
     const live = typeof liveKind === "function" ? liveKind() : "";
     const kind = rules.activeThemeKind ? rules.activeThemeKind(s) : "";
-    const nativeBeat = live === "native";
+    const nativeBeat = live === "native" && !html.classList.contains("dyn-hold");
+    if (nativeBeat) html.classList.remove("dyn-hold");
     // Keep stock layers covered whenever that kind's theme is enabled. Dropping
     // the message cover while mosaic still fades is what flashes Vixi's original.
     // Stream / live / CTA still hide leftover mosaic/message shells.
@@ -252,7 +270,7 @@
     const nativePage =
       typeof rules.pageLooksLikeNative === "function" && rules.pageLooksLikeNative();
     if (msgLive && !mosaicLive) return "message";
-    // Stream / live / CTA / video / URL wins over a leftover mosaic shell.
+    // Live CTA / stream / video still wins over a leftover mosaic shell.
     if (nativePage && !msgLive) return "native";
     if (msgLive) return "message";
     if (mosaicLive && !nativePage) return "mosaic";
@@ -260,17 +278,82 @@
       if (nativePage) return "native";
       return hint;
     }
-    // Residual .mosaic-layout in the DOM must not block a message beat when
-    // the mosaic layer is not actually visible (Vixi often leaves the shell).
     if (hasMsg && !mosaicLive) return "message";
     if (mosaicLive) return "mosaic";
     const handingOff = document.documentElement.classList.contains("dyn-handoff");
     if (handingOff) return "";
-    // Neither mosaic nor message is live — show Vixi as-is (stream, live, CTA…).
+    if (hasMsg) return "message";
+    if (mosaicPage) return "mosaic";
     const app = document.querySelector(".output-app");
-    if (!hasMsg && !mosaicLive && app && app.childElementCount > 0) return "native";
-    if (mosaicPage && !hasMsg) return "mosaic";
+    if (!hasMsg && !mosaicPage && app && app.childElementCount > 0) return "native";
     return nativePage ? "native" : "";
+  }
+
+  function themeOnFor(kind) {
+    const s = lastSettings;
+    if (!s || s.enabled === false) return false;
+    if (kind === "message") return Boolean(s.messageTheme && s.messageTheme !== "off");
+    if (kind === "mosaic") return Boolean(s.mosaicTheme && s.mosaicTheme !== "off");
+    return false;
+  }
+
+  function holdFor(kind) {
+    if ((kind !== "mosaic" && kind !== "message") || !themeOnFor(kind)) return;
+    const html = document.documentElement;
+    html.classList.add("dyn-hold", "dyn-cover-message", "dyn-cover-mosaic", "dyn-theme-on");
+    html.classList.remove("dyn-kind-native");
+    html.classList.toggle("dyn-kind-message", kind === "message");
+    html.classList.toggle("dyn-kind-mosaic", kind === "mosaic");
+    const id = kind === "message" ? "dyn-message-theme" : "dyn-mosaic-theme";
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.remove("is-parked", "is-leaving");
+      html.classList.add(kind === "message" ? "dyn-message-on" : "dyn-mosaic-on");
+    }
+  }
+
+  function endHold() {
+    document.documentElement.classList.remove("dyn-hold");
+  }
+
+  function onLiveKind(fn) {
+    if (typeof fn === "function") kindListeners.push(fn);
+  }
+
+  function syncLiveKind() {
+    const live = liveKind();
+    if (live === seenKind) return;
+    const prev = seenKind;
+    seenKind = live;
+    if (lastSettings) applyCovers(lastSettings);
+    if (
+      (live === "mosaic" || live === "message") &&
+      (prev === "native" || prev === "" || prev !== live)
+    ) {
+      holdFor(live);
+      kindListeners.forEach((fn) => {
+        try {
+          fn(live, prev);
+        } catch {
+          /* ignore */
+        }
+      });
+    }
+  }
+
+  function startKindWatch() {
+    if (watchingKind) return;
+    watchingKind = true;
+    seenKind = liveKind();
+    const mo = new MutationObserver(() => {
+      syncLiveKind();
+    });
+    mo.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["src", "srcset", "class", "hidden", "aria-hidden"],
+    });
   }
 
   function register(kind, api) {
@@ -296,6 +379,8 @@
     return enqueue(async () => {
       if (mode === kind) {
         if (typeof tasks.reveal === "function") await withTimeout(tasks.reveal(), 12000);
+        endHold();
+        if (lastSettings) applyCovers(lastSettings);
         return;
       }
       beginHandoff(kind);
@@ -321,6 +406,7 @@
           }
         }
       } finally {
+        endHold();
         endHandoff();
       }
     });
@@ -334,6 +420,8 @@
     if (!kind || mode === kind) mode = "";
   }
 
+  startKindWatch();
+
   root.BGThemeHandoff = {
     HOST_ID,
     ensureCoverStyle,
@@ -343,5 +431,7 @@
     activate,
     currentMode,
     clearMode,
+    onLiveKind,
+    endHold,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

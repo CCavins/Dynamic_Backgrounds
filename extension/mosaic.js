@@ -1331,5 +1331,11 @@
     }, 250);
   });
 
+  if (typeof handoff.onLiveKind === "function") {
+    handoff.onLiveKind((kind) => {
+      if (kind === "mosaic") scheduleApply(0);
+    });
+  }
+
   apply().catch(() => {});
 })();

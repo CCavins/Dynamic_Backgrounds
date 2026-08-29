@@ -878,16 +878,8 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   perspective: 1600px;
 }
 #dyn-message-theme[data-theme="holo-card"] .aurora {
-  position: absolute; inset: -20%; z-index: 1; pointer-events: none;
-  background:
-    conic-gradient(from 210deg at 30% 40%,
-      transparent 0 40%, var(--p-haze) 48%, transparent 58%,
-      var(--s-haze) 70%, transparent 82%);
-  filter: blur(70px);
-  opacity: 0.55;
-  animation: dynHoloAurora 42s linear infinite;
+  display: none;
 }
-@keyframes dynHoloAurora { to { transform: rotate(360deg); } }
 #dyn-message-theme[data-theme="holo-card"] .dust { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
 #dyn-message-theme[data-theme="holo-card"] .speck {
   position: absolute; width: 3px; height: 3px; border-radius: 50%;
@@ -914,10 +906,11 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   transform-style: preserve-3d;
   transform-origin: 50% 55%;
   opacity: 0;
+  backface-visibility: hidden;
 }
 #dyn-message-theme[data-theme="holo-card"] .card {
   position: relative; width: 100%; height: 100%;
-  transform-style: preserve-3d;
+  transform-style: flat;
   transform-origin: 50% 55%;
   border-radius: 1.6vw;
   background:
@@ -943,6 +936,10 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   position: absolute; inset: 3.4%;
   border-radius: 1.15vw;
   overflow: hidden;
+  isolation: isolate;
+  contain: paint;
+  transform: translateZ(0);
+  transform-style: flat;
   background: #08070c;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
 }
@@ -952,29 +949,38 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   filter: saturate(1.12) contrast(1.06);
 }
 #dyn-message-theme[data-theme="holo-card"] .foil {
-  position: absolute; inset: 3.4%;
-  border-radius: 1.15vw; pointer-events: none;
+  position: absolute;
+  inset: -30%;
+  width: 160%;
+  height: 160%;
+  pointer-events: none;
   background:
     repeating-linear-gradient(-28deg,
-      transparent 0 7px,
-      rgba(255,255,255,.07) 8px,
-      transparent 9px 16px),
+      transparent 0 18px,
+      rgba(255,255,255,.04) 24px,
+      rgba(255,255,255,.12) 30px,
+      rgba(255,255,255,.04) 36px,
+      transparent 42px 56px),
     conic-gradient(from 200deg at 40% 30%,
       var(--primary), var(--secondary), #ffe9a8, #ff7ad9, var(--primary));
-  mix-blend-mode: color-dodge;
-  opacity: 0.34;
+  opacity: 0.32;
+  backface-visibility: hidden;
 }
 #dyn-message-theme[data-theme="holo-card"] .glare {
-  position: absolute; inset: 3.4%;
-  border-radius: 1.15vw; pointer-events: none;
-  background: linear-gradient(118deg,
-    transparent 28%,
-    rgba(255,255,255,.42) 46%,
-    rgba(255,255,255,.08) 52%,
-    transparent 68%);
-  mix-blend-mode: overlay;
-  opacity: 0.55;
-  transform: translateX(-30%);
+  position: absolute;
+  top: -18%;
+  height: 136%;
+  width: 70%;
+  left: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 52% 74% at 50% 48%,
+    rgba(255,255,255,.34) 0%,
+    rgba(255,255,255,.14) 34%,
+    rgba(255,255,255,.04) 58%,
+    transparent 78%);
+  opacity: 0.68;
+  backface-visibility: hidden;
+  transform: translate3d(-150%, 0, 0);
 }
 #dyn-message-theme[data-theme="holo-card"] .copy {
   flex: 1 1 40vw; min-width: 0; max-width: 50vw;
@@ -1096,6 +1102,8 @@ html.dyn-message-on .mosaic-layout > .asset-view {
 #dyn-message-theme[data-theme="holo-card"] .copy.no-name .name-slot { display: none; }
 #dyn-message-theme[data-theme="holo-card"].no-copy .copy { display: none; }
 #dyn-message-theme[data-theme="holo-card"].no-copy .layout { justify-content: center; }
+#dyn-message-theme[data-theme="holo-card"].no-photo .foil,
+#dyn-message-theme[data-theme="holo-card"].no-photo .glare { display: none; }
 @keyframes dynHoloCardIn {
   0%   { opacity: 0; transform: rotateY(48deg) rotateX(10deg) translate3d(6vw, 4vh, -140px) scale(0.84); filter: brightness(1.8); }
   62%  { opacity: 1; filter: brightness(1.15); }
@@ -1114,32 +1122,34 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   animation: dynHoloCopyIn calc(var(--reveal-ms) * 0.72) calc(var(--reveal-ms) * 0.28) cubic-bezier(.2,.9,.3,1) both;
 }
 @keyframes dynHoloOrbit {
-  0%, 100% { transform: rotateY(0deg) rotateX(0deg) translateY(0); }
-  50%      { transform: rotateY(7deg) rotateX(-3deg) translateY(-0.7vh); }
+  0%   { transform: rotateY(-11deg) rotateX(5deg) translate3d(-0.35vw, 0.45vh, 10px); }
+  35%  { transform: rotateY(2deg) rotateX(-1deg) translate3d(0.25vw, -0.55vh, 4px); }
+  50%  { transform: rotateY(10deg) rotateX(-4deg) translate3d(0.45vw, -1.15vh, 14px); }
+  78%  { transform: rotateY(-3deg) rotateX(2deg) translate3d(-0.15vw, 0.15vh, 6px); }
+  100% { transform: rotateY(-11deg) rotateX(5deg) translate3d(-0.35vw, 0.45vh, 10px); }
 }
 @keyframes dynHoloGlare {
-  0%   { transform: translateX(-38%); opacity: 0.25; }
-  45%  { opacity: 0.7; }
-  100% { transform: translateX(42%); opacity: 0.3; }
+  0%   { transform: translate3d(-150%, 0, 0); }
+  100% { transform: translate3d(170%, 0, 0); }
 }
 @keyframes dynHoloFoil {
-  0%   { background-position: 0% 0%, 20% 10%; }
-  100% { background-position: 80% 40%, 70% 60%; }
+  0%   { transform: translate3d(-7%, -4%, 0); }
+  100% { transform: translate3d(7%, 5%, 0); }
 }
 @keyframes dynHoloSheen {
   0%   { background-position: 0% 50%; }
   100% { background-position: 100% 50%; }
 }
 #dyn-message-theme[data-theme="holo-card"].on.idle .rig {
-  animation: none;
+  animation: dynHoloOrbit 12s ease-in-out infinite;
   opacity: 1;
-  transform: rotateY(-6deg) rotateX(3deg) translate3d(0,0,0) scale(1);
-  filter: brightness(1);
+  filter: none;
+  will-change: transform;
 }
 #dyn-message-theme[data-theme="holo-card"].on.idle .copy { animation: none; opacity: 1; transform: none; filter: none; }
-#dyn-message-theme[data-theme="holo-card"].on.idle .card { animation: dynHoloOrbit 10s ease-in-out infinite; }
-#dyn-message-theme[data-theme="holo-card"].on.idle .glare { animation: dynHoloGlare 6.4s ease-in-out infinite; }
-#dyn-message-theme[data-theme="holo-card"].on.idle .foil { animation: dynHoloFoil 8s linear infinite; background-size: 180% 180%, 140% 140%; }
+#dyn-message-theme[data-theme="holo-card"].on.idle .card { animation: none; }
+#dyn-message-theme[data-theme="holo-card"].on.idle .glare { animation: dynHoloGlare 10s linear infinite; }
+#dyn-message-theme[data-theme="holo-card"].on.idle .foil { animation: dynHoloFoil 18s ease-in-out infinite alternate; }
 #dyn-message-theme[data-theme="holo-card"].on.idle .msg-fit span { animation: dynHoloSheen 8s ease-in-out infinite alternate; }
 @keyframes dynHoloCardOut {
   0%   { opacity: 1; transform: rotateY(0deg) scale(1); filter: brightness(1); }
@@ -3229,9 +3239,11 @@ html.dyn-message-on .mosaic-layout > .asset-view {
             '<div class="layout">' +
               '<div class="rig">' +
                 '<div class="card">' +
-                  '<div class="well"><img alt="" draggable="false"></div>' +
-                  '<div class="foil"></div>' +
-                  '<div class="glare"></div>' +
+                  '<div class="well">' +
+                    '<img alt="" draggable="false">' +
+                    '<div class="foil"></div>' +
+                    '<div class="glare"></div>' +
+                  "</div>" +
                 "</div>" +
               "</div>" +
               '<div class="copy">' +
@@ -3245,7 +3257,7 @@ html.dyn-message-on .mosaic-layout > .asset-view {
             '<div class="vignette"></div>' +
           "</div>";
         const dust = themeRoot.querySelector(".dust");
-        for (let i = 0; i < 42; i += 1) {
+        for (let i = 0; i < 10; i += 1) {
           const s = document.createElement("div");
           s.className = "speck";
           s.style.left = Math.random() * 100 + "%";
