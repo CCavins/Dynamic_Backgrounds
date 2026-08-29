@@ -952,7 +952,7 @@
     if (!root) return false;
     root.dataset.theme = id;
     if (def.engine) root.dataset.engine = def.engine;
-    else delete root.dataset.engine;
+    else root.removeAttribute("data-engine");
     // Brand-aware themes need chrome classes before mount so the content frame sizes correctly.
     if (/-brand$/.test(id) && typeof rules.ensureBrandChrome === "function") {
       rules.ensureBrandChrome(root, "mosaic");
@@ -969,15 +969,30 @@
     return true;
   }
 
-  function teardownSoft() {
+  function parkOverlay() {
+    stopTick();
+    const root = document.getElementById(OVERLAY_ID);
+    if (root) root.classList.add("is-leaving", "is-parked");
+    document.documentElement.classList.remove("dyn-mosaic-on");
+  }
+
+  function unparkOverlay(root) {
+    if (root) root.classList.remove("is-leaving", "is-parked");
+  }
+
+  function destroyOverlay() {
     unmountTheme({ resetFeed: true });
     document.documentElement.classList.remove("dyn-mosaic-on");
     const root = document.getElementById(OVERLAY_ID);
     if (root) root.remove();
   }
 
+  function teardownSoft() {
+    parkOverlay();
+  }
+
   function teardownHard() {
-    teardownSoft();
+    destroyOverlay();
     const style = document.getElementById(STYLE_ID);
     if (style) style.remove();
     handoff.clearMode("mosaic");
@@ -1018,7 +1033,7 @@
       // Imported message packs must not remount a live mosaic stage.
       const kind = handoff.liveKind();
       const mode = handoff.currentMode();
-      if (kind === "message" || (kind === "" && mode === "message")) return;
+      if (kind === "message" || kind === "native" || (kind === "" && mode === "message")) return;
       requestRebuild();
       scheduleApply();
     });
@@ -1028,6 +1043,14 @@
     if (settleTimer) return;
     let emptyPasses = 0;
     settleTimer = setInterval(() => {
+      if (handoff.liveKind() === "native") {
+        emptyPasses = 0;
+        if (settleTimer) {
+          clearInterval(settleTimer);
+          settleTimer = 0;
+        }
+        return;
+      }
       const overlay = document.getElementById(OVERLAY_ID);
       const host = document.getElementById(handoff.HOST_ID);
       const sized = layoutReady(overlay || host);
@@ -1064,6 +1087,9 @@
       // the chrome APIs; only a page refresh swaps in the new script.
       const settings = await rules.loadSettings();
       if (gen !== applyGen) return;
+      if (handoff.liveKind() === "mosaic") {
+        unparkOverlay(document.getElementById(OVERLAY_ID));
+      }
       if (pendingRebuild) suppressResizeRebuild(1600);
       handoff.applyCovers(settings);
       if (pendingRebuild) suppressResizeRebuild(1600);
@@ -1078,12 +1104,22 @@
         return;
       }
 
-      watchSettle();
       let kind = handoff.liveKind();
       const mosaicPage = Boolean(rules.pageLooksLikeMosaic && rules.pageLooksLikeMosaic());
       const mode = handoff.currentMode();
       const msgThemeOn =
         settings.enabled !== false && rules.normalizeMessageTheme(settings.messageTheme) !== "off";
+      // Stream / live / CTA / video / URL — anything that is not mosaic or
+      // message. Drop our overlay and let Vixi show through.
+      if (kind === "native") {
+        if (settleTimer) {
+          clearInterval(settleTimer);
+          settleTimer = 0;
+        }
+        parkOverlay();
+        handoff.applyCovers(settings);
+        return;
+      }
       // Never keep mosaic cards over a live message beat — even if we still owe
       // a remount or Vixi left .mosaic-layout in the DOM.
       if (kind === "message") {
@@ -1093,6 +1129,7 @@
         // Message theme owns the handoff (prepare mounts first, then fades us).
         return;
       }
+      watchSettle();
       const hasMsg =
         typeof rules.hasMessage === "function"
           ? rules.hasMessage()
@@ -1141,6 +1178,7 @@
           document.documentElement.classList.add("dyn-mosaic-on");
           const { added, removed } = syncFeed();
           const overlay = document.getElementById(OVERLAY_ID);
+          unparkOverlay(overlay);
           const wrapper = rules.findWrapper && rules.findWrapper();
           const host = document.getElementById(handoff.HOST_ID);
           const hostMisplaced = Boolean(wrapper && host && host.parentElement !== wrapper);

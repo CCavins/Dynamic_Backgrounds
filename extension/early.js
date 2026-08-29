@@ -17,20 +17,25 @@
     "html.dyn-cover-mosaic .mosaic-image{" +
       "opacity:0!important;pointer-events:none!important;" +
     "}" +
-    "html.dyn-theme-on .v2-qr-tile," +
-    "html.dyn-theme-on .qr-tile," +
-    "html.dyn-theme-on .v2-logo," +
-    "html.dyn-theme-on .v2-logo-tile," +
-    "html.dyn-theme-on .event-logo," +
-    "html.dyn-theme-on .logo-tile," +
+    "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .v2-qr-tile," +
+    "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .qr-tile," +
+    "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .v2-logo," +
+    "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .v2-logo-tile," +
+    "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .event-logo," +
+    "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .logo-tile," +
     "html.dyn-theme-on .mosaic-layout > .asset-view{" +
       "visibility:hidden!important;opacity:0!important;" +
     "}" +
     "html.dyn-theme-on,html.dyn-theme-on body,html.dyn-theme-on .output-page{" +
       "background:#000!important;" +
     "}" +
-    "html.dyn-theme-on:not(.dyn-show-bg) .v2-app-wrapper__bg-image," +
-    "html.dyn-theme-on:not(.dyn-show-bg) .output-wrapper > .asset-view{" +
+    "html.dyn-theme-on:not(.dyn-show-bg):not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .v2-app-wrapper__bg-image," +
+    "html.dyn-theme-on:not(.dyn-show-bg):not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .output-wrapper > .asset-view{" +
+      "visibility:hidden!important;opacity:0!important;" +
+    "}" +
+    "html.dyn-kind-native #dyn-theme-host," +
+    "html.dyn-kind-native #dyn-mosaic-theme," +
+    "html.dyn-kind-native #dyn-message-theme{" +
       "visibility:hidden!important;opacity:0!important;" +
     "}";
 

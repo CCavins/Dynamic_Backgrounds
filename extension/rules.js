@@ -607,6 +607,11 @@
       if (raf) return;
       raf = window.requestAnimationFrame(() => {
         raf = 0;
+        const handoff = root.BGThemeHandoff;
+        if (handoff && typeof handoff.liveKind === "function" && handoff.liveKind() === "native") {
+          resetOutputCanvas();
+          return;
+        }
         if (currentStageAspect() === "auto") return;
         applyOutputCanvas();
       });
@@ -616,6 +621,11 @@
   }
 
   function applyOutputCanvas(aspect) {
+    const handoff = root.BGThemeHandoff;
+    if (handoff && typeof handoff.liveKind === "function" && handoff.liveKind() === "native") {
+      resetOutputCanvas();
+      return resolveStageSize(findWrapper(), "auto");
+    }
     ensureStageCanvasStyle();
     const mode = normalizeStageAspect(aspect != null ? aspect : currentStageAspect());
     const html = document.documentElement;
@@ -734,6 +744,8 @@
     const handoff = root.BGThemeHandoff;
     const live = handoff && typeof handoff.liveKind === "function" ? handoff.liveKind() : "";
     if (live === "message" || live === "mosaic") return live;
+    // CTA / video / URL beats must not inherit the previous mosaic or message mode.
+    if (live === "native" || pageLooksLikeNative()) return "";
     const mode = handoff && typeof handoff.currentMode === "function" ? handoff.currentMode() : "";
     if (mode === "message" || mode === "mosaic") return mode;
     const s = settings || lastGoodSettings;
@@ -754,7 +766,7 @@
     const kind = activeThemeKind(s);
     if (kind === "message") return normalizeMessageTheme(s.messageTheme) !== "off";
     if (kind === "mosaic") return normalizeMosaicTheme(s.mosaicTheme) !== "off";
-    return themeIsOn(s);
+    return false;
   }
 
   function themeReplacesBackground(settings) {
@@ -993,6 +1005,56 @@
       /* ignore */
     }
     return Boolean(document.querySelector(MOSAIC_CHROME_SCOPE + ", img.mosaic-image"));
+  }
+
+  function nativeMediaLooksLive(el) {
+    if (!el || (el.closest && (isBrandNode(el) || el.closest(QR_SELECTORS)))) return false;
+    if (el.classList && el.classList.contains("mosaic-image")) return false;
+    if (el.closest && (el.closest(MOSAIC_CHROME_SCOPE) || el.closest(MESSAGE_CHROME_SCOPE))) {
+      return false;
+    }
+    try {
+      if (el.hidden || el.getAttribute("aria-hidden") === "true") return false;
+      const st = getComputedStyle(el);
+      if (st.display === "none" || st.visibility === "hidden") return false;
+      if (Number.parseFloat(st.opacity || "1") < 0.05) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 40 && r.height > 40;
+    } catch {
+      return true;
+    }
+  }
+
+  // Vixi scenes we do not theme: stream/live camera, CTA, video, URL, etc.
+  // Only mosaic and message playlist items get an overlay.
+  function pageLooksLikeNative() {
+    try {
+      const app = document.querySelector(".output-app");
+      if (!app) return false;
+      const nativeSel =
+        ".output-stream-wrapper, [class*='output-stream'], [class*='output-live']," +
+        "img.fullscreen-asset, video.fullscreen-asset, img[alt='CTA Image' i]," +
+        "[src*='/playlist/cta/'], :scope > iframe, video[id^='subscribe-']";
+      if (app.querySelector(nativeSel)) return true;
+      const mosaicShell = app.querySelector(
+        ".mosaic-layout, .v2-mosaic-swap-tile, .v2-asset-tile"
+      );
+      const messageShell = app.querySelector(
+        ".capture-content-layer, .message-layer, .v2-message"
+      );
+      if (mosaicShell || messageShell) return false;
+      const direct = app.querySelector(
+        ":scope > img, :scope > video, :scope > iframe, :scope > canvas"
+      );
+      if (direct && nativeMediaLooksLive(direct)) return true;
+      return [...app.children].some((child) => {
+        if (!child || child.id === "dyn-theme-host") return false;
+        return nativeMediaLooksLive(child);
+      });
+    } catch {
+      /* ignore */
+    }
+    return false;
   }
 
   function pageLooksLikeMessage() {
@@ -1391,6 +1453,7 @@
     findOverlayHost,
     hasMosaic,
     pageLooksLikeMosaic,
+    pageLooksLikeNative,
     pageLooksLikeMessage,
     hasMessage,
     mosaicContentCount,

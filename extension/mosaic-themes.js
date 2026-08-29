@@ -3209,6 +3209,7 @@ html.dyn-mosaic-on .logo-tile {
       unmount(root, state) {
         const target = (state && state.brandFrame) || root;
         if (typeof base.unmount === "function") base.unmount(target, state);
+        if (root && root.removeAttribute) root.removeAttribute("data-engine");
       },
     };
   }

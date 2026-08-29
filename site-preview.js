@@ -206,6 +206,8 @@
         tile.root.dataset.theme = tile.id;
         if (String(tile.id).endsWith("-brand")) {
             tile.root.dataset.engine = tile.id.replace(/-brand$/, "");
+        } else {
+            tile.root.removeAttribute("data-engine");
         }
         const pool = shuffle(photos);
         const api = {

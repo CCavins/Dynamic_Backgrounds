@@ -513,6 +513,7 @@
         unmount(themeRoot, state) {
           const def = source();
           if (def && def.unmount) def.unmount(themeRoot, state);
+          if (themeRoot && themeRoot.removeAttribute) themeRoot.removeAttribute("data-engine");
         },
       };
     }
@@ -544,6 +545,7 @@
       unmount(mosaicRoot, state) {
         const def = source();
         if (def && def.unmount) def.unmount(mosaicRoot, state);
+        if (mosaicRoot && mosaicRoot.removeAttribute) mosaicRoot.removeAttribute("data-engine");
       },
     };
   }

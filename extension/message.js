@@ -161,7 +161,7 @@
     if (!root) return false;
     root.dataset.theme = id;
     if (def.engine) root.dataset.engine = def.engine;
-    else delete root.dataset.engine;
+    else root.removeAttribute("data-engine");
     const state = def.mount(root, themeSettings) || {};
     if (typeof def.applySettings === "function") {
       def.applySettings(root, state, themeSettings);
@@ -176,15 +176,36 @@
     return true;
   }
 
-  function teardownSoft() {
+  function parkOverlay() {
+    const root = document.getElementById(OVERLAY_ID);
+    if (active && root && typeof active.def.hide === "function") {
+      try {
+        active.def.hide(root, active.state, lastThemeSettings);
+      } catch {
+        /* ignore */
+      }
+    }
+    if (root) root.classList.add("is-parked");
+    document.documentElement.classList.remove("dyn-message-on");
+  }
+
+  function unparkOverlay(root) {
+    if (root) root.classList.remove("is-parked");
+  }
+
+  function destroyOverlay() {
     unmountTheme();
     document.documentElement.classList.remove("dyn-message-on");
     const root = document.getElementById(OVERLAY_ID);
     if (root) root.remove();
   }
 
+  function teardownSoft() {
+    parkOverlay();
+  }
+
   function teardownHard() {
-    teardownSoft();
+    destroyOverlay();
     const style = document.getElementById(STYLE_ID);
     if (style) style.remove();
     handoff.clearMode("message");
@@ -272,7 +293,7 @@
       // Imported mosaic packs must not remount a live message beat.
       const kind = handoff.liveKind();
       const mode = handoff.currentMode();
-      if (kind === "mosaic" || (kind === "" && mode === "mosaic")) return;
+      if (kind === "mosaic" || kind === "native" || (kind === "" && mode === "mosaic")) return;
       requestRebuild();
       lastKey = "";
       scheduleApply();
@@ -292,6 +313,9 @@
     // running this script. loadSettings falls back to the cached settings, so
     // theming continues instead of dropping back to the stock Vixi look.
     const settings = await rules.loadSettings();
+    if (handoff.liveKind() === "message") {
+      unparkOverlay(document.getElementById(OVERLAY_ID));
+    }
     handoff.applyCovers(settings);
     const theme = settings.enabled ? rules.normalizeMessageTheme(settings.messageTheme) : "off";
     const themeSettings = rules.resolveMessageThemeSettings(settings, theme);
@@ -319,6 +343,11 @@
     if (kind === "mosaic") {
       document.documentElement.classList.add("dyn-cover-message", "dyn-cover-mosaic");
       if (!mosaicOn) await releaseForMosaic();
+      return;
+    }
+    if (kind === "native") {
+      parkOverlay();
+      handoff.applyCovers(settings);
       return;
     }
     // Do not steal a pure mosaic page with no message content.
@@ -366,6 +395,7 @@
       async reveal() {
         document.documentElement.classList.add("dyn-message-on");
         const overlay = document.getElementById(OVERLAY_ID);
+        unparkOverlay(overlay);
         // prepare already mounted — only remount if that failed.
         if (!overlay || !active || mountedTheme !== theme) {
           pendingRebuild = true;

@@ -14,18 +14,27 @@
     "html.dyn-cover-mosaic .mosaic-image{" +
       "opacity:0!important;pointer-events:none!important;" +
     "}" +
-    "html.dyn-theme-on .v2-qr-tile," +
-    "html.dyn-theme-on .qr-tile," +
-    "html.dyn-theme-on .v2-logo," +
-    "html.dyn-theme-on .v2-logo-tile," +
-    "html.dyn-theme-on .event-logo," +
-    "html.dyn-theme-on .logo-tile," +
-    "html.dyn-theme-on .mosaic-layout > .asset-view{" +
+    "html.dyn-kind-mosaic .v2-qr-tile," +
+    "html.dyn-kind-mosaic .qr-tile," +
+    "html.dyn-kind-mosaic .v2-logo," +
+    "html.dyn-kind-mosaic .v2-logo-tile," +
+    "html.dyn-kind-mosaic .event-logo," +
+    "html.dyn-kind-mosaic .logo-tile," +
+    "html.dyn-kind-mosaic .mosaic-layout > .asset-view," +
+    "html.dyn-kind-message .v2-qr-tile," +
+    "html.dyn-kind-message .qr-tile," +
+    "html.dyn-kind-message .v2-logo," +
+    "html.dyn-kind-message .v2-logo-tile," +
+    "html.dyn-kind-message .event-logo," +
+    "html.dyn-kind-message .logo-tile{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
-    "html.dyn-theme-on:not(.dyn-show-bg) .v2-app-wrapper__bg-image," +
-    "html.dyn-theme-on:not(.dyn-show-bg) .output-wrapper > .asset-view," +
-    "html.dyn-theme-on:not(.dyn-show-bg) #dyn-bg-embed{" +
+    "html.dyn-kind-mosaic:not(.dyn-show-bg) .v2-app-wrapper__bg-image," +
+    "html.dyn-kind-mosaic:not(.dyn-show-bg) .output-wrapper > .asset-view," +
+    "html.dyn-kind-message:not(.dyn-show-bg) .v2-app-wrapper__bg-image," +
+    "html.dyn-kind-message:not(.dyn-show-bg) .output-wrapper > .asset-view," +
+    "html.dyn-kind-mosaic:not(.dyn-show-bg) #dyn-bg-embed," +
+    "html.dyn-kind-message:not(.dyn-show-bg) #dyn-bg-embed{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
     "html.dyn-show-bg .v2-app-wrapper__bg-image," +
@@ -49,6 +58,25 @@
     "html.dyn-kind-message:not(.dyn-handoff) #dyn-mosaic-theme," +
     "html.dyn-kind-mosaic:not(.dyn-handoff) #dyn-message-theme{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
+    "}" +
+    "html.dyn-kind-native #dyn-theme-host," +
+    "html.dyn-kind-native #dyn-mosaic-theme," +
+    "html.dyn-kind-native #dyn-message-theme," +
+    "#dyn-mosaic-theme.is-parked," +
+    "#dyn-message-theme.is-parked{" +
+      "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
+    "}" +
+    "html.dyn-kind-native .output-app," +
+    "html.dyn-kind-native .output-app .output-stream-wrapper," +
+    "html.dyn-kind-native .output-app .output-stream-wrapper video," +
+    "html.dyn-kind-native .output-app .output-stream-wrapper canvas," +
+    "html.dyn-kind-native .output-app > img.fullscreen-asset," +
+    "html.dyn-kind-native .output-app > video.fullscreen-asset," +
+    "html.dyn-kind-native .output-app > iframe," +
+    "html.dyn-kind-native .output-app > video," +
+    "html.dyn-kind-native .output-app > img," +
+    "html.dyn-kind-native .output-wrapper > .asset-view{" +
+      "visibility:visible!important;opacity:1!important;" +
     "}" +
     /* Incoming mosaic must sit under the live message while the message exits,
        otherwise decks/polaroids paint on top of the fading message beat. */
@@ -127,24 +155,35 @@
     const msgThemeOn = Boolean(enabled && s.messageTheme && s.messageTheme !== "off");
     const mosThemeOn = Boolean(enabled && s.mosaicTheme && s.mosaicTheme !== "off");
     const eitherTheme = msgThemeOn || mosThemeOn;
+    const live = typeof liveKind === "function" ? liveKind() : "";
     const kind = rules.activeThemeKind ? rules.activeThemeKind(s) : "";
+    const nativeBeat = live === "native";
     // Keep stock layers covered whenever that kind's theme is enabled. Dropping
     // the message cover while mosaic still fades is what flashes Vixi's original.
+    // Stream / live / CTA still hide leftover mosaic/message shells.
     html.classList.toggle("dyn-cover-message", msgThemeOn);
     html.classList.toggle("dyn-cover-mosaic", mosThemeOn);
     const chrome = rules.chromeForKind ? rules.chromeForKind(s, kind) : { showBackground: false };
-    const liveOn = rules.liveThemeIsOn ? rules.liveThemeIsOn(s) : eitherTheme;
+    const liveOn = !nativeBeat && (rules.liveThemeIsOn ? rules.liveThemeIsOn(s) : eitherTheme);
     html.classList.toggle("dyn-theme-on", liveOn);
     // Until handoff finishes, keep dyn-kind-* on the currently visible mode.
     // Flipping to the live beat early (e.g. mosaic→message) hides #dyn-mosaic-theme
     // via CSS before activate() can crossfade, which flashes black.
-    const shownKind =
-      mode && kind && mode !== kind && !html.classList.contains("dyn-handoff") ? mode : kind;
+    const shownKind = nativeBeat
+      ? "native"
+      : mode && kind && mode !== kind && !html.classList.contains("dyn-handoff")
+        ? mode
+        : kind;
     html.classList.toggle("dyn-kind-message", shownKind === "message");
     html.classList.toggle("dyn-kind-mosaic", shownKind === "mosaic");
+    html.classList.toggle("dyn-kind-native", nativeBeat);
     html.classList.toggle("dyn-show-bg", liveOn && Boolean(chrome.showBackground));
     if (rules.tagChromeKinds) rules.tagChromeKinds();
-    if (eitherTheme && rules.applyOutputCanvas) rules.applyOutputCanvas(s.stageAspect);
+    // Keep the letterboxed stage on native so a parked mosaic/message overlay
+    // can resume without remounting. CTA/stream still show through the host.
+    if (nativeBeat && eitherTheme && rules.applyOutputCanvas) rules.applyOutputCanvas(s.stageAspect);
+    else if (nativeBeat && rules.resetOutputCanvas) rules.resetOutputCanvas();
+    else if (eitherTheme && rules.applyOutputCanvas) rules.applyOutputCanvas(s.stageAspect);
     else if (rules.resetOutputCanvas) rules.resetOutputCanvas();
     if (liveOn && chrome.showBackground) {
       if (rules.resumeBackgroundMedia) rules.resumeBackgroundMedia();
@@ -210,17 +249,28 @@
     const mosaicLive = mosaicPage && layerLooksLive(mosaicLayer);
     // A live message beat wins even on ?standalone=mosaic links, so mosaic
     // cards can fade out instead of sitting on top of the capture.
+    const nativePage =
+      typeof rules.pageLooksLikeNative === "function" && rules.pageLooksLikeNative();
     if (msgLive && !mosaicLive) return "message";
-    if (mosaicLive && !msgLive) return "mosaic";
+    // Stream / live / CTA / video / URL wins over a leftover mosaic shell.
+    if (nativePage && !msgLive) return "native";
     if (msgLive) return "message";
-    if (mosaicLive) return "mosaic";
-    if (hint === "mosaic" || hint === "message") return hint;
+    if (mosaicLive && !nativePage) return "mosaic";
+    if (hint === "mosaic" || hint === "message") {
+      if (nativePage) return "native";
+      return hint;
+    }
     // Residual .mosaic-layout in the DOM must not block a message beat when
     // the mosaic layer is not actually visible (Vixi often leaves the shell).
     if (hasMsg && !mosaicLive) return "message";
+    if (mosaicLive) return "mosaic";
+    const handingOff = document.documentElement.classList.contains("dyn-handoff");
+    if (handingOff) return "";
+    // Neither mosaic nor message is live — show Vixi as-is (stream, live, CTA…).
+    const app = document.querySelector(".output-app");
+    if (!hasMsg && !mosaicLive && app && app.childElementCount > 0) return "native";
     if (mosaicPage && !hasMsg) return "mosaic";
-    if (hasMsg) return "message";
-    return "";
+    return nativePage ? "native" : "";
   }
 
   function register(kind, api) {
