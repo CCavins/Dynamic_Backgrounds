@@ -977,6 +977,46 @@ html.dyn-mosaic-on .logo-tile {
   width: min(46cqw, 340px);
   margin-left: calc(min(46cqw, 340px) / -2);
 }
+/* Fan*: content stays in the open rail — landscape right chrome, portrait bottom chrome. */
+#dyn-mosaic-theme[data-theme="fan-brand"] {
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
+}
+#dyn-mosaic-theme[data-theme="fan-brand"] .dyn-brand-frame {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 6% 5% 14% 5%;
+}
+#dyn-mosaic-theme[data-theme="fan-brand"] .dyn-brand-frame.is-reserved {
+  right: 22%;
+  padding: 5% 3% 12% 6%;
+  justify-content: center;
+}
+#dyn-mosaic-theme[data-theme="fan-brand"] .dyn-brand-frame.is-reserved .dyn-fan {
+  width: min(72cqw, 540px);
+  height: min(70cqh, 620px);
+}
+#dyn-mosaic-theme[data-theme="fan-brand"] .dyn-brand-frame.is-reserved .dyn-card {
+  width: min(30cqw, 290px);
+  margin-left: calc(min(30cqw, 290px) / -2);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="fan-brand"] .dyn-brand-frame.is-reserved {
+  right: 0;
+  bottom: 18%;
+  padding: 7% 7% 5%;
+  align-items: flex-end;
+  justify-content: center;
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="fan-brand"] .dyn-brand-frame.is-reserved .dyn-fan {
+  width: min(90cqw, 560px);
+  height: min(64cqh, 700px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="fan-brand"] .dyn-brand-frame.is-reserved .dyn-card {
+  width: min(40cqw, 280px);
+  margin-left: calc(min(40cqw, 280px) / -2);
+}
 #dyn-mosaic-theme.dyn-portrait[data-theme="filmstrip"] {
   padding: 0 0 12%;
 }
@@ -1147,9 +1187,19 @@ html.dyn-mosaic-on .logo-tile {
     });
   }
 
-  function layoutFan(cards, frontIndex) {
+  function fanChromeReserved(mountRoot) {
+    const host =
+      (mountRoot && mountRoot.closest && mountRoot.closest("#dyn-mosaic-theme")) ||
+      (mountRoot && mountRoot.id === "dyn-mosaic-theme" ? mountRoot : null);
+    if (!host) return false;
+    return host.classList.contains("dyn-show-qr") || host.classList.contains("dyn-show-logo");
+  }
+
+  function layoutFan(cards, frontIndex, opts) {
     const n = cards.length;
-    const span = 58;
+    const reserved = !!(opts && opts.reserved);
+    // Narrower arc when a logo/QR rail is open so outer cards stay clear.
+    const span = reserved ? 44 : 58;
     const front = frontIndex == null ? Math.floor(n / 2) : frontIndex;
     cards.forEach((card, i) => {
       const t = n === 1 ? 0.5 : i / (n - 1);
@@ -1533,13 +1583,15 @@ html.dyn-mosaic-on .logo-tile {
         });
         root.appendChild(fan);
         const front = Math.floor(count / 2);
-        layoutFan(cards, front);
-        return { fan, cards, urls, front, busy: false, timers: [] };
+        const reserved = fanChromeReserved(root);
+        layoutFan(cards, front, { reserved });
+        return { fan, cards, urls, front, busy: false, timers: [], mountRoot: root };
       },
       tick(root, pool, state, api) {
         if (!state || !state.cards || !state.cards.length || state.busy) return;
         state.busy = true;
         clearFanTimers(state);
+        const mountRoot = state.mountRoot || root;
 
         // 1) Collapse the fan into a single pile (only the top face shows).
         layoutFanStacked(state.cards);
@@ -1573,7 +1625,7 @@ html.dyn-mosaic-on .logo-tile {
                 return;
               }
               // 3) Fan the new set back open.
-              layoutFan(state.cards, state.front);
+              layoutFan(state.cards, state.front, { reserved: fanChromeReserved(mountRoot) });
               fanLater(state, 920, () => {
                 state.busy = false;
               });
@@ -2997,7 +3049,7 @@ html.dyn-mosaic-on .logo-tile {
     };
   }
 
-  ["decks", "polaroid", "flipwall", "livewall", "cubes"].forEach((id) => {
+  ["decks", "polaroid", "flipwall", "livewall", "cubes", "fan"].forEach((id) => {
     const wrapped = brandAware(id);
     if (wrapped) themes[id + "-brand"] = wrapped;
   });

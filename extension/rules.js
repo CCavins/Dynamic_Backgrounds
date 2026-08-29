@@ -114,6 +114,7 @@
     spotlight: { label: "Spotlight" },
     coverflow: { label: "Coverflow" },
     fan: { label: "Fan" },
+    "fan-brand": { label: "Fan*", brandAware: true },
     filmstrip: { label: "Filmstrip" },
     scatter: { label: "Scatter" },
     cascade: { label: "Cascade" },
