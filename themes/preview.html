@@ -148,6 +148,88 @@
     margin-left: auto;
   }
 
+  .dock-settings {
+    flex: 1 1 100%;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .dock-settings.is-open {
+    display: flex;
+  }
+
+  .dock-settings-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .dock-settings-head span {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dock-muted);
+  }
+
+  .dock-settings-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px 12px;
+  }
+
+  .setting-row {
+    display: grid;
+    grid-template-columns: minmax(72px, 1fr) 88px 38px;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .setting-row.select {
+    grid-template-columns: minmax(72px, auto) 1fr;
+  }
+
+  .setting-row > span:first-child {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--dock-muted);
+  }
+
+  .setting-row .theme-hex,
+  .setting-row .theme-motion {
+    height: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--dock-text);
+    font: 500 12px Inter, system-ui, sans-serif;
+    outline: none;
+  }
+
+  .setting-row .theme-hex {
+    width: 100%;
+    padding: 0 8px;
+  }
+
+  .setting-row .theme-color {
+    width: 38px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .setting-row .theme-motion {
+    width: 100%;
+    padding: 0 10px;
+  }
+
   .dock-btn {
     height: 38px;
     padding: 0 14px;
@@ -162,6 +244,13 @@
   .dock-btn:hover { background: rgba(255, 255, 255, 0.16); }
   .dock-btn-primary { background: var(--dock-accent); }
   .dock-btn-primary:hover { filter: brightness(1.08); }
+  .dock-btn-ghost {
+    height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+  }
 
   .dock-meta {
     position: fixed;
@@ -236,6 +325,13 @@
         <button type="button" class="dock-btn" id="prev-theme" title="Previous theme">Prev</button>
         <button type="button" class="dock-btn dock-btn-primary" id="next-theme" title="Next theme">Next</button>
       </div>
+      <div class="dock-settings" id="settings-panel" hidden>
+        <div class="dock-settings-head">
+          <span>Message settings</span>
+          <button type="button" class="dock-btn dock-btn-ghost" id="reset-settings">Reset colors</button>
+        </div>
+        <div class="dock-settings-fields" id="settings-fields"></div>
+      </div>
     </div>
   </div>
 
@@ -246,13 +342,13 @@
 <script src="../extension/vendor/tile-field.js"></script>
 <script src="../extension/mosaic-themes.js"></script>
 <script src="../extension/engines/api.js"></script>
-<script src="../extension/engines/xmas-snow-particles.js?v=1.16.4"></script>
-<script src="../extension/engines/message-aurora-engine.js?v=1.16.4"></script>
-<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.16.4"></script>
-<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.16.4"></script>
-<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.16.4"></script>
-<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.16.4"></script>
-<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.16.4"></script>
+<script src="../extension/engines/xmas-snow-particles.js?v=1.16.5"></script>
+<script src="../extension/engines/message-aurora-engine.js?v=1.16.5"></script>
+<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.16.5"></script>
+<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.16.5"></script>
+<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.16.5"></script>
+<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.16.5"></script>
+<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.16.5"></script>
 <script src="../extension/custom-themes.js"></script>
 <script>
 (async () => {
@@ -330,7 +426,12 @@
       /* skip bad pack */
     }
   });
-  if (customPacks.length) customApi.registerPacks(customPacks.map((item) => item.pack));
+  if (customPacks.length) {
+    customApi.registerPacks(customPacks.map((item) => item.pack));
+    if (rules.applyCustomThemeMeta) {
+      rules.applyCustomThemeMeta(customPacks.map((item) => item.pack));
+    }
+  }
 
   function parseCsv(text) {
     const rows = [];
@@ -435,6 +536,11 @@
   const metaSub = document.getElementById("meta-sub");
   const messageRoot = document.getElementById("dyn-message-theme");
   const mosaicRoot = document.getElementById("dyn-mosaic-theme");
+  const settingsPanel = document.getElementById("settings-panel");
+  const settingsFields = document.getElementById("settings-fields");
+  const resetSettingsBtn = document.getElementById("reset-settings");
+
+  const settingsByTheme = Object.create(null);
 
   function addGroup(select, label, items) {
     if (!items.length) return;
@@ -530,14 +636,27 @@
   }
 
   function settingsFor(id, pack) {
+    const allMeta = rules.messageThemeMetaAll ? rules.messageThemeMetaAll() : rules.MESSAGE_THEME_META || {};
+    const meta = allMeta[id];
+    if (meta && rules.normalizeOneThemeSettings) {
+      const stored = settingsByTheme[id] || {};
+      const normalized = rules.normalizeOneThemeSettings(id, stored);
+      return {
+        ...normalized,
+        revealMs:
+          Number(normalized.revealMs) ||
+          Number(meta.defaults && meta.defaults.revealMs) ||
+          (pack && pack.revealMs) ||
+          1000,
+      };
+    }
     if (pack && pack.settings) {
       const out = { revealMs: pack.revealMs || 1000 };
       Object.keys(pack.settings).forEach((key) => {
         out[key] = pack.settings[key].default;
       });
-      return out;
+      return { ...out, ...(settingsByTheme[id] || {}) };
     }
-    const meta = rules.MESSAGE_THEME_META && rules.MESSAGE_THEME_META[id];
     const defaults = (meta && meta.defaults) || {};
     return {
       primary: defaults.primary || "#d52265",
@@ -545,7 +664,113 @@
       background: defaults.background,
       motion: defaults.motion,
       revealMs: defaults.revealMs || 1000,
+      ...(settingsByTheme[id] || {}),
     };
+  }
+
+  function colorRow(key, label, value) {
+    const row = document.createElement("label");
+    row.className = "setting-row";
+    row.innerHTML =
+      `<span>${label}</span>` +
+      `<input type="text" class="theme-hex" data-key="${key}" maxlength="7" spellcheck="false" value="${value}">` +
+      `<input type="color" class="theme-color" data-key="${key}" value="${value}">`;
+    return row;
+  }
+
+  function motionRow(value) {
+    const row = document.createElement("label");
+    row.className = "setting-row select";
+    row.innerHTML =
+      `<span>Motion</span>` +
+      `<select class="theme-motion" data-key="motion">` +
+        `<option value="slow">Slow — wander</option>` +
+        `<option value="drift">Drift — across the field</option>` +
+        `<option value="fizz">Fizz — rise from below</option>` +
+      `</select>`;
+    row.querySelector("select").value = value || "drift";
+    return row;
+  }
+
+  function readSettingsForm(id) {
+    const raw = {};
+    settingsFields.querySelectorAll(".theme-hex").forEach((input) => {
+      raw[input.dataset.key] = input.value;
+    });
+    const motion = settingsFields.querySelector(".theme-motion");
+    if (motion) raw.motion = motion.value;
+    if (rules.normalizeOneThemeSettings) return rules.normalizeOneThemeSettings(id, raw);
+    return raw;
+  }
+
+  function applyLiveSettings() {
+    if (!active || active.kind !== "message" || !messageState) return;
+    const def = messageApi.themes[active.id];
+    if (!def) return;
+    const settings = settingsFor(active.id, active.pack);
+    messageState.settings = settings;
+    if (def.applySettings) def.applySettings(messageRoot, messageState.state, settings);
+    def.show(messageRoot, captureAt(captureIndex), messageState.state, settings);
+  }
+
+  function renderSettingsPanel(entry) {
+    settingsFields.replaceChildren();
+    if (!entry || entry.kind !== "message") {
+      settingsPanel.hidden = true;
+      settingsPanel.classList.remove("is-open");
+      return;
+    }
+    const allMeta = rules.messageThemeMetaAll ? rules.messageThemeMetaAll() : rules.MESSAGE_THEME_META || {};
+    const meta = allMeta[entry.id];
+    if (!meta) {
+      settingsPanel.hidden = true;
+      settingsPanel.classList.remove("is-open");
+      return;
+    }
+    const values = settingsFor(entry.id, entry.pack);
+    const labels = meta.labels || {};
+    settingsFields.appendChild(colorRow("primary", labels.primary || "Primary", values.primary));
+    settingsFields.appendChild(colorRow("secondary", labels.secondary || "Secondary", values.secondary));
+    if (meta.defaults && meta.defaults.background) {
+      settingsFields.appendChild(
+        colorRow("background", labels.background || "Background", values.background)
+      );
+    }
+    if (meta.defaults && meta.defaults.motion) {
+      settingsFields.appendChild(motionRow(values.motion));
+    }
+
+    settingsFields.querySelectorAll(".theme-color").forEach((colorInput) => {
+      const key = colorInput.dataset.key;
+      const hexInput = settingsFields.querySelector(`.theme-hex[data-key="${key}"]`);
+      colorInput.addEventListener("input", () => {
+        if (hexInput) hexInput.value = colorInput.value;
+        settingsByTheme[entry.id] = readSettingsForm(entry.id);
+        applyLiveSettings();
+      });
+    });
+    settingsFields.querySelectorAll(".theme-hex").forEach((hexInput) => {
+      const key = hexInput.dataset.key;
+      const colorInput = settingsFields.querySelector(`.theme-color[data-key="${key}"]`);
+      hexInput.addEventListener("input", () => {
+        const v = hexInput.value.trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(v) && colorInput) colorInput.value = v.toLowerCase();
+        if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+          settingsByTheme[entry.id] = readSettingsForm(entry.id);
+          applyLiveSettings();
+        }
+      });
+    });
+    settingsFields.querySelectorAll(".theme-motion").forEach((input) => {
+      input.addEventListener("change", () => {
+        settingsByTheme[entry.id] = readSettingsForm(entry.id);
+        // Motion modes often need a fresh mount (e.g. Liquid Glass).
+        mountEntry(entry, { keepSettingsForm: true });
+      });
+    });
+
+    settingsPanel.hidden = false;
+    settingsPanel.classList.add("is-open");
   }
 
   function captureAt(index) {
@@ -595,13 +820,14 @@
       ' · <a href="../index.html">Back to gallery</a>';
   }
 
-  function mountEntry(entry) {
+  function mountEntry(entry, opts) {
     unmountCurrent();
     active = entry;
     updateMeta(entry);
     themeSelect.value = entry.kind + ":" + entry.id;
     document.body.classList.toggle("is-mosaic", entry.kind === "mosaic");
     applyAspect();
+    if (!(opts && opts.keepSettingsForm)) renderSettingsPanel(entry);
 
     if (entry.kind === "mosaic") {
       mosaicRoot.dataset.theme = entry.id;
@@ -649,9 +875,12 @@
     }
     const settings = settingsFor(entry.id, entry.pack);
     const state = def.mount(messageRoot, settings);
-    messageState = { id: entry.id, state };
+    messageState = { id: entry.id, state, settings };
     if (def.applySettings) def.applySettings(messageRoot, state, settings);
-    const show = (cap) => def.show(messageRoot, cap, state, settings);
+    const show = (cap) => {
+      const live = messageState && messageState.settings ? messageState.settings : settings;
+      def.show(messageRoot, cap, state, live);
+    };
     show(captureAt(captureIndex));
     if (typeof ResizeObserver !== "undefined" && messageApi.ensureFitStage) {
       resizeRo = new ResizeObserver(() => messageApi.ensureFitStage(messageRoot));
@@ -726,6 +955,14 @@
     themeSelect.value = next.value;
     mountEntry(findEntry(next.value));
   });
+  if (resetSettingsBtn) {
+    resetSettingsBtn.addEventListener("click", () => {
+      if (!active || active.kind !== "message") return;
+      delete settingsByTheme[active.id];
+      renderSettingsPanel(active);
+      mountEntry(active, { keepSettingsForm: true });
+    });
+  }
 
   window.addEventListener("resize", () => {
     applyAspect();

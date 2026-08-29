@@ -342,6 +342,31 @@ a.hint:hover {
     color: rgba(255, 255, 255, 0.45);
 }
 
+.theme-fullscreen {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 10px;
+    padding: 5px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.theme-fullscreen:hover,
+.theme-fullscreen:focus-visible {
+    border-color: rgba(254, 198, 81, 0.55);
+    background: rgba(254, 198, 81, 0.1);
+    color: #fec651;
+    outline: none;
+}
+
 .prose {
     max-width: 68ch;
     margin-top: 36px;
