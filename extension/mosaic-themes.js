@@ -415,11 +415,18 @@ html.dyn-mosaic-on .logo-tile {
   align-items: flex-end;
   justify-content: center;
   padding: 8% 6% 16%;
+  perspective: 1600px;
+  perspective-origin: 50% 58%;
 }
 #dyn-mosaic-theme[data-theme="fan"] .dyn-fan {
   position: relative;
   width: min(52vw, 640px);
   height: min(62vh, 680px);
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.22, 0.8, 0.2, 1);
+}
+#dyn-mosaic-theme[data-theme="fan"] .dyn-fan.is-midflip {
+  transform: rotateY(90deg);
 }
 #dyn-mosaic-theme[data-theme="fan"] .dyn-card {
   position: absolute;
@@ -429,7 +436,8 @@ html.dyn-mosaic-on .logo-tile {
   aspect-ratio: 2 / 3;
   margin-left: calc(min(24vw, 340px) / -2);
   transform-origin: 50% 100%;
-  transition: transform 0.85s cubic-bezier(0.22, 0.8, 0.2, 1);
+  transition: transform 0.9s cubic-bezier(0.22, 0.8, 0.2, 1);
+  backface-visibility: hidden;
 }
 
 #dyn-mosaic-theme[data-theme="filmstrip"] {
@@ -1141,7 +1149,7 @@ html.dyn-mosaic-on .logo-tile {
 
   function layoutFan(cards, frontIndex) {
     const n = cards.length;
-    const span = 56;
+    const span = 58;
     const front = frontIndex == null ? Math.floor(n / 2) : frontIndex;
     cards.forEach((card, i) => {
       const t = n === 1 ? 0.5 : i / (n - 1);
@@ -1149,9 +1157,51 @@ html.dyn-mosaic-on .logo-tile {
       const dist = Math.abs(t - 0.5);
       const isFront = i === front;
       card.style.zIndex = isFront ? "50" : String(Math.round(40 - dist * 60));
-      card.style.transform = `rotate(${rot}deg) translateY(${isFront ? -4 : Math.abs(t - 0.5) * 6}%)`;
+      card.style.transform =
+        "rotate(" + rot.toFixed(2) + "deg) translateY(" + (isFront ? -4 : dist * 6).toFixed(2) + "%)";
       card.dataset.rot = String(rot);
     });
+  }
+
+  function layoutFanStacked(cards) {
+    const n = cards.length;
+    cards.forEach((card, i) => {
+      const fromTop = n - 1 - i;
+      const rot = (i - (n - 1) / 2) * 0.55;
+      card.style.zIndex = String(10 + i);
+      card.style.transform =
+        "rotate(" + rot.toFixed(2) + "deg) translateY(" + (-fromTop * 0.35).toFixed(2) + "%)";
+      card.dataset.rot = String(rot);
+    });
+  }
+
+  function pickFanSet(pool, api, count, avoidList) {
+    const avoid = new Set((avoidList || []).filter(Boolean));
+    const out = [];
+    for (let i = 0; i < count; i += 1) {
+      let src = "";
+      for (let attempt = 0; attempt < 16; attempt += 1) {
+        const hint = out[out.length - 1] || [...avoid][0] || "";
+        src = feedSrc(api, pool, hint) || pickRandomUrl(pool, hint) || urlAt(pool, i + attempt);
+        if (src && !out.includes(src) && (!avoid.has(src) || attempt > 8)) break;
+      }
+      if (!src) src = urlAt(pool, i);
+      out.push(src);
+      avoid.add(src);
+    }
+    return out;
+  }
+
+  function clearFanTimers(state) {
+    (state.timers || []).forEach((id) => window.clearTimeout(id));
+    state.timers = [];
+  }
+
+  function fanLater(state, ms, fn) {
+    if (!state.timers) state.timers = [];
+    const id = window.setTimeout(fn, ms);
+    state.timers.push(id);
+    return id;
   }
 
   function sizeReelFrames(reel) {
@@ -1468,7 +1518,9 @@ html.dyn-mosaic-on .logo-tile {
     },
 
     fan: {
-      interval: TICK,
+      // Hold while fanned; the cycle itself is driven by timers so visible
+      // cards never dissolve — only the stacked flip swaps the set.
+      interval: 5800,
       mount(root, pool) {
         const fan = document.createElement("div");
         fan.className = "dyn-fan";
@@ -1482,18 +1534,56 @@ html.dyn-mosaic-on .logo-tile {
         root.appendChild(fan);
         const front = Math.floor(count / 2);
         layoutFan(cards, front);
-        return { fan, cards, urls, front };
+        return { fan, cards, urls, front, busy: false, timers: [] };
       },
       tick(root, pool, state, api) {
-        const n = state.cards.length;
-        if (!n) return;
-        state.front = (state.front + 1) % n;
-        layoutFan(state.cards, state.front);
-        const card = state.cards[state.front];
-        const next = feedSrc(api, pool, imgSrc(card));
-        if (!next) return;
-        state.urls[state.front] = next;
-        revealFromBottom(card, next);
+        if (!state || !state.cards || !state.cards.length || state.busy) return;
+        state.busy = true;
+        clearFanTimers(state);
+
+        // 1) Collapse the fan into a single pile (only the top face shows).
+        layoutFanStacked(state.cards);
+
+        fanLater(state, 920, () => {
+          if (!state.fan || !state.fan.isConnected) {
+            state.busy = false;
+            return;
+          }
+          // 2) Flip the pile edge-on, swap every face while hidden, then land.
+          state.fan.classList.add("is-midflip");
+          fanLater(state, 280, () => {
+            if (!state.fan || !state.fan.isConnected) {
+              state.busy = false;
+              return;
+            }
+            const nextUrls = pickFanSet(pool, api, state.cards.length, state.urls);
+            nextUrls.forEach((src, i) => {
+              const card = state.cards[i];
+              if (!card || !src) return;
+              setImg(card, src);
+              state.urls[i] = src;
+            });
+            state.front = Math.floor(state.cards.length / 2);
+            // Keep stacked while finishing the flip so nothing peeks mid-swap.
+            layoutFanStacked(state.cards);
+            state.fan.classList.remove("is-midflip");
+            fanLater(state, 560, () => {
+              if (!state.fan || !state.fan.isConnected) {
+                state.busy = false;
+                return;
+              }
+              // 3) Fan the new set back open.
+              layoutFan(state.cards, state.front);
+              fanLater(state, 920, () => {
+                state.busy = false;
+              });
+            });
+          });
+        });
+      },
+      unmount(_root, state) {
+        clearFanTimers(state);
+        if (state) state.busy = false;
       },
     },
 
