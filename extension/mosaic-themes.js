@@ -35,13 +35,38 @@
     return card;
   }
 
+  function makeFanCard(src) {
+    const card = document.createElement("div");
+    card.className = "dyn-card dyn-fan-card";
+    const inner = document.createElement("div");
+    inner.className = "dyn-fan-inner";
+    const front = document.createElement("div");
+    front.className = "dyn-fan-face dyn-fan-front";
+    const back = document.createElement("div");
+    back.className = "dyn-fan-face dyn-fan-back";
+    const imgF = document.createElement("img");
+    const imgB = document.createElement("img");
+    imgB.className = "dyn-fan-back-img";
+    imgB.alt = "";
+    armCardImage(card, imgF, src);
+    if (src) imgB.src = src;
+    front.appendChild(imgF);
+    back.appendChild(imgB);
+    inner.appendChild(front);
+    inner.appendChild(back);
+    card.appendChild(inner);
+    return card;
+  }
+
   function urlAt(pool, index) {
     if (!pool.length) return "";
     return pool[((index % pool.length) + pool.length) % pool.length];
   }
 
   function setImg(card, src) {
-    const img = card && card.querySelector("img:not(.dyn-reveal)");
+    const img =
+      (card && card.querySelector(".dyn-fan-front img")) ||
+      (card && card.querySelector("img:not(.dyn-reveal)"));
     if (!img || !src) return;
     if ((img.currentSrc || img.src) === src) {
       markCardReady(card, img);
@@ -91,7 +116,9 @@
   }
 
   function imgSrc(card) {
-    const img = card && card.querySelector("img:not(.dyn-reveal)");
+    const img =
+      (card && card.querySelector(".dyn-fan-front img")) ||
+      (card && card.querySelector("img:not(.dyn-reveal)"));
     return img ? img.currentSrc || img.src : "";
   }
 
@@ -414,39 +441,64 @@ html.dyn-mosaic-on .logo-tile {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding: 8% 6% 16%;
+  padding: 5% 1% 12%;
   perspective: 1600px;
-  perspective-origin: 50% 58%;
+  perspective-origin: 50% 50%;
 }
 #dyn-mosaic-theme[data-theme="fan"] .dyn-fan,
 #dyn-mosaic-theme[data-theme="fan-brand"] .dyn-fan {
   position: relative;
-  width: min(52vw, 640px);
-  height: min(62vh, 680px);
+  width: min(92vw, 1180px);
+  height: min(70vh, 760px);
   transform-style: preserve-3d;
-  transition: transform 0.62s cubic-bezier(0.55, 0.08, 0.35, 1);
-}
-#dyn-mosaic-theme[data-theme="fan"] .dyn-fan.is-flipping,
-#dyn-mosaic-theme[data-theme="fan-brand"] .dyn-fan.is-flipping {
-  animation: dyn-fan-flip 0.96s cubic-bezier(0.55, 0.08, 0.35, 1) both;
-}
-@keyframes dyn-fan-flip {
-  0% { transform: rotateY(0deg); }
-  46% { transform: rotateY(90deg); }
-  50% { transform: rotateY(-90deg); }
-  100% { transform: rotateY(0deg); }
 }
 #dyn-mosaic-theme[data-theme="fan"] .dyn-card,
 #dyn-mosaic-theme[data-theme="fan-brand"] .dyn-card {
   position: absolute;
   left: 50%;
   bottom: 0;
-  width: min(24vw, 340px);
+  width: min(16.5vw, 250px);
   aspect-ratio: 2 / 3;
-  margin-left: calc(min(24vw, 340px) / -2);
-  transform-origin: 50% 100%;
+  margin-left: calc(min(16.5vw, 250px) / -2);
+  transform-origin: 50% 72%;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+  perspective: 1400px;
+  transform-style: preserve-3d;
   transition: transform 0.9s cubic-bezier(0.22, 0.8, 0.2, 1), opacity 0.4s ease;
+}
+#dyn-mosaic-theme[data-theme="fan"] .dyn-fan-inner,
+#dyn-mosaic-theme[data-theme="fan-brand"] .dyn-fan-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  transition: transform 0.88s cubic-bezier(0.45, 0.05, 0.2, 1);
+}
+#dyn-mosaic-theme[data-theme="fan"] .dyn-fan-inner.is-flipped,
+#dyn-mosaic-theme[data-theme="fan-brand"] .dyn-fan-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+#dyn-mosaic-theme[data-theme="fan"] .dyn-fan-inner.is-snap,
+#dyn-mosaic-theme[data-theme="fan-brand"] .dyn-fan-inner.is-snap {
+  transition: none !important;
+}
+#dyn-mosaic-theme[data-theme="fan"] .dyn-fan-face,
+#dyn-mosaic-theme[data-theme="fan-brand"] .dyn-fan-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #111;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.12);
   backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translateZ(1px);
+}
+#dyn-mosaic-theme[data-theme="fan"] .dyn-fan-back,
+#dyn-mosaic-theme[data-theme="fan-brand"] .dyn-fan-back {
+  transform: rotateY(180deg) translateZ(1px);
 }
 #dyn-mosaic-theme[data-theme="fan"] .dyn-card.is-tucked,
 #dyn-mosaic-theme[data-theme="fan-brand"] .dyn-card.is-tucked {
@@ -984,13 +1036,13 @@ html.dyn-mosaic-on .logo-tile {
 }
 #dyn-mosaic-theme.dyn-portrait[data-theme="fan"] .dyn-fan,
 #dyn-mosaic-theme.dyn-portrait[data-theme="fan-brand"] .dyn-fan {
-  width: min(86cqw, 640px);
-  height: min(58cqh, 880px);
+  width: min(96cqw, 720px);
+  height: min(62cqh, 900px);
 }
 #dyn-mosaic-theme.dyn-portrait[data-theme="fan"] .dyn-card,
 #dyn-mosaic-theme.dyn-portrait[data-theme="fan-brand"] .dyn-card {
-  width: min(46cqw, 340px);
-  margin-left: calc(min(46cqw, 340px) / -2);
+  width: min(30cqw, 230px);
+  margin-left: calc(min(30cqw, 230px) / -2);
 }
 /* Fan*: content stays in the open rail — landscape right chrome, portrait bottom chrome. */
 #dyn-mosaic-theme[data-theme="fan-brand"] {
@@ -1014,12 +1066,12 @@ html.dyn-mosaic-on .logo-tile {
   justify-content: center;
 }
 #dyn-mosaic-theme[data-theme="fan-brand"] .dyn-brand-frame.is-reserved .dyn-fan {
-  width: min(72cqw, 540px);
-  height: min(70cqh, 620px);
+  width: min(84cqw, 780px);
+  height: min(72cqh, 680px);
 }
 #dyn-mosaic-theme[data-theme="fan-brand"] .dyn-brand-frame.is-reserved .dyn-card {
-  width: min(30cqw, 290px);
-  margin-left: calc(min(30cqw, 290px) / -2);
+  width: min(18cqw, 210px);
+  margin-left: calc(min(18cqw, 210px) / -2);
 }
 #dyn-mosaic-theme.dyn-portrait[data-theme="fan-brand"] .dyn-brand-frame.is-reserved {
   right: 0;
@@ -1029,12 +1081,12 @@ html.dyn-mosaic-on .logo-tile {
   justify-content: center;
 }
 #dyn-mosaic-theme.dyn-portrait[data-theme="fan-brand"] .dyn-brand-frame.is-reserved .dyn-fan {
-  width: min(90cqw, 560px);
-  height: min(64cqh, 700px);
+  width: min(96cqw, 640px);
+  height: min(66cqh, 760px);
 }
 #dyn-mosaic-theme.dyn-portrait[data-theme="fan-brand"] .dyn-brand-frame.is-reserved .dyn-card {
-  width: min(40cqw, 280px);
-  margin-left: calc(min(40cqw, 280px) / -2);
+  width: min(26cqw, 200px);
+  margin-left: calc(min(26cqw, 200px) / -2);
 }
 #dyn-mosaic-theme.dyn-portrait[data-theme="filmstrip"] {
   padding: 0 0 12%;
@@ -1217,18 +1269,25 @@ html.dyn-mosaic-on .logo-tile {
   function layoutFan(cards, frontIndex, opts) {
     const n = cards.length;
     const reserved = !!(opts && opts.reserved);
-    // Narrower arc when a logo/QR rail is open so outer cards stay clear.
-    const span = reserved ? 44 : 58;
+    const span = reserved ? 48 : 58;
+    const xSpread = reserved ? 260 : 400;
     const front = frontIndex == null ? Math.floor(n / 2) : frontIndex;
     cards.forEach((card, i) => {
       const t = n === 1 ? 0.5 : i / (n - 1);
       const rot = (t - 0.5) * span;
+      const x = (t - 0.5) * xSpread;
       const dist = Math.abs(t - 0.5);
       const isFront = i === front;
       card.classList.remove("is-tucked");
       card.style.zIndex = isFront ? "50" : String(Math.round(40 - dist * 60));
       card.style.transform =
-        "rotate(" + rot.toFixed(2) + "deg) translateY(" + (isFront ? -4 : dist * 6).toFixed(2) + "%)";
+        "translateX(" +
+        x.toFixed(2) +
+        "%) rotate(" +
+        rot.toFixed(2) +
+        "deg) translateY(" +
+        (isFront ? -3 : dist * 4).toFixed(2) +
+        "%)";
       card.dataset.rot = String(rot);
     });
   }
@@ -1266,23 +1325,61 @@ html.dyn-mosaic-on .logo-tile {
     });
   }
 
-  function flipFanPile(state, onHidden, onDone) {
-    const fan = state.fan;
-    if (!fan) {
+  function fanHeroInner(state) {
+    const hero = state && state.cards ? state.cards[state.front] : null;
+    return hero ? hero.querySelector(".dyn-fan-inner") : null;
+  }
+
+  function setFanBack(card, src) {
+    const img = card && card.querySelector(".dyn-fan-back-img");
+    if (!img || !src) return Promise.resolve();
+    return new Promise((resolve) => {
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      img.addEventListener("load", done, { once: true });
+      img.addEventListener("error", done, { once: true });
+      if ((img.currentSrc || img.src) === src && img.complete && img.naturalWidth) {
+        done();
+        return;
+      }
+      img.src = src;
+      window.setTimeout(done, 900);
+    });
+  }
+
+  function snapFanInner(inner) {
+    if (!inner) return;
+    inner.classList.add("is-snap");
+    inner.classList.remove("is-flipped");
+    void inner.offsetWidth;
+    inner.classList.remove("is-snap");
+  }
+
+  function flipFanPile(state, nextUrls, onDone) {
+    const hero = state.cards[state.front];
+    const inner = fanHeroInner(state);
+    const finish = () => {
       if (typeof onDone === "function") onDone();
+    };
+    if (!hero || !inner) {
+      applyFanSet(state, nextUrls);
+      finish();
       return;
     }
-    fan.classList.remove("is-flipping");
-    void fan.offsetWidth;
-    fan.classList.add("is-flipping");
-    fanLater(state, 460, () => {
+    const nextHero = (nextUrls && nextUrls[state.front]) || "";
+    setFanBack(hero, nextHero).then(() => {
       if (!fanAlive(state)) return;
-      if (typeof onHidden === "function") onHidden();
-    });
-    fanLater(state, 980, () => {
-      if (fan.isConnected) fan.classList.remove("is-flipping");
-      if (!fanAlive(state)) return;
-      if (typeof onDone === "function") onDone();
+      inner.classList.add("is-flipped");
+      fanLater(state, 900, () => {
+        if (!fanAlive(state)) return;
+        applyFanSet(state, nextUrls);
+        snapFanInner(inner);
+        finish();
+      });
     });
   }
 
@@ -1290,6 +1387,7 @@ html.dyn-mosaic-on .logo-tile {
     if (!fanAlive(state) || state.running) return;
     state.running = true;
     const reserved = fanChromeReserved(state.mountRoot);
+    (state.cards || []).forEach((card) => snapFanInner(card.querySelector(".dyn-fan-inner")));
     layoutFan(state.cards, state.front, { reserved });
     fanLater(state, 920 + 2400, () => {
       if (!fanAlive(state)) {
@@ -1304,17 +1402,13 @@ html.dyn-mosaic-on .logo-tile {
           state.running = false;
           return;
         }
-        flipFanPile(
-          state,
-          () => applyFanSet(state, nextUrls),
-          () => {
-            fanLater(state, 720, () => {
-              state.running = false;
-              if (!fanAlive(state)) return;
-              runFanCycle(state);
-            });
-          }
-        );
+        flipFanPile(state, nextUrls, () => {
+          fanLater(state, 720, () => {
+            state.running = false;
+            if (!fanAlive(state)) return;
+            runFanCycle(state);
+          });
+        });
       });
     });
   }
@@ -1671,7 +1765,7 @@ html.dyn-mosaic-on .logo-tile {
         const count = 6;
         const urls = fill(pool, count);
         const cards = urls.map((src) => {
-          const card = makeCard(src);
+          const card = makeFanCard(src);
           fan.appendChild(card);
           return card;
         });
