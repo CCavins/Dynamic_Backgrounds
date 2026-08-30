@@ -40,6 +40,7 @@
   let rebuildRunning = false;
   let lastConfirmed = [];
   let drainTimer = 0;
+  let mosaicNeedsFreshMount = false;
 
   function imageSrc(img) {
     if (typeof rules.mosaicImageSrc === "function") return rules.mosaicImageSrc(img);
@@ -1007,20 +1008,42 @@
     mountedEmpty = pool.length === 0;
     if (typeof rules.ensureBrandChrome === "function") rules.ensureBrandChrome(root, "mosaic");
     mountedAt = performance.now();
+    mosaicNeedsFreshMount = false;
     watchFeedImgs(root);
     startTick(def.interval);
     return true;
   }
 
+  function overlayIsStale(root) {
+    if (mosaicNeedsFreshMount || pendingRebuild || !active || !mountedTheme) return true;
+    if (!root) return true;
+    return (
+      root.classList.contains("is-parked") || root.classList.contains("dyn-awaiting-show")
+    );
+  }
+
   function parkOverlay() {
     stopTick();
     const root = document.getElementById(OVERLAY_ID);
-    if (root) root.classList.add("is-leaving", "is-parked");
+    if (active && active.def && typeof active.def.unmount === "function" && root) {
+      try {
+        active.def.unmount(root, active.state);
+      } catch {
+        /* theme may already be gone */
+      }
+    }
+    if (root) {
+      while (root.firstChild) root.removeChild(root.firstChild);
+      root.classList.add("is-leaving", "is-parked", "dyn-awaiting-show");
+    }
+    active = null;
+    mountedTheme = "";
+    mosaicNeedsFreshMount = true;
     document.documentElement.classList.remove("dyn-mosaic-on");
   }
 
   function unparkOverlay(root) {
-    if (root) root.classList.remove("is-leaving", "is-parked");
+    if (root) root.classList.remove("is-leaving", "is-parked", "dyn-awaiting-show");
   }
 
   function destroyOverlay() {
@@ -1094,7 +1117,7 @@
       overlay &&
       active &&
       mountedTheme === theme &&
-      !overlay.classList.contains("is-parked") &&
+      !overlayIsStale(overlay) &&
       layoutReady(overlay)
     ) {
       if (applyMosaicSettingsLive(theme, settings)) return true;
@@ -1239,7 +1262,14 @@
           active &&
           mountedTheme === theme &&
           mosaicSettingsKey(theme, themeSettings) !== lastSettingsKey;
-        if (!overlay || !active || pendingRebuild || mountedTheme !== theme || (settingsChanged && !applyMosaicSettingsLive(theme, themeSettings))) {
+        if (
+          !overlay ||
+          !active ||
+          pendingRebuild ||
+          overlayIsStale(overlay) ||
+          mountedTheme !== theme ||
+          (settingsChanged && !applyMosaicSettingsLive(theme, themeSettings))
+        ) {
           await ensureMosaicMounted(theme, themeSettings);
         } else {
           unparkOverlay(overlay);
@@ -1279,6 +1309,8 @@
             Math.abs(mosaicScaleOf(lastThemeSettings) - mosaicScaleOf(themeSettings)) > 0.001;
           const needsMount =
             pendingRebuild ||
+            mosaicNeedsFreshMount ||
+            overlayIsStale(overlay) ||
             mountedTheme !== theme ||
             mountedAspect !== aspect ||
             (scaleChanged && mosaicSettingsKey(theme, themeSettings) !== lastSettingsKey) ||
@@ -1297,7 +1329,6 @@
           document.documentElement.classList.add("dyn-mosaic-on");
           const { added, removed } = syncFeed();
           const overlay = document.getElementById(OVERLAY_ID);
-          unparkOverlay(overlay);
           const wrapper = rules.findWrapper && rules.findWrapper();
           const host = document.getElementById(handoff.HOST_ID);
           const hostMisplaced = Boolean(wrapper && host && host.parentElement !== wrapper);
@@ -1316,10 +1347,12 @@
           const sizeChanged =
             performance.now() >= ignoreResizeUntil &&
             Boolean(mountedHostKey && host && hostSizeKey(host) !== mountedHostKey);
+          const stale = overlayIsStale(overlay);
           // Prefer feed updates over a second remount — prepare already mounted.
           if (
             overlay &&
             active &&
+            !stale &&
             mountedTheme === theme &&
             mountedAspect === aspect &&
             !hostMisplaced &&
@@ -1330,6 +1363,7 @@
             pendingRebuild = false;
           }
           const doRebuild =
+            stale ||
             !overlay ||
             !active ||
             mountedTheme !== theme ||
@@ -1341,6 +1375,7 @@
             Math.abs(mosaicScaleOf(lastThemeSettings) - mosaicScaleOf(themeSettings)) > 0.001;
           if (doRebuild) {
             const ok = await rebuildNow(theme);
+            unparkOverlay(document.getElementById(OVERLAY_ID));
             if (ok && !pendingRebuild) pendingRebuild = false;
             else {
               pendingRebuild = true;
@@ -1348,6 +1383,7 @@
             }
             return;
           }
+          unparkOverlay(overlay);
           const live = document.getElementById(OVERLAY_ID);
           if (live && typeof rules.ensureBrandChrome === "function") {
             rules.ensureBrandChrome(live, "mosaic");

@@ -84,11 +84,11 @@ Built-in mosaic looks (popup **Mosaic theme**):
 
 `*` in the name means the theme is optimized for QR/logo placement. The popup explains this under the mosaic dropdown.
 
-Mosaic photo updates: feed add/remove only refreshes the **pool**. On-screen cards change through each theme’s own transitions (for example Polaroid’s drop/toss/place), not by flashing every card when membership changes.
+Mosaic photo updates: feed add/remove only refreshes the **pool**. On-screen cards change through each theme’s own transitions (for example Polaroid’s drop/toss/place), not by flashing every card when membership changes. After a CTA (or other native beat), mosaic remounts so those enter animations play immediately instead of showing the parked wall.
 
 ### Message themes
 
-Message themes stay black until the first capture `show()` finishes, so a cold load does not flash QR/logo alone before the layout paints. Mosaic ↔ message handoffs crossfade under cover so stock Vixi layers and leftover cards do not sit on top of the other beat. Back-to-back messages stay themed; CTA, stream, live, video, and URL items stay native.
+Message themes stay black until the first capture `show()` finishes, so a cold load does not flash QR/logo alone before the layout paints. Mosaic ↔ message handoffs crossfade under cover so stock Vixi layers and leftover cards do not sit on top of the other beat. Back-to-back messages stay themed; CTA, stream, live, video, and URL items stay native. Mosaic remounts when it returns so enter animations (Polaroid drop/toss/place, and the rest) play instead of showing the parked wall.
 
 ### Custom themes
 

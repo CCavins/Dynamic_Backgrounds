@@ -361,6 +361,7 @@ unmount(root, state)
 - `pool` is the current live mosaic list for this tick. Photos that left the mosaic are omitted. An empty pool means show no photos. Do not snapshot `pool` from `mount` and reuse it forever — read the `pool` argument on each `tick`, or call `api.nextUrl()`
 - Treat feed add/remove as a **pool** update. Do not mass-swap every on-screen card when membership changes; use your theme’s enter/exit motion (or `api.nextUrl()`) so the wall stays stable between intentional transitions
 - The host may fade leftover `.dyn-card` photos that are leaving for host-managed layouts. Self-animated themes (Polaroid, flip wall, cubes, …) typically own replacement themselves. Cards stay hidden until their photo has decoded.
+- After a CTA / stream / live / video / URL beat, the host remounts mosaic (`mount` again) so enter motion plays immediately. Do not assume `state` from before the native item is still mounted.
 - `api` is `{ nextUrl(avoid), isRetiring(src), hasIncoming() }`
   - `nextUrl(avoid)` prefers unseen incoming photos, then the live pool, skipping photos that are cycling out. Avoid `avoid` (string or iterable of URLs)
   - `isRetiring(src)` is true while a photo is leaving the mosaic

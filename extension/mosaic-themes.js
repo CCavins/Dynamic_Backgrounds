@@ -285,9 +285,16 @@
 
   function polaroidGridFor(layoutW, layoutH, scale) {
     const s = clampThemeScale({ scale });
-    const cols = Math.max(1, Math.round(layoutW / (370 * s)));
+    const cardW = 370 * s;
+    const cols = Math.max(1, Math.round(layoutW / cardW));
     const pitchY = 355 * s;
     const cardH = polaroidCardHeight(s);
+    // Small even bleed on both sides. Stretching cells to the stage width
+    // made left/right a zero-sum; a natural pitch lets both edges kiss the frame.
+    const hangL = Math.round(cardW * 0.03);
+    const hangR = Math.round(cardW * 0.05);
+    const originX = -hangL;
+    const pitchX = cols > 1 ? (layoutW + hangL + hangR - cardW) / (cols - 1) : layoutW;
     const originY = Math.round(-cardH * 0.2);
     let rows = 1;
     for (let n = 2; n <= 12; n += 1) {
@@ -295,7 +302,7 @@
       if ((lastY + cardH - layoutH) / cardH > 0.33) break;
       rows = n;
     }
-    return { cols, rows, pitchY, originY, cardH };
+    return { cols, rows, pitchX, pitchY, originX, originY, cardH };
   }
 
   function applyPedestalSettings(root, settings) {
@@ -2199,17 +2206,22 @@ html.dyn-mosaic-on .logo-tile {
         const grid = polaroidGridFor(layoutW, layoutH, scale);
         const cols = grid.cols;
         const rows = grid.rows;
-        const cellW = layoutW / cols;
         const slotDefs = [];
         for (let r = 0; r < rows; r += 1) {
           for (let c = 0; c < cols; c += 1) {
+            const edge = c === 0 || c === cols - 1;
             slotDefs.push({
               id: slotDefs.length,
-              x: Math.round(c * cellW + cellW * 0.08 + (Math.random() - 0.5) * 44),
+              x: Math.round(
+                grid.originX + c * grid.pitchX + (Math.random() - 0.5) * (edge ? 20 : 44)
+              ),
               y: Math.round(
                 grid.originY + r * grid.pitchY + grid.pitchY * 0.05 + (Math.random() - 0.5) * 36
               ),
-              rot: +((3 + Math.random() * 5) * (Math.random() < 0.5 ? -1 : 1)).toFixed(1),
+              rot: +(
+                (edge ? 2 + Math.random() * 3 : 3 + Math.random() * 5) *
+                (Math.random() < 0.5 ? -1 : 1)
+              ).toFixed(1),
               col: c,
               row: r,
             });
@@ -2234,15 +2246,22 @@ html.dyn-mosaic-on .logo-tile {
         function jitter(slotDef) {
           let jx = (Math.random() - 0.5) * 140;
           let jy = (Math.random() - 0.5) * 140;
-          // Softly keep rightmost / bottommost cards from leaping into the chrome rail.
-          if (reserve && !portrait && slotDef.col >= cols - 1) jx = Math.min(jx, 28);
+          const edge = slotDef.col === 0 || slotDef.col >= cols - 1;
+          if (edge) jx *= 0.45;
+          // Keep edge cards from leaping further off-stage or opening a gutter.
+          if (slotDef.col === 0) jx = Math.max(jx, -8);
+          if (slotDef.col >= cols - 1) {
+            jx = Math.max(jx, -8);
+            jx = Math.min(jx, 12);
+          }
+          if (reserve && !portrait && slotDef.col >= cols - 1) jx = Math.min(jx, 8);
           if (slotDef.row >= rows - 1) jy = Math.min(jy, 16);
           if (reserve && portrait && slotDef.row >= rows - 1) jy = Math.min(jy, 8);
           return {
             id: slotDef.id,
             x: slotDef.x + jx,
             y: slotDef.y + jy,
-            rot: slotDef.rot + (Math.random() - 0.5) * 28,
+            rot: slotDef.rot + (Math.random() - 0.5) * (edge ? 10 : 28),
           };
         }
 
