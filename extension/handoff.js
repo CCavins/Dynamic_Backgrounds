@@ -8,7 +8,9 @@
     "html.dyn-cover-message .capture-content-layer," +
     "html.dyn-cover-message .message-layer," +
     "html.dyn-cover-message .message-content," +
-    "html.dyn-cover-message .v2-message{" +
+    "html.dyn-cover-message .v2-message," +
+    "html.dyn-cover-message .output-app > img.fullscreen-asset," +
+    "html.dyn-cover-message .output-app > video.fullscreen-asset{" +
       "visibility:hidden!important;opacity:0!important;" +
     "}" +
     "html.dyn-cover-mosaic .mosaic-layout," +
@@ -92,6 +94,10 @@
     "html.dyn-hold #dyn-message-theme:not(.is-parked){" +
       "visibility:visible!important;opacity:1!important;" +
     "}" +
+    "html.dyn-hold #dyn-message-theme.dyn-awaiting-show," +
+    "html.dyn-hold #dyn-mosaic-theme.dyn-awaiting-show{" +
+      "visibility:hidden!important;opacity:0!important;" +
+    "}" +
     /* Incoming mosaic must sit under the live message while the message exits,
        otherwise decks/polaroids paint on top of the fading message beat. */
     "html.dyn-handoff-to-mosaic #dyn-mosaic-theme{" +
@@ -151,11 +157,14 @@
 
   const actors = { message: null, mosaic: null };
   const kindListeners = [];
+  const NATIVE_HOLD_MS = 480;
   let mode = "";
   let chain = Promise.resolve();
   let lastSettings = null;
   let seenKind = "";
   let watchingKind = false;
+  let nativeHoldAt = 0;
+  let nativeHoldTimer = 0;
 
   function ensureCoverStyle() {
     let style = document.getElementById(COVER_STYLE_ID);
@@ -296,6 +305,25 @@
     }
   }
 
+  function clearNativeHold() {
+    nativeHoldAt = 0;
+    if (nativeHoldTimer) {
+      clearTimeout(nativeHoldTimer);
+      nativeHoldTimer = 0;
+    }
+  }
+
+  function armNativeHold() {
+    if (!nativeHoldAt) nativeHoldAt = performance.now();
+    if (!nativeHoldTimer) {
+      nativeHoldTimer = setTimeout(() => {
+        nativeHoldTimer = 0;
+        syncLiveKind();
+      }, NATIVE_HOLD_MS + 20);
+    }
+    return performance.now() - nativeHoldAt >= NATIVE_HOLD_MS;
+  }
+
   function liveKind() {
     let hint = "";
     try {
@@ -325,32 +353,107 @@
     const mosaicVisible = mosaicPage && layerLooksVisible(mosaicLayer);
     const nativePage =
       typeof rules.pageLooksLikeNative === "function" && rules.pageLooksLikeNative();
+    const hardNative =
+      typeof rules.pageLooksLikeHardNative === "function" && rules.pageLooksLikeHardNative();
+    const messageOwned =
+      mode === "message" ||
+      document.documentElement.classList.contains("dyn-message-on") ||
+      document.documentElement.classList.contains("dyn-kind-message");
+    const sibling =
+      typeof rules.findDirectNativeAsset === "function" ? rules.findDirectNativeAsset() : null;
+    const siblingSrc = sibling ? String(sibling.currentSrc || sibling.src || "") : "";
+    const capSrc = cap && cap.src ? String(cap.src) : "";
+    const siblingOther = Boolean(sibling && siblingSrc && (!capSrc || siblingSrc !== capSrc));
+    // A real CTA / stream wins immediately — leftover message chrome from the
+    // previous guest must not keep the theme parked over it.
+    if (hardNative) {
+      clearNativeHold();
+      return "native";
+    }
+    // Leftover capture + a different fullscreen sibling is either the next
+    // guest photo or a CTA. Hold the theme through a short swap, then yield.
+    if (siblingOther && messageOwned && !mosaicVisible) {
+      if (armNativeHold()) return "native";
+      return "message";
+    }
     // An actually-visible stock layer wins over a leftover covered sibling.
-    if (msgVisible && !mosaicVisible) return "message";
-    if (mosaicVisible && !msgVisible && !nativePage) return "mosaic";
-    if (msgPresent && !mosaicVisible) return "message";
+    if (msgVisible && !mosaicVisible) {
+      clearNativeHold();
+      return "message";
+    }
+    if (mosaicVisible && !msgVisible && !nativePage) {
+      clearNativeHold();
+      return "mosaic";
+    }
+    if (msgPresent && !mosaicVisible) {
+      clearNativeHold();
+      return "message";
+    }
     // Live CTA / stream / video still wins over a leftover mosaic shell.
-    if (nativePage && !msgPresent) return "native";
+    // A message-to-message swap can look native for a beat (Vixi puts the next
+    // photo on .fullscreen-asset). Keep the theme up unless it is a real CTA.
+    if (nativePage && !msgPresent) {
+      if (messageOwned && !hardNative) {
+        if (armNativeHold()) return "native";
+        return "message";
+      }
+      clearNativeHold();
+      return "native";
+    }
     if (msgPresent && mosaicPresent) {
+      clearNativeHold();
       if (hasMsg && mosaicN === 0) return "message";
       if (mosaicN > 0 && !hasMsg) return "mosaic";
       return hasMsg ? "message" : "mosaic";
     }
-    if (msgPresent) return "message";
-    if (mosaicPresent && !nativePage) return "mosaic";
+    if (msgPresent) {
+      clearNativeHold();
+      return "message";
+    }
+    if (mosaicPresent && !nativePage) {
+      clearNativeHold();
+      return "mosaic";
+    }
     if (hint === "mosaic" || hint === "message") {
-      if (nativePage) return "native";
+      if (nativePage) {
+        clearNativeHold();
+        return "native";
+      }
+      clearNativeHold();
       return hint;
     }
-    if (hasMsg && !mosaicPresent) return "message";
-    if (mosaicPresent) return "mosaic";
+    if (hasMsg && !mosaicPresent) {
+      clearNativeHold();
+      return "message";
+    }
+    if (mosaicPresent) {
+      clearNativeHold();
+      return "mosaic";
+    }
     const handingOff = document.documentElement.classList.contains("dyn-handoff");
     if (handingOff) return "";
-    if (hasMsg) return "message";
-    if (mosaicPage) return "mosaic";
+    if (hasMsg) {
+      clearNativeHold();
+      return "message";
+    }
+    if (mosaicPage) {
+      clearNativeHold();
+      return "mosaic";
+    }
     const app = document.querySelector(".output-app");
-    if (!hasMsg && !mosaicPage && app && app.childElementCount > 0) return "native";
-    return nativePage ? "native" : "";
+    if (!hasMsg && !mosaicPage && app && app.childElementCount > 0) {
+      if (messageOwned && !hardNative) {
+        if (armNativeHold()) return "native";
+        return "message";
+      }
+      clearNativeHold();
+      return "native";
+    }
+    if (nativePage) {
+      clearNativeHold();
+      return "native";
+    }
+    return "";
   }
 
   function themeOnFor(kind) {
@@ -371,7 +474,11 @@
     const id = kind === "message" ? "dyn-message-theme" : "dyn-mosaic-theme";
     const el = document.getElementById(id);
     if (el) {
-      el.classList.remove("is-parked", "is-leaving");
+      // After CTA the message overlay is awaiting a new capture. Do not
+      // unpark it here — that flashes the previous card under dyn-hold.
+      if (!el.classList.contains("dyn-awaiting-show")) {
+        el.classList.remove("is-parked", "is-leaving");
+      }
       html.classList.add(kind === "message" ? "dyn-message-on" : "dyn-mosaic-on");
     }
   }
@@ -395,14 +502,14 @@
       (prev === "native" || prev === "" || prev !== live)
     ) {
       holdFor(live);
-      kindListeners.forEach((fn) => {
-        try {
-          fn(live, prev);
-        } catch {
-          /* ignore */
-        }
-      });
     }
+    kindListeners.forEach((fn) => {
+      try {
+        fn(live, prev);
+      } catch {
+        /* ignore */
+      }
+    });
   }
 
   function startKindWatch() {

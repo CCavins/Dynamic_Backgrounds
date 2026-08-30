@@ -1061,6 +1061,90 @@
     }
   }
 
+  function isHardNativeEl(el) {
+    if (!el) return false;
+    if (el.closest && (isBrandNode(el) || el.closest(QR_SELECTORS))) return false;
+    if (el.closest && (el.closest(MOSAIC_CHROME_SCOPE) || el.closest(MESSAGE_CHROME_SCOPE))) {
+      return false;
+    }
+    // Our covers set visibility:hidden on the CTA. Size is enough — if we
+    // require computed visibility, a covered CTA never wins over the theme.
+    if (el.matches && el.matches("img[alt='CTA Image' i], [src*='/playlist/cta/']")) {
+      return directNativeAssetLooksLive(el);
+    }
+    if (el.matches && el.matches("video[id^='subscribe-'], video.fullscreen-asset")) {
+      return directNativeAssetLooksLive(el);
+    }
+    if (el.tagName === "IFRAME") return directNativeAssetLooksLive(el);
+    const src = String(el.currentSrc || el.src || "");
+    const alt = String(el.getAttribute("alt") || "");
+    if (/\/playlist\/cta\//i.test(src) || /cta/i.test(alt)) return directNativeAssetLooksLive(el);
+    const cls = typeof el.className === "string" ? el.className : el.getAttribute("class") || "";
+    if (/output-stream|output-live/i.test(cls)) {
+      const media = el.querySelector("video, img, canvas, iframe");
+      return Boolean(media && nativeMediaLooksLive(media, true));
+    }
+    return false;
+  }
+
+  function directNativeAssetLooksLive(el) {
+    if (!el || (el.closest && (isBrandNode(el) || el.closest(QR_SELECTORS)))) return false;
+    if (el.closest && (el.closest(MOSAIC_CHROME_SCOPE) || el.closest(MESSAGE_CHROME_SCOPE))) {
+      return false;
+    }
+    try {
+      if (el.hidden || el.getAttribute("aria-hidden") === "true") return false;
+      const st = getComputedStyle(el);
+      if (st.display === "none") return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 40 && r.height > 40;
+    } catch {
+      return false;
+    }
+  }
+
+  // CTA / stream / video sit as direct children of .output-app. Leftover
+  // message chrome from the previous guest must not hide that sibling.
+  function findDirectNativeAsset() {
+    try {
+      const app = document.querySelector(".output-app");
+      if (!app) return null;
+      for (const el of app.children) {
+        if (!el || el.id === "dyn-theme-host") continue;
+        if (
+          el.matches &&
+          el.matches(
+            "img.fullscreen-asset, video.fullscreen-asset, iframe, video, img[alt='CTA Image' i]"
+          )
+        ) {
+          if (directNativeAssetLooksLive(el)) return el;
+        }
+        const cls = typeof el.className === "string" ? el.className : el.getAttribute("class") || "";
+        if (/output-stream|output-live/i.test(cls)) {
+          const media = el.querySelector("video, img, canvas, iframe");
+          if (media && nativeMediaLooksLive(media, true)) return el;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    return null;
+  }
+
+  function pageLooksLikeHardNative() {
+    try {
+      const app = document.querySelector(".output-app");
+      if (!app) return false;
+      return [...app.querySelectorAll(
+        ".output-stream-wrapper, [class*='output-stream'], [class*='output-live']," +
+          "img.fullscreen-asset, video.fullscreen-asset, img[alt='CTA Image' i]," +
+          "[src*='/playlist/cta/'], :scope > iframe, video[id^='subscribe-']"
+      )].some(isHardNativeEl);
+    } catch {
+      return false;
+    }
+  }
+
   // Vixi scenes we do not theme: stream/live camera, CTA, video, URL, etc.
   // Only mosaic and message playlist items get an overlay.
   function pageLooksLikeNative() {
@@ -1077,14 +1161,14 @@
       const messageShell = app.querySelector(
         ".capture-content-layer, .message-layer, .v2-message"
       );
-      const nativeLive = [...app.querySelectorAll(nativeSel)].some((el) =>
-        nativeMediaLooksLive(el)
-      );
-      // Live CTA / stream / video still wins over a leftover mosaic/message shell.
-      // Hidden leftover native nodes must not block those themes after we turn
-      // them back on (covers hide the stock layers on purpose).
-      if (nativeLive) return true;
+      const nodes = [...app.querySelectorAll(nativeSel)];
+      const hardNative = nodes.some(isHardNativeEl);
+      const nativeLive = nodes.some((el) => nativeMediaLooksLive(el));
+      // A real CTA / stream wins. A fullscreen-asset during a message swap
+      // is the next capture, not native — parking the theme there flashes Vixi.
+      if (hardNative) return true;
       if (mosaicShell || messageShell) return false;
+      if (nativeLive) return true;
       const direct = app.querySelector(
         ":scope > img, :scope > video, :scope > iframe, :scope > canvas"
       );
@@ -1497,6 +1581,8 @@
     hasMosaic,
     pageLooksLikeMosaic,
     pageLooksLikeNative,
+    pageLooksLikeHardNative,
+    findDirectNativeAsset,
     pageLooksLikeMessage,
     hasMessage,
     mosaicContentCount,

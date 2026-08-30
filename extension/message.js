@@ -22,6 +22,8 @@
   let rebuildGen = 0;
   let ignoreResizeUntil = 0;
   let mountedHostKey = "";
+  let parkedFromNative = false;
+  let parkedAt = 0;
 
   function captureKey(capture) {
     if (!capture) return "";
@@ -176,14 +178,34 @@
     return true;
   }
 
-  function parkOverlay() {
+  function parkOverlay(reason) {
     const root = document.getElementById(OVERLAY_ID);
-    if (root) root.classList.add("is-parked");
+    if (root) {
+      root.classList.add("is-parked", "dyn-awaiting-show");
+      root.classList.remove("on", "off", "idle", "held");
+      if (reason === "native") {
+        const img = root.querySelector(".well img, img");
+        if (img) {
+          img.removeAttribute("src");
+          img.removeAttribute("srcset");
+        }
+      }
+    }
     document.documentElement.classList.remove("dyn-message-on");
+    if (reason === "native") {
+      parkedFromNative = true;
+      parkedAt = performance.now();
+    }
   }
 
   function unparkOverlay(root) {
     if (root) root.classList.remove("is-parked");
+  }
+
+  function leftoverAfterNative(key) {
+    if (!parkedFromNative || !lastKey || key !== lastKey) return false;
+    // Vixi often leaves the previous capture in the DOM for a beat after CTA.
+    return performance.now() - parkedAt < 1400;
   }
 
   function destroyOverlay() {
@@ -247,11 +269,16 @@
     });
   }
 
-  async function present(capture, themeSettings, shouldHide) {
+  async function present(capture, themeSettings, shouldHide, hideStage) {
     if (!active || !capture) return;
     const token = ++cycle;
     const root = document.getElementById(OVERLAY_ID);
     if (!root) return;
+    // After CTA / first mount, keep the overlay off until the new card is
+    // ready. Back-to-back messages must stay up — hiding the theme here is
+    // what flashes Vixi's stock capture between guests.
+    if (hideStage) root.classList.add("dyn-awaiting-show");
+    else root.classList.remove("dyn-awaiting-show");
     await decodeImage(capture.src);
     if (token !== cycle) return;
     const latest = rules.messageCapture();
@@ -260,14 +287,19 @@
       await active.def.hide(root, active.state, themeSettings);
     }
     if (token !== cycle) return;
+    // Swap the photo while still hidden so a CTA return cannot flash the
+    // previous card, then reveal for the entrance of the new capture.
+    const img = root.querySelector(".well img, img");
+    if (img && next.src) img.src = next.src;
+    root.classList.remove("dyn-awaiting-show");
+    unparkOverlay(root);
     try {
       if (typeof active.def.show === "function") {
         await active.def.show(root, next, active.state, themeSettings);
       }
     } finally {
-      // Reveal after show (or after a failed show) so we never leave QR/logo alone
-      // on a cold load, and never stick on a black stage forever.
       root.classList.remove("dyn-awaiting-show");
+      unparkOverlay(root);
     }
   }
 
@@ -340,15 +372,9 @@
       return;
     }
     if (kind === "native") {
-      const reallyNative = Boolean(
-        rules.pageLooksLikeNative && rules.pageLooksLikeNative()
-      );
-      if (reallyNative || !hasMsg) {
-        parkOverlay();
-        handoff.applyCovers(settings);
-        return;
-      }
-      kind = "message";
+      parkOverlay("native");
+      handoff.applyCovers(settings);
+      return;
     }
     // Do not steal a pure mosaic page with no message content.
     if (kind !== "message" && mosaicPage && !hasMsg) return;
@@ -393,17 +419,40 @@
         const capture = rules.messageCapture();
         if (!capture.src && !capture.message && !capture.name) return;
         const key = captureKey(capture);
-        if (key === lastKey) {
-          if (live) live.classList.remove("dyn-awaiting-show");
+        if (leftoverAfterNative(key)) {
+          scheduleApply();
           return;
         }
+        const fromNative = parkedFromNative;
+        const hideStage =
+          fromNative ||
+          !lastKey ||
+          Boolean(
+            live &&
+              (live.classList.contains("is-parked") ||
+                live.classList.contains("dyn-awaiting-show"))
+          );
+        if (key === lastKey) {
+          if (fromNative) {
+            scheduleApply();
+            return;
+          }
+          parkedFromNative = false;
+          if (live) {
+            live.classList.remove("dyn-awaiting-show");
+            unparkOverlay(live);
+          }
+          return;
+        }
+        const shouldHide = Boolean(lastKey) && !fromNative;
         lastKey = key;
-        await present(capture, themeSettings, false);
+        await present(capture, themeSettings, shouldHide, hideStage);
+        parkedFromNative = false;
+        unparkOverlay(document.getElementById(OVERLAY_ID));
       },
       async reveal() {
         document.documentElement.classList.add("dyn-message-on");
         const overlay = document.getElementById(OVERLAY_ID);
-        unparkOverlay(overlay);
         // prepare already mounted — only remount if that failed.
         if (!overlay || !active || mountedTheme !== theme) {
           pendingRebuild = true;
@@ -416,23 +465,44 @@
         const capture = rules.messageCapture();
         if (!capture.src && !capture.message && !capture.name) return;
         const key = captureKey(capture);
-        if (key === lastKey) {
-          if (live) live.classList.remove("dyn-awaiting-show");
+        if (leftoverAfterNative(key)) {
+          scheduleApply();
           return;
         }
-        const shouldHide = Boolean(lastKey);
+        const fromNative = parkedFromNative;
+        const hideStage =
+          fromNative ||
+          !lastKey ||
+          Boolean(
+            live &&
+              (live.classList.contains("is-parked") ||
+                live.classList.contains("dyn-awaiting-show"))
+          );
+        if (key === lastKey && !fromNative) {
+          parkedFromNative = false;
+          if (live) {
+            live.classList.remove("dyn-awaiting-show");
+            unparkOverlay(live);
+          }
+          return;
+        }
+        // After CTA the parked overlay still holds the previous card. Never
+        // unpark that and play hide() — just enter the new capture.
+        const shouldHide = Boolean(lastKey) && !fromNative;
         lastKey = key;
-        await present(capture, themeSettings, shouldHide);
+        await present(capture, themeSettings, shouldHide, hideStage);
+        parkedFromNative = false;
+        unparkOverlay(document.getElementById(OVERLAY_ID));
       },
     });
   }
 
-  function scheduleApply() {
+  function scheduleApply(delay) {
     if (applyTimer) clearTimeout(applyTimer);
     applyTimer = setTimeout(() => {
       applyTimer = 0;
       apply().catch(() => {});
-    }, 90);
+    }, delay == null ? 90 : delay);
   }
 
   const observer = new MutationObserver((records) => {
@@ -508,6 +578,10 @@
 
   if (typeof handoff.onLiveKind === "function") {
     handoff.onLiveKind((kind) => {
+      if (kind === "native" || kind === "mosaic") {
+        scheduleApply(0);
+        return;
+      }
       if (kind !== "message") return;
       if (!document.getElementById(OVERLAY_ID)) pendingRebuild = true;
       scheduleApply(0);
