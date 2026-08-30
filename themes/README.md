@@ -26,8 +26,8 @@ You are writing a Dynamic Backgrounds theme pack. Read themes/SPEC.md and clone 
 
 1. Reload the unpacked extension (or reinstall `extension.zip`).
 2. Open the extension popup.
-3. Under **Imported themes**, click **Import theme.json + engine.js**.
-4. Choose one JSON, or a JSON plus its `engine.js`.
+3. Under **Imported themes**, click **Import packs…**.
+4. Select one or many theme `.json` files, plus each pack’s `*-engine.js` if it has one. Matching is automatic by `engine` / filename.
 5. Select the imported theme in **Message theme** or **Mosaic theme**.
 6. Under **Stage**, pick a canvas ratio (or Custom width:height). Under **Mosaic theme** and **Message theme**, turn **Show background** / **Show QR code** / **Show logo** on only for that kind. Mosaic and message chrome stay separate.
 7. Open a Vixi output page.

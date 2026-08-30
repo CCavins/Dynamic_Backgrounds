@@ -62,7 +62,7 @@ The site header has a **Download Chrome extension** link (`extension.zip`). Chro
 3. Click **Load unpacked**
 4. Select the unzipped `extension` folder
 
-The popup has a master **On / Off** switch:
+The popup has a master **Replace Vixi themes** switch:
 
 - **Off** leaves every page alone.
 - **Specific output URLs** apply one iframe to one matching output URL. A match always wins.
@@ -80,7 +80,7 @@ Built-in mosaic looks (popup **Mosaic theme**):
 | --- | --- |
 | Card decks, Spotlight, Coverflow, Fan, Filmstrip, Scatter, Cascade, Orbit, Billboard, Reels | Standard layouts |
 | Polaroid wall, 3D flip wall, Live mosaic, Cube field, Depth Field, Pedestals | Standard layouts |
-| Card decks*, Polaroid wall*, 3D flip wall*, Live mosaic*, Cube field* | **Brand-aware** — when Show QR / Show logo are on, content reflows to leave room for chrome (no hard mid-screen crop). With both off, they use the full stage like the originals |
+| Card decks*, Fan*, Polaroid wall*, 3D flip wall*, Live mosaic*, Cube field* | **Brand-aware** — when Show QR / Show logo are on, content reflows to leave room for chrome (no hard mid-screen crop). With both off, they use the full stage like the originals |
 
 `*` in the name means the theme is optimized for QR/logo placement. The popup explains this under the mosaic dropdown.
 
@@ -88,7 +88,7 @@ Mosaic photo updates: feed add/remove only refreshes the **pool**. On-screen car
 
 ### Message themes
 
-Message themes stay black until the first capture `show()` finishes, so a cold load does not flash QR/logo alone before the layout paints. Mosaic ↔ message handoffs crossfade under cover so stock Vixi layers and leftover cards do not sit on top of the other beat.
+Message themes stay black until the first capture `show()` finishes, so a cold load does not flash QR/logo alone before the layout paints. Mosaic ↔ message handoffs crossfade under cover so stock Vixi layers and leftover cards do not sit on top of the other beat. Back-to-back messages stay themed; CTA, stream, live, video, and URL items stay native.
 
 ### Custom themes
 
