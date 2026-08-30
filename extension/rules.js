@@ -688,6 +688,12 @@
     });
   }
 
+  function restoreBackgroundLayers() {
+    backgroundLayers().forEach((el) => {
+      if (el && el.style) el.style.removeProperty("display");
+    });
+  }
+
   function silenceReplacedMedia() {
     eachBackgroundMedia((node) => {
       node.pause();
@@ -995,6 +1001,19 @@
     ) {
       wrapper.insertBefore(host, app);
     }
+    if (host.clientWidth < 8 || host.clientHeight < 8) {
+      try {
+        const st = wrapper && getComputedStyle(wrapper);
+        if (st && st.position === "static") wrapper.style.position = "relative";
+        if (host.clientWidth < 8) host.style.width = "100%";
+        if (host.clientHeight < 8) {
+          const h = (wrapper && wrapper.clientHeight) || window.innerHeight || 0;
+          if (h >= 8) host.style.minHeight = h + "px";
+        }
+      } catch {
+        /* ignore */
+      }
+    }
     return host;
   }
 
@@ -1007,11 +1026,28 @@
     return Boolean(document.querySelector(MOSAIC_CHROME_SCOPE + ", img.mosaic-image"));
   }
 
-  function nativeMediaLooksLive(el) {
+  function nativeMediaLooksLive(el, inner) {
     if (!el || (el.closest && (isBrandNode(el) || el.closest(QR_SELECTORS)))) return false;
     if (el.classList && el.classList.contains("mosaic-image")) return false;
     if (el.closest && (el.closest(MOSAIC_CHROME_SCOPE) || el.closest(MESSAGE_CHROME_SCOPE))) {
       return false;
+    }
+    if (el.matches && el.matches("img.fullscreen-asset, video.fullscreen-asset")) {
+      const src = String(el.currentSrc || el.src || "");
+      const alt = String(el.getAttribute("alt") || "");
+      const isCta = /\/playlist\/cta\//i.test(src) || /cta/i.test(alt);
+      const app = document.querySelector(".output-app");
+      const direct = Boolean(app && el.parentElement === app);
+      if (!isCta && !direct) return false;
+    }
+    // Empty leftover stream wrappers stay in the DOM on mosaic/message beats.
+    // Only the wrapper's actual media can make this a native CTA/live scene.
+    if (!inner && el.querySelector && !/^(IMG|VIDEO|CANVAS|IFRAME)$/i.test(el.tagName || "")) {
+      const cls = typeof el.className === "string" ? el.className : el.getAttribute("class") || "";
+      if (/output-stream|output-live/i.test(cls)) {
+        const media = el.querySelector("video, img, canvas, iframe");
+        return Boolean(media && nativeMediaLooksLive(media, true));
+      }
     }
     try {
       if (el.hidden || el.getAttribute("aria-hidden") === "true") return false;
@@ -1021,7 +1057,7 @@
       const r = el.getBoundingClientRect();
       return r.width > 40 && r.height > 40;
     } catch {
-      return true;
+      return false;
     }
   }
 
@@ -1035,13 +1071,19 @@
         ".output-stream-wrapper, [class*='output-stream'], [class*='output-live']," +
         "img.fullscreen-asset, video.fullscreen-asset, img[alt='CTA Image' i]," +
         "[src*='/playlist/cta/'], :scope > iframe, video[id^='subscribe-']";
-      if (app.querySelector(nativeSel)) return true;
       const mosaicShell = app.querySelector(
         ".mosaic-layout, .v2-mosaic-swap-tile, .v2-asset-tile"
       );
       const messageShell = app.querySelector(
         ".capture-content-layer, .message-layer, .v2-message"
       );
+      const nativeLive = [...app.querySelectorAll(nativeSel)].some((el) =>
+        nativeMediaLooksLive(el)
+      );
+      // Live CTA / stream / video still wins over a leftover mosaic/message shell.
+      // Hidden leftover native nodes must not block those themes after we turn
+      // them back on (covers hide the stock layers on purpose).
+      if (nativeLive) return true;
       if (mosaicShell || messageShell) return false;
       const direct = app.querySelector(
         ":scope > img, :scope > video, :scope > iframe, :scope > canvas"
@@ -1424,6 +1466,7 @@
     classifyChrome,
     tagChromeKinds,
     themeReplacesBackground,
+    restoreBackgroundLayers,
     silenceReplacedMedia,
     resumeBackgroundMedia,
     findBrandNodes,

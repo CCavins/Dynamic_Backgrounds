@@ -306,9 +306,6 @@
     // running this script. loadSettings falls back to the cached settings, so
     // theming continues instead of dropping back to the stock Vixi look.
     const settings = await rules.loadSettings();
-    if (handoff.liveKind() === "message") {
-      unparkOverlay(document.getElementById(OVERLAY_ID));
-    }
     handoff.applyCovers(settings);
     const theme = settings.enabled ? rules.normalizeMessageTheme(settings.messageTheme) : "off";
     const themeSettings = rules.resolveMessageThemeSettings(settings, theme);
@@ -318,14 +315,18 @@
     const def = themeApi.themes[theme];
 
     if (theme === "off" || !def) {
-      // If a message beat is live and mosaic theme is also off, still clear any
-      // leftover message chrome. Mosaic handles its own yield separately.
+      const needsTear =
+        Boolean(document.getElementById(OVERLAY_ID)) ||
+        Boolean(document.getElementById(STYLE_ID)) ||
+        handoff.currentMode() === "message" ||
+        document.documentElement.classList.contains("dyn-message-on");
       if (handoff.liveKind() === "mosaic") await releaseForMosaic();
-      else teardownHard();
+      else if (needsTear) teardownHard();
+      handoff.applyCovers(settings);
       return;
     }
 
-    const kind = handoff.liveKind();
+    let kind = handoff.liveKind();
     const mode = handoff.currentMode();
     const mosaicPage = rules.pageLooksLikeMosaic && rules.pageLooksLikeMosaic();
     const cap = rules.messageCapture();
@@ -334,14 +335,20 @@
       settings.enabled !== false && rules.normalizeMosaicTheme(settings.mosaicTheme) !== "off";
     // Yield cleanly when Vixi is on a mosaic beat.
     if (kind === "mosaic") {
-      document.documentElement.classList.add("dyn-cover-message", "dyn-cover-mosaic");
+      parkOverlay();
       if (!mosaicOn) await releaseForMosaic();
       return;
     }
     if (kind === "native") {
-      parkOverlay();
-      handoff.applyCovers(settings);
-      return;
+      const reallyNative = Boolean(
+        rules.pageLooksLikeNative && rules.pageLooksLikeNative()
+      );
+      if (reallyNative || !hasMsg) {
+        parkOverlay();
+        handoff.applyCovers(settings);
+        return;
+      }
+      kind = "message";
     }
     // Do not steal a pure mosaic page with no message content.
     if (kind !== "message" && mosaicPage && !hasMsg) return;
@@ -351,6 +358,14 @@
     ensureStyle();
     ensureFonts();
     lastThemeSettings = themeSettings;
+
+    if (!document.getElementById(OVERLAY_ID) || pendingRebuild || mountedTheme !== theme) {
+      pendingRebuild = false;
+      await rebuildNow(theme, themeSettings);
+      const live = document.getElementById(OVERLAY_ID);
+      unparkOverlay(live);
+      if (live && typeof handoff.endHold === "function") handoff.endHold();
+    }
 
     await handoff.activate("message", {
       async prepare() {
@@ -493,7 +508,9 @@
 
   if (typeof handoff.onLiveKind === "function") {
     handoff.onLiveKind((kind) => {
-      if (kind === "message") scheduleApply(0);
+      if (kind !== "message") return;
+      if (!document.getElementById(OVERLAY_ID)) pendingRebuild = true;
+      scheduleApply(0);
     });
   }
 

@@ -1039,11 +1039,41 @@
     });
   }
 
+  let applyingSince = 0;
+
+  async function ensureMosaicMounted(theme) {
+    if (!theme || theme === "off" || !themeApi.themes[theme]) return false;
+    const live = handoff.liveKind();
+    if (live === "message" || live === "native") return false;
+    const overlay = document.getElementById(OVERLAY_ID);
+    if (
+      overlay &&
+      active &&
+      mountedTheme === theme &&
+      !overlay.classList.contains("is-parked") &&
+      layoutReady(overlay)
+    ) {
+      return true;
+    }
+    const ok = await rebuildNow(theme);
+    const liveEl = document.getElementById(OVERLAY_ID);
+    unparkOverlay(liveEl);
+    if (liveEl) {
+      document.documentElement.classList.add("dyn-mosaic-on");
+      if (typeof handoff.endHold === "function") handoff.endHold();
+    }
+    return Boolean(ok && liveEl);
+  }
+
   function watchSettle() {
     if (settleTimer) return;
     let emptyPasses = 0;
     settleTimer = setInterval(() => {
-      if (handoff.liveKind() === "native") {
+      if (applying && applyingSince && Date.now() - applyingSince > 5000) {
+        applying = false;
+      }
+      const live = handoff.liveKind();
+      if (live === "native" || live === "message") {
         emptyPasses = 0;
         if (settleTimer) {
           clearInterval(settleTimer);
@@ -1052,6 +1082,14 @@
         return;
       }
       const overlay = document.getElementById(OVERLAY_ID);
+      if (live === "mosaic" && (!overlay || !active || !layoutReady(overlay))) {
+        emptyPasses = 0;
+        rules.loadSettings().then((settings) => {
+          const theme = settings.enabled ? rules.normalizeMosaicTheme(settings.mosaicTheme) : "off";
+          if (theme !== "off") ensureMosaicMounted(theme).catch(() => {});
+        });
+        return;
+      }
       const host = document.getElementById(handoff.HOST_ID);
       const sized = layoutReady(overlay || host);
       if (!active || !overlay || !sized) {
@@ -1076,6 +1114,7 @@
     }
     const gen = ++applyGen;
     applying = true;
+    applyingSince = Date.now();
     try {
       if (customApi && typeof customApi.whenReady === "function") {
         await Promise.race([
@@ -1087,9 +1126,6 @@
       // the chrome APIs; only a page refresh swaps in the new script.
       const settings = await rules.loadSettings();
       if (gen !== applyGen) return;
-      if (handoff.liveKind() === "mosaic") {
-        unparkOverlay(document.getElementById(OVERLAY_ID));
-      }
       if (pendingRebuild) suppressResizeRebuild(1600);
       handoff.applyCovers(settings);
       if (pendingRebuild) suppressResizeRebuild(1600);
@@ -1100,7 +1136,17 @@
       const def = themeApi.themes[theme];
 
       if (theme === "off" || !def) {
-        teardownHard();
+        if (settleTimer) {
+          clearInterval(settleTimer);
+          settleTimer = 0;
+        }
+        const needsTear =
+          Boolean(document.getElementById(OVERLAY_ID)) ||
+          Boolean(document.getElementById(STYLE_ID)) ||
+          handoff.currentMode() === "mosaic" ||
+          document.documentElement.classList.contains("dyn-mosaic-on");
+        if (needsTear) teardownHard();
+        handoff.applyCovers(settings);
         return;
       }
 
@@ -1111,25 +1157,44 @@
         settings.enabled !== false && rules.normalizeMessageTheme(settings.messageTheme) !== "off";
       // Stream / live / CTA / video / URL — anything that is not mosaic or
       // message. Drop our overlay and let Vixi show through.
+      // After covers hide the stock mosaic, leftover native nodes can look
+      // "live". If this is still a mosaic page, remount instead of parking.
       if (kind === "native") {
-        if (settleTimer) {
-          clearInterval(settleTimer);
-          settleTimer = 0;
+        const reallyNative = Boolean(
+          rules.pageLooksLikeNative && rules.pageLooksLikeNative()
+        );
+        if (reallyNative || !mosaicPage) {
+          if (settleTimer) {
+            clearInterval(settleTimer);
+            settleTimer = 0;
+          }
+          parkOverlay();
+          handoff.applyCovers(settings);
+          return;
         }
-        parkOverlay();
-        handoff.applyCovers(settings);
-        return;
+        kind = "mosaic";
       }
       // Never keep mosaic cards over a live message beat — even if we still owe
       // a remount or Vixi left .mosaic-layout in the DOM.
       if (kind === "message") {
         stopTick();
-        document.documentElement.classList.add("dyn-cover-message", "dyn-cover-mosaic");
+        parkOverlay();
+        if (settleTimer) {
+          clearInterval(settleTimer);
+          settleTimer = 0;
+        }
         if (!msgThemeOn) await releaseForMessage();
-        // Message theme owns the handoff (prepare mounts first, then fades us).
         return;
       }
       watchSettle();
+      if (kind === "mosaic" || (rules.pageLooksLikeMosaic && rules.pageLooksLikeMosaic())) {
+        const overlay = document.getElementById(OVERLAY_ID);
+        if (!overlay || !active || pendingRebuild || mountedTheme !== theme) {
+          await ensureMosaicMounted(theme);
+        } else {
+          unparkOverlay(overlay);
+        }
+      }
       const hasMsg =
         typeof rules.hasMessage === "function"
           ? rules.hasMessage()
@@ -1141,7 +1206,7 @@
         // Ambiguous "" with message content: never remount mosaic over it just
         // because a hidden .mosaic-layout shell is still in the DOM.
         if (hasMsg && kind === "") {
-          document.documentElement.classList.add("dyn-cover-message", "dyn-cover-mosaic");
+          parkOverlay();
           if (!msgThemeOn) await releaseForMessage();
           return;
         }
@@ -1246,7 +1311,7 @@
         },
       });
     } finally {
-      if (gen === applyGen) applying = false;
+      applying = false;
     }
   }
 
@@ -1262,6 +1327,7 @@
     const relevant = records.some((record) => {
       const target = record.target;
       if (!target) return true;
+      if (target === document.documentElement || target === document.body) return false;
       if (target.id === OVERLAY_ID || target.id === handoff.HOST_ID) return false;
       if (typeof target.closest === "function" && target.closest("#" + OVERLAY_ID + ", #" + handoff.HOST_ID)) {
         return false;
@@ -1333,7 +1399,10 @@
 
   if (typeof handoff.onLiveKind === "function") {
     handoff.onLiveKind((kind) => {
-      if (kind === "mosaic") scheduleApply(0);
+      if (kind !== "mosaic") return;
+      watchSettle();
+      pendingRebuild = true;
+      scheduleApply(0);
     });
   }
 

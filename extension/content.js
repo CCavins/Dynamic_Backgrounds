@@ -76,8 +76,7 @@
     }
     const src = rules.resolveIframeSrc(settings, location.href);
     if (!src) {
-      // Only pay for teardown when something was actually injected.
-      if (document.getElementById(IFRAME_ID)) removeEmbed();
+      removeEmbed();
       return;
     }
     injectEmbed(src);
