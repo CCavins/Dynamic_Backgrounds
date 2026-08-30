@@ -6,6 +6,7 @@
     mosaicTheme: "mosaicTheme",
     messageTheme: "messageTheme",
     messageThemeSettings: "messageThemeSettings",
+    mosaicThemeSettings: "mosaicThemeSettings",
     customThemes: "customThemes",
     customEngines: "customEngines",
     customEngineWarningSeen: "customEngineWarningSeen",
@@ -46,6 +47,7 @@
     mosaicTheme: "off",
     messageTheme: "off",
     messageThemeSettings: {},
+    mosaicThemeSettings: {},
     stageAspect: "auto",
     messageShowBackground: false,
     messageShowQr: false,
@@ -56,6 +58,8 @@
   };
 
   const MOTION_MODES = ["slow", "drift", "fizz"];
+  const MOSAIC_SCALE_MIN = 0.7;
+  const MOSAIC_SCALE_MAX = 1.5;
 
   const MESSAGE_THEME_META = {
     "led-scoreboard": {
@@ -121,16 +125,40 @@
     orbit: { label: "Orbit" },
     billboard: { label: "Billboard" },
     reels: { label: "Reels" },
-    polaroid: { label: "Polaroid wall" },
+    polaroid: {
+      label: "Polaroid wall",
+      labels: { scale: "Photo size", primary: "Frame" },
+      defaults: { scale: 1, primary: "#ffffff" },
+    },
     "polaroid-brand": { label: "Polaroid wall*", brandAware: true },
-    flipwall: { label: "3D flip wall" },
+    flipwall: {
+      label: "3D flip wall",
+      labels: { scale: "Photo size", primary: "Edge" },
+      defaults: { scale: 1, primary: "#5a5e66" },
+    },
     "flipwall-brand": { label: "3D flip wall*", brandAware: true },
-    livewall: { label: "Live mosaic" },
+    livewall: {
+      label: "Live mosaic",
+      labels: { scale: "Photo size" },
+      defaults: { scale: 1 },
+    },
     "livewall-brand": { label: "Live mosaic*", brandAware: true },
-    cubes: { label: "Cube field" },
+    cubes: {
+      label: "Cube field",
+      labels: { scale: "Cube size", primary: "Cube color" },
+      defaults: { scale: 1, primary: "#10131c" },
+    },
     "cubes-brand": { label: "Cube field*", brandAware: true },
-    depthfield: { label: "Depth Field" },
-    pedestals: { label: "Pedestals" },
+    depthfield: {
+      label: "Depth Field",
+      labels: { scale: "Cube size", primary: "Cube color" },
+      defaults: { scale: 1, primary: "#10131c" },
+    },
+    pedestals: {
+      label: "Pedestals",
+      labels: { primary: "Pedestal" },
+      defaults: { primary: "#54585f" },
+    },
   };
 
   const MOSAIC_THEMES = ["off", ...Object.keys(MOSAIC_THEME_META)];
@@ -223,26 +251,68 @@
     return value === "off" || Boolean(mosaicThemeMetaAll()[value]);
   }
 
+  function builtinMosaicEngineMeta(engine) {
+    if (!engine) return null;
+    if (MOSAIC_THEME_META[engine] && MOSAIC_THEME_META[engine].defaults) {
+      return MOSAIC_THEME_META[engine];
+    }
+    if (String(engine).endsWith("-brand")) {
+      const base = String(engine).slice(0, -6);
+      if (MOSAIC_THEME_META[base] && MOSAIC_THEME_META[base].defaults) return MOSAIC_THEME_META[base];
+    }
+    return null;
+  }
+
+  function themeHasMosaicControls(meta) {
+    const d = meta && meta.defaults;
+    if (!d) return false;
+    return d.scale != null || d.primary || d.secondary || d.background;
+  }
+
+  function mosaicSettingsBaseId(themeId) {
+    const id = String(themeId || "");
+    if (!id || id === "off") return "";
+    const all = mosaicThemeMetaAll();
+    const meta = all[id];
+    if (meta && themeHasMosaicControls(meta)) return id;
+    if (id.endsWith("-brand")) {
+      const base = id.slice(0, -6);
+      if (all[base] && themeHasMosaicControls(all[base])) return base;
+    }
+    if (meta && meta.engine) {
+      const engineMeta = builtinMosaicEngineMeta(meta.engine);
+      if (engineMeta && themeHasMosaicControls(engineMeta)) {
+        const engine = String(meta.engine);
+        return engine.endsWith("-brand") ? engine.slice(0, -6) : engine;
+      }
+    }
+    return id;
+  }
+
   function applyCustomThemeMeta(packs) {
     customMessageMeta = {};
     customMosaicMeta = {};
     (Array.isArray(packs) ? packs : []).forEach((pack) => {
       if (!pack || !pack.id) return;
       const engineMeta =
-        pack.kind === "message" && pack.engine ? MESSAGE_THEME_META[pack.engine] : null;
+        pack.kind === "message" && pack.engine
+          ? MESSAGE_THEME_META[pack.engine]
+          : pack.kind === "mosaic"
+            ? builtinMosaicEngineMeta(pack.engine)
+            : null;
       const meta = {
         label: pack.label || pack.id,
         custom: true,
         engine: pack.engine || "",
         labels: { ...((engineMeta && engineMeta.labels) || {}) },
-        defaults: {
-          ...((engineMeta && engineMeta.defaults) || {}),
-          revealMs:
-            Number(pack.revealMs) ||
-            (engineMeta && engineMeta.defaults && engineMeta.defaults.revealMs) ||
-            1000,
-        },
+        defaults: { ...((engineMeta && engineMeta.defaults) || {}) },
       };
+      if (pack.kind === "message") {
+        meta.defaults.revealMs =
+          Number(pack.revealMs) ||
+          (engineMeta && engineMeta.defaults && engineMeta.defaults.revealMs) ||
+          1000;
+      }
       const settings = pack.settings && typeof pack.settings === "object" ? pack.settings : {};
       ["primary", "secondary", "background"].forEach((key) => {
         const spec = settings[key];
@@ -250,14 +320,34 @@
         meta.labels[key] = spec.label || meta.labels[key] || key;
         if (spec.default) meta.defaults[key] = spec.default;
       });
-      if (settings.motion && settings.motion.default) {
+      if (pack.kind === "message" && settings.motion && settings.motion.default) {
         meta.labels.motion = settings.motion.label || meta.labels.motion || "Motion";
         meta.defaults.motion = settings.motion.default;
       }
-      if (!meta.defaults.primary) meta.defaults.primary = "#d52265";
-      if (!meta.defaults.secondary) meta.defaults.secondary = "#fec651";
-      if (pack.kind === "message") customMessageMeta[pack.id] = meta;
-      if (pack.kind === "mosaic") customMosaicMeta[pack.id] = { label: meta.label, custom: true };
+      if (settings.scale && settings.scale.default != null) {
+        meta.labels.scale = settings.scale.label || meta.labels.scale || "Photo size";
+        const n = Number(settings.scale.default);
+        meta.defaults.scale = isFinite(n) ? n : engineMeta && engineMeta.defaults && engineMeta.defaults.scale != null
+          ? engineMeta.defaults.scale
+          : 1;
+      }
+      if (pack.kind === "message") {
+        if (!meta.defaults.primary) meta.defaults.primary = "#d52265";
+        if (!meta.defaults.secondary) meta.defaults.secondary = "#fec651";
+        customMessageMeta[pack.id] = meta;
+      }
+      if (pack.kind === "mosaic") {
+        delete meta.defaults.motion;
+        delete meta.labels.motion;
+        delete meta.defaults.revealMs;
+        customMosaicMeta[pack.id] = {
+          label: meta.label,
+          custom: true,
+          engine: pack.engine || "",
+          labels: meta.labels,
+          defaults: themeHasMosaicControls(meta) ? meta.defaults : undefined,
+        };
+      }
     });
     lastGoodCustomThemes = Array.isArray(packs) ? packs.slice() : [];
     if (lastRawSettings) {
@@ -280,15 +370,34 @@
     return /^#[0-9a-fA-F]{6}$/.test(String(value || ""));
   }
 
+  function clampMosaicScale(value, fallback) {
+    const n = Number(value);
+    const base = isFinite(n) ? n : fallback == null ? 1 : Number(fallback);
+    const seed = isFinite(base) ? base : 1;
+    return Math.max(MOSAIC_SCALE_MIN, Math.min(MOSAIC_SCALE_MAX, seed));
+  }
+
+  function themeMetaForSettings(themeId) {
+    return messageThemeMetaAll()[themeId] || mosaicThemeMetaAll()[themeId] || null;
+  }
+
   function normalizeOneThemeSettings(themeId, raw) {
-    const meta = messageThemeMetaAll()[themeId];
-    if (!meta) return {};
+    const direct = themeMetaForSettings(themeId);
+    const baseId = mosaicSettingsBaseId(themeId);
+    const meta =
+      (direct && direct.defaults && direct) ||
+      (baseId && themeMetaForSettings(baseId)) ||
+      direct;
+    if (!meta || !meta.defaults) return {};
     const defaults = meta.defaults;
     const src = raw && typeof raw === "object" ? raw : {};
-    const next = {
-      primary: isHexColor(src.primary) ? src.primary.toLowerCase() : defaults.primary,
-      secondary: isHexColor(src.secondary) ? src.secondary.toLowerCase() : defaults.secondary,
-    };
+    const next = {};
+    if (defaults.primary) {
+      next.primary = isHexColor(src.primary) ? src.primary.toLowerCase() : defaults.primary;
+    }
+    if (defaults.secondary) {
+      next.secondary = isHexColor(src.secondary) ? src.secondary.toLowerCase() : defaults.secondary;
+    }
     if (defaults.background) {
       next.background = isHexColor(src.background)
         ? src.background.toLowerCase()
@@ -296,6 +405,9 @@
     }
     if (defaults.motion) {
       next.motion = MOTION_MODES.includes(src.motion) ? src.motion : defaults.motion;
+    }
+    if (defaults.scale != null) {
+      next.scale = clampMosaicScale(src.scale, defaults.scale);
     }
     return next;
   }
@@ -309,6 +421,20 @@
     return next;
   }
 
+  function normalizeMosaicThemeSettings(value) {
+    const src = value && typeof value === "object" ? value : {};
+    const next = {};
+    Object.keys(mosaicThemeMetaAll()).forEach((id) => {
+      const storeId = mosaicSettingsBaseId(id) || id;
+      if (!themeHasMosaicControls(mosaicThemeMetaAll()[storeId] || mosaicThemeMetaAll()[id])) {
+        return;
+      }
+      if (next[storeId]) return;
+      next[storeId] = normalizeOneThemeSettings(storeId, src[storeId] || src[id]);
+    });
+    return next;
+  }
+
   function resolveMessageThemeSettings(settings, themeId) {
     const id = normalizeMessageTheme(themeId || (settings && settings.messageTheme));
     if (id === "off") return null;
@@ -318,6 +444,19 @@
       ...normalizeOneThemeSettings(id, stored),
       revealMs: meta && meta.defaults ? meta.defaults.revealMs : 1000,
     };
+  }
+
+  function resolveMosaicThemeSettings(settings, themeId) {
+    const id = normalizeMosaicTheme(themeId || (settings && settings.mosaicTheme));
+    if (id === "off") return { scale: 1 };
+    const storeId = mosaicSettingsBaseId(id) || id;
+    const stored =
+      settings &&
+      settings.mosaicThemeSettings &&
+      (settings.mosaicThemeSettings[id] || settings.mosaicThemeSettings[storeId]);
+    const normalized = normalizeOneThemeSettings(storeId, stored);
+    if (normalized.scale == null) normalized.scale = 1;
+    return normalized;
   }
 
   function formatAspectPart(n) {
@@ -937,6 +1076,7 @@
       mosaicTheme: normalizeMosaicTheme(next.mosaicTheme),
       messageTheme: normalizeMessageTheme(next.messageTheme),
       messageThemeSettings: normalizeMessageThemeSettings(next.messageThemeSettings),
+      mosaicThemeSettings: normalizeMosaicThemeSettings(next.mosaicThemeSettings),
       stageAspect: normalizeStageAspect(next.stageAspect),
       messageShowBackground: readChromeFlag(next, "messageShowBackground", "showBackground"),
       messageShowQr: readChromeFlag(next, "messageShowQr", "showQr"),
@@ -1529,6 +1669,8 @@
     MESSAGE_THEMES,
     MESSAGE_THEME_META,
     MOTION_MODES,
+    MOSAIC_SCALE_MIN,
+    MOSAIC_SCALE_MAX,
     STAGE_ASPECTS,
     STAGE_ASPECT_PRESETS,
     parseStageAspect,
@@ -1573,7 +1715,12 @@
     normalizeMessageTheme,
     normalizeOneThemeSettings,
     normalizeMessageThemeSettings,
+    normalizeMosaicThemeSettings,
     resolveMessageThemeSettings,
+    resolveMosaicThemeSettings,
+    mosaicSettingsBaseId,
+    clampMosaicScale,
+    themeHasMosaicControls,
     normalizeSettings,
     resolveIframeSrc,
     findWrapper,

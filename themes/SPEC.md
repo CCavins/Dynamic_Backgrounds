@@ -52,10 +52,12 @@ Clone these examples:
 
 | Goal | JSON | Engine |
 | --- | --- | --- |
-| JSON-only message | `message-stamp.json` | none |
-| JSON-only mosaic | `mosaic-ribbon.json` | none |
+| JSON-only message (colors + motion) | `message-stamp.json` | none |
+| JSON-only mosaic (size + frame color) | `mosaic-framed.json` | none |
+| JSON-only mosaic (layout only) | `mosaic-ribbon.json` | none |
 | Message + JS engine | `message-aurora.json` | `message-aurora-engine.js` (same file as `../extension/engines/message-aurora-engine.js`) |
 | Mosaic + JS engine | `mosaic-orbit-swap.json` | `mosaic-orbit-swap-engine.js` (same file as `../extension/engines/mosaic-orbit-swap-engine.js`) |
+| Message with all four settings | `tmpl-liquid-glass.json` | none (or wrap `"engine": "liquid-glass"`) |
 
 Full HTML/CSS ports of built-ins (no JS): `tmpl-*.json`.
 
@@ -99,7 +101,7 @@ Every field the parser keeps. Extra fields are ignored. Do not invent settings k
 | `css` | no | string | Max 100 KB. Scoped selectors required |
 | `html` | message unless `engine` | string | Max 50 KB. Message themes need `html` or `engine` |
 | `fonts` | no | string | Must start with `https://fonts.googleapis.com/`. Anything else is dropped |
-| `settings` | no | object | Keys only: `primary`, `secondary`, `background`, `motion` |
+| `settings` | no | object | Keys only: `primary`, `secondary`, `background`, `motion`, `scale` |
 | `revealMs` | no | number | Message enter. Clamped 200–4000. Default 1000 |
 | `hideMs` | no | number | Message leave. Clamped 120–2000. Default 320 |
 | `fit` | no | array | Message text fit rules. See below |
@@ -111,12 +113,74 @@ Every field the parser keeps. Extra fields are ignored. Do not invent settings k
 
 ### settings
 
-Each present key is `{ "label": "…", "default": "…" }`.
+Each present key is `{ "label": "…", "default": "…" }`. `label` max 40 characters. Do not invent keys beyond this list.
 
-- `primary`, `secondary`, `background`: `default` must be `#rrggbb`. Invalid colors fall back to `#d52265` / `#fec651`.
-- `motion`: string (built-in liquid-glass uses `slow`, `drift`, `fizz`). Not a color.
-- `label` max 40 characters.
-- These become CSS variables `--primary`, `--secondary`, `--background` and `data-motion` on the theme root.
+| Key | Kind | `default` | Popup control | Runtime |
+| --- | --- | --- | --- | --- |
+| `primary` | both | `#rrggbb` | color | `--primary` |
+| `secondary` | both | `#rrggbb` | color | `--secondary` |
+| `background` | both | `#rrggbb` | color | `--background` |
+| `motion` | message only | `slow` / `drift` / `fizz` | select | `data-motion` on the theme root |
+| `scale` | mosaic | number `0.7`–`1.5` | slider 70%–150% | `--scale` (`1` = the default look) |
+
+Invalid colors fall back to `#d52265` / `#fec651`. Mosaic packs that set `motion` are ignored. Wrapping a built-in (`"engine": "polaroid"`) inherits that engine’s sliders; pack `settings` override labels and defaults only.
+
+#### Message settings
+
+The runtime writes `--primary`, `--secondary`, `--background`, `--reveal-ms`, and `data-motion` on `#dyn-message-theme`. `BGMessageThemes.applyVars(themeRoot, settings)` does this. JSON-only packs get it from `applySettings` after mount and whenever the popup colors change. Engines should call `applyVars` from `applySettings` (and may also read `settings` in `show`).
+
+Color change does not remount — only `applySettings` runs. Motion modes that rebuild a canvas (Liquid Glass) may remount from the preview dock; on output, `applySettings` is enough if the engine honors `data-motion` live.
+
+JSON-only example — Ink / Paper / Background / Motion, clone `message-stamp.json`:
+
+```json
+"settings": {
+  "primary": { "label": "Ink", "default": "#d52265" },
+  "secondary": { "label": "Paper", "default": "#f4ead8" },
+  "background": { "label": "Background", "default": "#1b1b1b" },
+  "motion": { "label": "Motion", "default": "drift" }
+}
+```
+
+```css
+#dyn-message-theme[data-theme="message-stamp"] {
+  background: var(--background, #1b1b1b);
+  --ink: var(--primary);
+  --paper: var(--secondary);
+}
+#dyn-message-theme[data-theme="message-stamp"][data-motion="slow"].on .stamp {
+  animation-duration: 1.2s;
+}
+#dyn-message-theme[data-theme="message-stamp"][data-motion="fizz"].on .stamp {
+  animation-name: stamp-fizz;
+}
+```
+
+Engine `settings` object: `{ primary, secondary, background?, motion?, revealMs }`. See `message-aurora.json` + engine, and `tmpl-liquid-glass.json` for all four keys.
+
+#### Mosaic settings
+
+`scale` is `1` at the built-in default size. The runtime sets `--scale` on `#dyn-mosaic-theme`. JSON-only host layouts (`grid`, `row`, `scatter`, `ribbon`) multiply card width by `--scale`. Bigger photos take more space. Grid keeps `cols`×`rows` and grows cards inside cells.
+
+Colors are the same hex keys as messages. Use `label` for the popup name (Frame, Edge, Ribbon).
+
+JSON-only example — clone `mosaic-framed.json`:
+
+```json
+"settings": {
+  "scale": { "label": "Photo size", "default": 1 },
+  "primary": { "label": "Frame", "default": "#ffffff" }
+}
+```
+
+```css
+#dyn-mosaic-theme[data-theme="mosaic-framed"] .dyn-card {
+  background: var(--primary, #fff);
+  width: calc(18% * var(--scale, 1));
+}
+```
+
+Engine signatures: `mount(root, pool, api, settings)` and optional `applySettings(root, state, settings)`. Scale changes remount (Polaroid grid, flip wall cols/rows, live mosaic camera, cube count). Color can update live in `applySettings` (Polaroid frame, flip-wall edge, cube color, pedestal metal). Wrapping `"engine": "polaroid"` shows Polaroid’s photo-size slider plus any `primary` you declare as Frame. Wrapping `"engine": "pedestals"` shows Pedestal color.
 
 ### fit
 
@@ -178,7 +242,7 @@ Root classes the runtime toggles:
 
 Add portrait overrides under `#dyn-message-theme.dyn-portrait[data-theme="your-id"]` (or the mosaic equivalent). Photo-above-copy and banner-above-photo both work; pick the one that fits the theme.
 
-Variables set from settings: `--primary`, `--secondary`, `--background`, `--reveal-ms`.
+Variables set from settings: `--primary`, `--secondary`, `--background`, `--reveal-ms`, `--scale`. Message themes also get `data-motion`.
 
 ## Message HTML hooks
 
@@ -285,12 +349,15 @@ unmount(themeRoot, state)
 
 ```
 interval: number
-mount(root, pool, api) → state
+mount(root, pool, api, settings) → state
 tick(root, pool, state, api)
+applySettings(root, state, settings)
 unmount(root, state)
 ```
 
 - `root` is `#dyn-mosaic-theme`
+- `settings` is `{ scale?, primary?, secondary?, background? }`. `scale` is `0.7`–`1.5`, default `1`
+- `applySettings` is optional. Use it for live color (and CSS `--scale` on JSON-only layouts). Scale that changes card count should remount
 - `pool` is the current live mosaic list for this tick. Photos that left the mosaic are omitted. An empty pool means show no photos. Do not snapshot `pool` from `mount` and reuse it forever — read the `pool` argument on each `tick`, or call `api.nextUrl()`
 - Treat feed add/remove as a **pool** update. Do not mass-swap every on-screen card when membership changes; use your theme’s enter/exit motion (or `api.nextUrl()`) so the wall stays stable between intentional transitions
 - The host may fade leftover `.dyn-card` photos that are leaving for host-managed layouts. Self-animated themes (Polaroid, flip wall, cubes, …) typically own replacement themselves. Cards stay hidden until their photo has decoded.
@@ -331,9 +398,10 @@ Message:
 
 Mosaic:
 
-1. `mount` once with the current photo pool
-2. `tick` on `interval`
-3. `unmount` when the theme is turned off or replaced
+1. `mount` once with the current photo pool and settings
+2. `applySettings` when colors change (scale typically remounts)
+3. `tick` on `interval`
+4. `unmount` when the theme is turned off or replaced
 
 Stay inside the theme root. Do not inject `<script>` into the page. Do not fetch engine code.
 
@@ -359,7 +427,7 @@ Must not:
 - Use ESM in the engine
 - Fetch remote engines
 - Reuse reserved ids for a new design
-- Invent settings keys
+- Invent settings keys other than `primary` / `secondary` / `background` / `motion` / `scale`
 - Assume only landscape — handle `dyn-portrait`
 
 ## Copy-paste prompt
@@ -377,7 +445,7 @@ Then describe the look, kind (message or mosaic), and whether it needs canvas/We
 - Reserved ids (`polaroid`, `decks`, `orbit`, …)
 - Unscoped CSS (rules that leak onto the host page)
 - px-only layout that does not scale with `.dyn-fit-stage`
-- Settings keys other than `primary` / `secondary` / `background` / `motion`
+- Settings keys other than `primary` / `secondary` / `background` / `motion` / `scale`
 - Colors that are not `#rrggbb`
 - `<script>` or `onclick=` in JSON
 - ESM `import`/`export` in the engine

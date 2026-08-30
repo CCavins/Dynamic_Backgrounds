@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dynamic Backgrounds",
-  "version": "1.16.24",
+  "version": "1.17.2",
   "description": "Apply a Dynamic Backgrounds iframe, mosaic themes, and message themes to matching output URLs.",
   "action": {
     "default_popup": "popup.html",
@@ -36,6 +36,9 @@
         "rules.js",
         "handoff.js",
         "content.js",
+        "vendor/three.min.js",
+        "vendor/RoundedBoxGeometry.js",
+        "vendor/tile-field.js",
         "mosaic-themes.js",
         "message-themes.js",
         "engines/api.js",

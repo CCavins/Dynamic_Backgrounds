@@ -1,0 +1,15 @@
+{
+  "format": "dynamic-backgrounds-theme",
+  "version": 1,
+  "kind": "mosaic",
+  "id": "mosaic-framed",
+  "label": "Framed photos",
+  "layout": "scatter",
+  "count": 10,
+  "interval": 2600,
+  "settings": {
+    "scale": { "label": "Photo size", "default": 1 },
+    "primary": { "label": "Frame", "default": "#ffffff" }
+  },
+  "css": "#dyn-mosaic-theme[data-theme=\"mosaic-framed\"]{overflow:hidden;background:radial-gradient(ellipse 70% 55% at 50% 42%,rgba(18,48,62,.4),transparent 62%),#000}#dyn-mosaic-theme[data-theme=\"mosaic-framed\"] .dyn-card{background:var(--primary,#fff);border-radius:3px;padding:10px 10px 28px;box-shadow:0 6px 20px rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.35),inset 0 0 0 1px rgba(0,0,0,.06);overflow:visible;width:calc(18% * var(--scale,1))}#dyn-mosaic-theme[data-theme=\"mosaic-framed\"] .dyn-card img{display:block;width:100%;height:100%;object-fit:cover;border-radius:1px;background:#222}#dyn-mosaic-theme[data-theme=\"mosaic-framed\"] .dyn-card::after{content:\"\";position:absolute;left:10px;right:10px;bottom:8px;height:14px;background:linear-gradient(#f4f1ea,#e7e1d6)}#dyn-mosaic-theme.dyn-portrait[data-theme=\"mosaic-framed\"] .dyn-card{width:calc(32% * var(--scale,1))}"
+}

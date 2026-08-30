@@ -12,8 +12,9 @@ To have a model build a pack:
 
 1. Attach [SPEC.md](SPEC.md) (the contract).
 2. Attach the closest example:
-   - JSON-only message: `message-stamp.json`
-   - JSON-only mosaic: `mosaic-ribbon.json`
+   - JSON-only message (colors + motion): `message-stamp.json`
+   - JSON-only mosaic with size + frame: `mosaic-framed.json`
+   - JSON-only mosaic layout: `mosaic-ribbon.json`
    - Message with JS: `message-aurora.json` + `message-aurora-engine.js`
    - Mosaic with JS: `mosaic-orbit-swap.json` + `mosaic-orbit-swap-engine.js`
 3. Paste this prompt, then describe the look:
@@ -36,7 +37,8 @@ A pack that includes JS runs on matching output pages. Only import engines you w
 
 Examples to try:
 
-- `message-stamp.json` — postage-stamp message card (JSON only)
+- `message-stamp.json` — postage-stamp message card (JSON only; Ink, Paper, Background, Motion)
+- `mosaic-framed.json` — framed photo scatter (JSON only; Photo size + Frame color)
 - `mosaic-ribbon.json` — diagonal photo ribbon (JSON only)
 - `message-aurora.json` + `message-aurora-engine.js` — message card with a canvas aurora (same JS as `extension/engines/message-aurora-engine.js`)
 - `mosaic-orbit-swap.json` + `mosaic-orbit-swap-engine.js` — orbiting mosaic with photo swaps (same JS as `extension/engines/mosaic-orbit-swap-engine.js`)
@@ -72,6 +74,8 @@ Self-animated themes (Polaroid, flip wall, cubes, …) often own card replacemen
 ## Built-in-style examples
 
 The `tmpl-*.json` files are complete importable themes: HTML, CSS, fonts, text-fit, and color settings. They use new ids (`tmpl-led-scoreboard`, …) so you can import them beside the originals.
+
+After import, pick the theme in the popup. Message packs can show color and motion controls; mosaic packs can show size and chrome color when they declare `settings.scale` / `settings.primary` (see SPEC.md). Some built-in mosaics (Polaroid wall, Live mosaic, 3D flip wall, Cube field, Depth Field, Pedestals) have the same size/color controls without importing.
 
 JSON cannot run the built-in canvas / WebGL / dealing scripts. For that exact runtime, add `"engine": "led-scoreboard"` (or `neon-nightclub`, `liquid-glass`, `parallax-drift`, `decks`, `polaroid`, `livewall`, …). Brand-aware wrap ids (`decks-brand`, `polaroid-brand`, …) are also reserved. For a **new** design with the same class of power, write a JS engine (see SPEC.md).
 

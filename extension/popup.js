@@ -18,6 +18,7 @@
   const messageShowQr = document.getElementById("message-show-qr");
   const messageShowLogo = document.getElementById("message-show-logo");
   const messageThemeSettings = document.getElementById("message-theme-settings");
+  const mosaicThemeSettings = document.getElementById("mosaic-theme-settings");
   const anyOutput = document.getElementById("any-output");
   const rulesRoot = document.getElementById("rules");
   const addRule = document.getElementById("add-rule");
@@ -30,6 +31,7 @@
   let persistTimer = 0;
   let cachedSettings = null;
   let lastMessageTheme = "off";
+  let lastMosaicTheme = "off";
 
   function isChristmasPack(id, label) {
     return /xmas|christmas/i.test(String(id || "") + " " + String(label || ""));
@@ -375,24 +377,80 @@
     return row;
   }
 
+  function scaleRow(label, value) {
+    const pct = Math.round((Number(value) || 1) * 100);
+    const row = document.createElement("label");
+    row.className = "setting-row scale";
+    row.innerHTML =
+      `<span>${label}</span>` +
+      `<input type="range" class="theme-scale" min="70" max="150" step="1" value="${pct}">` +
+      `<span class="theme-scale-value">${pct}%</span>`;
+    return row;
+  }
+
+  function mosaicStoreId(id) {
+    if (!id || id === "off") return "";
+    return rulesApi.mosaicSettingsBaseId ? rulesApi.mosaicSettingsBaseId(id) : id;
+  }
+
+  function mosaicMetaFor(id) {
+    const allMeta = rulesApi.mosaicThemeMetaAll
+      ? rulesApi.mosaicThemeMetaAll()
+      : rulesApi.MOSAIC_THEME_META || {};
+    const storeId = mosaicStoreId(id) || id;
+    return allMeta[id] && allMeta[id].defaults ? allMeta[id] : allMeta[storeId] || allMeta[id];
+  }
+
   function themeSettingsFor(id) {
     const stored = cachedSettings && cachedSettings.messageThemeSettings;
     return rulesApi.normalizeOneThemeSettings(id, stored && stored[id]);
+  }
+
+  function mosaicSettingsFor(id) {
+    const storeId = mosaicStoreId(id) || id;
+    const stored = cachedSettings && cachedSettings.mosaicThemeSettings;
+    return rulesApi.normalizeOneThemeSettings(storeId, stored && (stored[id] || stored[storeId]));
+  }
+
+  function bindColorInputs(root, onInput) {
+    root.querySelectorAll(".theme-color").forEach((colorInput) => {
+      const key = colorInput.dataset.key;
+      const hexInput = root.querySelector(`.theme-hex[data-key="${key}"]`);
+      colorInput.addEventListener("input", () => {
+        if (hexInput) hexInput.value = colorInput.value;
+        onInput();
+      });
+    });
+    root.querySelectorAll(".theme-hex").forEach((hexInput) => {
+      const key = hexInput.dataset.key;
+      const colorInput = root.querySelector(`.theme-color[data-key="${key}"]`);
+      hexInput.addEventListener("input", () => {
+        const v = hexInput.value.trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(v) && colorInput) {
+          colorInput.value = v.toLowerCase();
+        }
+        onInput();
+      });
+    });
   }
 
   function renderThemeSettings(id) {
     messageThemeSettings.replaceChildren();
     const allMeta = rulesApi.messageThemeMetaAll ? rulesApi.messageThemeMetaAll() : rulesApi.MESSAGE_THEME_META || {};
     const meta = allMeta[id];
-    if (!meta) {
+    if (!meta || !meta.defaults) {
       messageThemeSettings.hidden = true;
       return;
     }
 
     const values = themeSettingsFor(id);
     const labels = meta.labels || {};
-    messageThemeSettings.appendChild(colorRow("primary", labels.primary || "Primary", values.primary));
-    messageThemeSettings.appendChild(colorRow("secondary", labels.secondary || "Secondary", values.secondary));
+    if (meta.defaults.primary) {
+      messageThemeSettings.appendChild(colorRow("primary", labels.primary || "Primary", values.primary));
+    }
+    if (meta.defaults.secondary) {
+      messageThemeSettings.appendChild(colorRow("secondary", labels.secondary || "Secondary", values.secondary));
+    }
     if (meta.defaults.background) {
       messageThemeSettings.appendChild(
         colorRow("background", labels.background || "Background", values.background)
@@ -415,31 +473,69 @@
     });
     messageThemeSettings.appendChild(reset);
 
-    messageThemeSettings.querySelectorAll(".theme-color").forEach((colorInput) => {
-      const key = colorInput.dataset.key;
-      const hexInput = messageThemeSettings.querySelector(`.theme-hex[data-key="${key}"]`);
-      colorInput.addEventListener("input", () => {
-        if (hexInput) hexInput.value = colorInput.value;
-        schedulePersist();
-      });
-    });
-    messageThemeSettings.querySelectorAll(".theme-hex").forEach((hexInput) => {
-      const key = hexInput.dataset.key;
-      const colorInput = messageThemeSettings.querySelector(`.theme-color[data-key="${key}"]`);
-      hexInput.addEventListener("input", () => {
-        const v = hexInput.value.trim();
-        if (/^#[0-9a-fA-F]{6}$/.test(v) && colorInput) {
-          colorInput.value = v.toLowerCase();
-        }
-        schedulePersist();
-      });
-    });
+    bindColorInputs(messageThemeSettings, schedulePersist);
     messageThemeSettings.querySelectorAll(".theme-motion").forEach((input) => {
       input.addEventListener("change", persist);
       enhanceSelect(input);
     });
 
     messageThemeSettings.hidden = false;
+  }
+
+  function renderMosaicThemeSettings(id) {
+    if (!mosaicThemeSettings) return;
+    mosaicThemeSettings.replaceChildren();
+    if (!id || id === "off") {
+      mosaicThemeSettings.hidden = true;
+      return;
+    }
+    const meta = mosaicMetaFor(id);
+    const storeId = mosaicStoreId(id) || id;
+    if (!meta || !meta.defaults || (rulesApi.themeHasMosaicControls && !rulesApi.themeHasMosaicControls(meta))) {
+      mosaicThemeSettings.hidden = true;
+      return;
+    }
+
+    const values = mosaicSettingsFor(id);
+    const labels = meta.labels || {};
+    if (meta.defaults.scale != null) {
+      mosaicThemeSettings.appendChild(scaleRow(labels.scale || "Photo size", values.scale));
+    }
+    if (meta.defaults.primary) {
+      mosaicThemeSettings.appendChild(colorRow("primary", labels.primary || "Primary", values.primary));
+    }
+    if (meta.defaults.secondary) {
+      mosaicThemeSettings.appendChild(colorRow("secondary", labels.secondary || "Secondary", values.secondary));
+    }
+    if (meta.defaults.background) {
+      mosaicThemeSettings.appendChild(
+        colorRow("background", labels.background || "Background", values.background)
+      );
+    }
+
+    const reset = document.createElement("button");
+    reset.type = "button";
+    reset.className = "reset-theme v2-btn v2-btn-secondary";
+    reset.textContent = "Reset theme";
+    reset.addEventListener("click", () => {
+      if (!cachedSettings) cachedSettings = {};
+      cachedSettings.mosaicThemeSettings = { ...(cachedSettings.mosaicThemeSettings || {}) };
+      cachedSettings.mosaicThemeSettings[storeId] = rulesApi.normalizeOneThemeSettings(storeId, {});
+      renderMosaicThemeSettings(id);
+      persist();
+    });
+    mosaicThemeSettings.appendChild(reset);
+
+    bindColorInputs(mosaicThemeSettings, schedulePersist);
+    mosaicThemeSettings.querySelectorAll(".theme-scale").forEach((input) => {
+      const valueEl = mosaicThemeSettings.querySelector(".theme-scale-value");
+      input.addEventListener("input", () => {
+        if (valueEl) valueEl.textContent = input.value + "%";
+        schedulePersist();
+      });
+    });
+
+    mosaicThemeSettings.hidden = false;
   }
 
   function readThemeForm(id) {
@@ -456,11 +552,36 @@
     return rulesApi.normalizeOneThemeSettings(id, raw);
   }
 
+  function readMosaicForm(id) {
+    if (!id || id === "off" || !mosaicThemeSettings) return {};
+    const storeId = mosaicStoreId(id) || id;
+    const get = (sel) => mosaicThemeSettings.querySelector(sel);
+    const raw = {};
+    const primary = get('.theme-hex[data-key="primary"]');
+    const secondary = get('.theme-hex[data-key="secondary"]');
+    const bg = get('.theme-hex[data-key="background"]');
+    const scale = get(".theme-scale");
+    if (primary) raw.primary = primary.value;
+    if (secondary) raw.secondary = secondary.value;
+    if (bg) raw.background = bg.value;
+    if (scale) raw.scale = Number(scale.value) / 100;
+    return rulesApi.normalizeOneThemeSettings(storeId, raw);
+  }
+
   function stashCurrentThemeForm() {
     if (!cachedSettings) cachedSettings = {};
     cachedSettings.messageThemeSettings = { ...(cachedSettings.messageThemeSettings || {}) };
     if (lastMessageTheme !== "off") {
       cachedSettings.messageThemeSettings[lastMessageTheme] = readThemeForm(lastMessageTheme);
+    }
+  }
+
+  function stashCurrentMosaicForm() {
+    if (!cachedSettings) cachedSettings = {};
+    cachedSettings.mosaicThemeSettings = { ...(cachedSettings.mosaicThemeSettings || {}) };
+    if (lastMosaicTheme !== "off") {
+      const storeId = mosaicStoreId(lastMosaicTheme) || lastMosaicTheme;
+      cachedSettings.mosaicThemeSettings[storeId] = readMosaicForm(lastMosaicTheme);
     }
   }
 
@@ -485,8 +606,14 @@
       iframeHtml: node.querySelector(".iframe-html").value.trim(),
     }));
     const theme = messageTheme.value;
+    const mosaicId = mosaicTheme.value;
     const themeSettings = { ...((cachedSettings && cachedSettings.messageThemeSettings) || {}) };
     if (theme !== "off") themeSettings[theme] = readThemeForm(theme);
+    const mosaicSettings = { ...((cachedSettings && cachedSettings.mosaicThemeSettings) || {}) };
+    if (mosaicId !== "off") {
+      const storeId = mosaicStoreId(mosaicId) || mosaicId;
+      mosaicSettings[storeId] = readMosaicForm(mosaicId);
+    }
     return {
       enabled: enabledInput.checked,
       stageAspect: readStageAspect(),
@@ -496,9 +623,10 @@
       messageShowBackground: Boolean(messageShowBackground && messageShowBackground.checked),
       messageShowQr: Boolean(messageShowQr && messageShowQr.checked),
       messageShowLogo: Boolean(messageShowLogo && messageShowLogo.checked),
-      mosaicTheme: mosaicTheme.value,
+      mosaicTheme: mosaicId,
       messageTheme: theme,
       messageThemeSettings: themeSettings,
+      mosaicThemeSettings: mosaicSettings,
       anyOutputIframeHtml: anyOutput.value,
       rules: rows,
     };
@@ -522,7 +650,12 @@
     setEnabledLabel();
     persist();
   });
-  mosaicTheme.addEventListener("change", persist);
+  mosaicTheme.addEventListener("change", () => {
+    stashCurrentMosaicForm();
+    lastMosaicTheme = mosaicTheme.value;
+    renderMosaicThemeSettings(mosaicTheme.value);
+    persist();
+  });
   function readStageAspect() {
     if (!stageAspect || stageAspect.value === "auto") return "auto";
     if (stageAspect.value !== "custom") return stageAspect.value;
@@ -757,6 +890,8 @@
             renderThemeSettings(last.id);
           } else {
             mosaicTheme.value = last.id;
+            lastMosaicTheme = last.id;
+            renderMosaicThemeSettings(last.id);
           }
         }
         syncSelectUI(mosaicTheme);
@@ -814,9 +949,11 @@
     if (messageShowQr) messageShowQr.checked = Boolean(settings.messageShowQr);
     if (messageShowLogo) messageShowLogo.checked = Boolean(settings.messageShowLogo);
     lastMessageTheme = settings.messageTheme;
+    lastMosaicTheme = settings.mosaicTheme;
     syncSelectUI(mosaicTheme);
     syncSelectUI(messageTheme);
     renderThemeSettings(settings.messageTheme);
+    renderMosaicThemeSettings(settings.mosaicTheme);
     anyOutput.value = settings.anyOutputIframeHtml;
     rulesRoot.replaceChildren();
     if (settings.rules.length === 0) addRuleRow({});

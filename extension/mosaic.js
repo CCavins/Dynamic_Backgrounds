@@ -20,6 +20,8 @@
   let mountedTheme = "";
   let mountedAspect = "";
   let mountedEmpty = true;
+  let lastSettingsKey = "";
+  let lastThemeSettings = null;
   let active = null;
   const liveSet = new Set();
   const retiring = new Set();
@@ -380,6 +382,39 @@
         return incoming.some((src) => srcSetHas(liveSet, src));
       },
     };
+  }
+
+  function mosaicSettingsKey(theme, themeSettings) {
+    return theme + ":" + JSON.stringify(themeSettings || {});
+  }
+
+  function mosaicScaleOf(themeSettings) {
+    const n = Number(themeSettings && themeSettings.scale);
+    return isFinite(n) ? n : 1;
+  }
+
+  function resolveLiveMosaicSettings(settings, theme) {
+    if (typeof rules.resolveMosaicThemeSettings === "function") {
+      return rules.resolveMosaicThemeSettings(settings, theme) || { scale: 1 };
+    }
+    return { scale: 1 };
+  }
+
+  function applyMosaicSettingsLive(theme, themeSettings) {
+    const overlay = document.getElementById(OVERLAY_ID);
+    if (!overlay || !active || mountedTheme !== theme) return false;
+    const nextKey = mosaicSettingsKey(theme, themeSettings);
+    if (nextKey === lastSettingsKey) return true;
+    if (Math.abs(mosaicScaleOf(lastThemeSettings) - mosaicScaleOf(themeSettings)) > 0.001) {
+      return false;
+    }
+    if (typeof active.def.applySettings === "function") {
+      active.def.applySettings(overlay, active.state, themeSettings);
+    }
+    lastSettingsKey = nextKey;
+    lastThemeSettings = themeSettings;
+    active.settings = themeSettings;
+    return true;
   }
 
   const FEED_CSS =
@@ -842,6 +877,8 @@
     mountedTheme = "";
     mountedAspect = "";
     mountedEmpty = true;
+    lastSettingsKey = "";
+    lastThemeSettings = null;
     lastShown = "";
     retiring.clear();
     incoming.length = 0;
@@ -881,10 +918,11 @@
         const token = rebuildGen;
         pendingRebuild = false;
         let target = id;
+        let loadedSettings = null;
         try {
-          const settings = await rules.loadSettings();
-          if (settings && settings.enabled !== false) {
-            target = rules.normalizeMosaicTheme(settings.mosaicTheme) || id;
+          loadedSettings = await rules.loadSettings();
+          if (loadedSettings && loadedSettings.enabled !== false) {
+            target = rules.normalizeMosaicTheme(loadedSettings.mosaicTheme) || id;
           }
         } catch {
           /* use id */
@@ -919,7 +957,7 @@
           });
         }
         await decodeUrls(pool);
-        ok = mountTheme(target);
+        ok = mountTheme(target, resolveLiveMosaicSettings(loadedSettings, target));
         const host = rules.findOverlayHost && rules.findOverlayHost();
         if (ok) mountedHostKey = hostSizeKey(host);
         if (ok && token === rebuildGen && !pendingRebuild) {
@@ -940,7 +978,7 @@
     }
   }
 
-  function mountTheme(id) {
+  function mountTheme(id, themeSettings) {
     const def = themeApi.themes[id];
     if (!def) return false;
     const host = rules.findOverlayHost();
@@ -957,9 +995,14 @@
     if (/-brand$/.test(id) && typeof rules.ensureBrandChrome === "function") {
       rules.ensureBrandChrome(root, "mosaic");
     }
-    const state = def.mount(root, pool, makeApi()) || {};
-    active = { id, def, state };
+    const state = def.mount(root, pool, makeApi(), themeSettings) || {};
+    if (typeof def.applySettings === "function") {
+      def.applySettings(root, state, themeSettings);
+    }
+    active = { id, def, state, settings: themeSettings };
     mountedTheme = id;
+    lastSettingsKey = mosaicSettingsKey(id, themeSettings);
+    lastThemeSettings = themeSettings;
     mountedAspect = rules.currentStageAspect ? rules.currentStageAspect() : "auto";
     mountedEmpty = pool.length === 0;
     if (typeof rules.ensureBrandChrome === "function") rules.ensureBrandChrome(root, "mosaic");
@@ -1041,11 +1084,12 @@
 
   let applyingSince = 0;
 
-  async function ensureMosaicMounted(theme) {
+  async function ensureMosaicMounted(theme, themeSettings) {
     if (!theme || theme === "off" || !themeApi.themes[theme]) return false;
     const live = handoff.liveKind();
     if (live === "message" || live === "native") return false;
     const overlay = document.getElementById(OVERLAY_ID);
+    const settings = themeSettings || lastThemeSettings || { scale: 1 };
     if (
       overlay &&
       active &&
@@ -1053,7 +1097,7 @@
       !overlay.classList.contains("is-parked") &&
       layoutReady(overlay)
     ) {
-      return true;
+      if (applyMosaicSettingsLive(theme, settings)) return true;
     }
     const ok = await rebuildNow(theme);
     const liveEl = document.getElementById(OVERLAY_ID);
@@ -1134,6 +1178,7 @@
         ? rules.normalizeStageAspect(settings.stageAspect)
         : "auto";
       const def = themeApi.themes[theme];
+      const themeSettings = resolveLiveMosaicSettings(settings, theme);
 
       if (theme === "off" || !def) {
         if (settleTimer) {
@@ -1189,10 +1234,16 @@
       watchSettle();
       if (kind === "mosaic" || (rules.pageLooksLikeMosaic && rules.pageLooksLikeMosaic())) {
         const overlay = document.getElementById(OVERLAY_ID);
-        if (!overlay || !active || pendingRebuild || mountedTheme !== theme) {
-          await ensureMosaicMounted(theme);
+        const settingsChanged =
+          overlay &&
+          active &&
+          mountedTheme === theme &&
+          mosaicSettingsKey(theme, themeSettings) !== lastSettingsKey;
+        if (!overlay || !active || pendingRebuild || mountedTheme !== theme || (settingsChanged && !applyMosaicSettingsLive(theme, themeSettings))) {
+          await ensureMosaicMounted(theme, themeSettings);
         } else {
           unparkOverlay(overlay);
+          if (settingsChanged) applyMosaicSettingsLive(theme, themeSettings);
         }
       }
       const hasMsg =
@@ -1224,10 +1275,13 @@
           syncFeed();
           await decodeUrls(pool);
           const overlay = document.getElementById(OVERLAY_ID);
+          const scaleChanged =
+            Math.abs(mosaicScaleOf(lastThemeSettings) - mosaicScaleOf(themeSettings)) > 0.001;
           const needsMount =
             pendingRebuild ||
             mountedTheme !== theme ||
             mountedAspect !== aspect ||
+            (scaleChanged && mosaicSettingsKey(theme, themeSettings) !== lastSettingsKey) ||
             !overlay ||
             !active;
           if (needsMount) {
@@ -1283,7 +1337,8 @@
             hostMisplaced ||
             cubeBroken ||
             (mountedEmpty && pool.length > 0) ||
-            sizeChanged;
+            sizeChanged ||
+            Math.abs(mosaicScaleOf(lastThemeSettings) - mosaicScaleOf(themeSettings)) > 0.001;
           if (doRebuild) {
             const ok = await rebuildNow(theme);
             if (ok && !pendingRebuild) pendingRebuild = false;
@@ -1301,6 +1356,7 @@
             watchSettle();
             return;
           }
+          applyMosaicSettingsLive(theme, themeSettings);
           watchFeedImgs(live);
           const liveTheme = live.dataset ? live.dataset.theme : "";
           if (added.length || removed.length) runThemeTick(added);
@@ -1351,6 +1407,7 @@
       // Changing the message theme (or its colors) must not interrupt a live mosaic.
       const touchesMosaic = Boolean(
         changes.mosaicTheme ||
+          changes.mosaicThemeSettings ||
           changes.mosaicShowBackground ||
           changes.mosaicShowQr ||
           changes.mosaicShowLogo ||

@@ -6,6 +6,7 @@
         return { stopped: true };
       },
       tick() {},
+      applySettings() {},
       unmount() {},
     };
     return;
@@ -112,9 +113,17 @@
       );
   }
 
-  function createScene(host, pool, preset) {
+  function createScene(host, pool, preset, options) {
     const activePreset = preset === "depth" ? "depth" : "showcase";
-    const cubeColor = new THREE.Color(0x10131c);
+    const userScale = (() => {
+      const n = Number(options && options.scale);
+      if (!isFinite(n)) return 1;
+      return Math.max(0.7, Math.min(1.5, n));
+    })();
+    const tileCount = Math.max(24, Math.round(MAX_TILES / userScale));
+    const minGap = MIN_GAP * Math.max(0.85, userScale);
+    const colorHex = String((options && options.color) || "");
+    const cubeColor = new THREE.Color(/^#[0-9a-fA-F]{6}$/.test(colorHex) ? colorHex : 0x10131c);
     const images = [];
     let nextImageId = 1;
     let coverageTimer = 0;
@@ -139,7 +148,7 @@
     placeholder.width = 4;
     placeholder.height = 4;
     const pctx = placeholder.getContext("2d");
-    pctx.fillStyle = "#10131c";
+    pctx.fillStyle = "#" + cubeColor.getHexString();
     pctx.fillRect(0, 0, 4, 4);
 
     const canvas = document.createElement("canvas");
@@ -325,7 +334,7 @@ uniform float uImageMix;`
       return (CUBE_SIZE * scale * Math.sqrt(3)) / 2;
     }
     function minCenterDistance(scaleA, scaleB) {
-      return boundingRadius(scaleA) + boundingRadius(scaleB) + MIN_GAP;
+      return boundingRadius(scaleA) + boundingRadius(scaleB) + minGap;
     }
     function separateTargets(list, iterations) {
       const scratch = new THREE.Vector3();
@@ -447,9 +456,9 @@ uniform float uImageMix;`
         0.03,
         0.97
       );
-      const scale = portrait
+      const scale = (portrait
         ? THREE.MathUtils.clamp(0.4 + seededNoise(i, 47) * 0.1, 0.36, 0.52)
-        : THREE.MathUtils.clamp(0.5 + seededNoise(i, 47) * 0.14, 0.46, 0.66);
+        : THREE.MathUtils.clamp(0.5 + seededNoise(i, 47) * 0.14, 0.46, 0.66)) * userScale;
       const pad = boundingRadius(scale) * (portrait ? 0.48 : 0.35);
       const maxX = Math.max(0.2, halfW - pad);
       const maxY = Math.max(0.2, halfH - pad);
@@ -487,7 +496,7 @@ uniform float uImageMix;`
             (seededNoise(i, 52) - 0.5) * 0.35,
             (seededNoise(i, 53) - 0.5) * 0.08
           ),
-          scale: 0.88 + seededNoise(i, 54) * 0.1,
+          scale: (0.88 + seededNoise(i, 54) * 0.1) * userScale,
           layer: "fg",
         };
       }
@@ -505,15 +514,15 @@ uniform float uImageMix;`
           -3.2 + (seededNoise(i, 55) - 0.5) * 1.2
         ),
         rotation: new THREE.Euler(0, (seededNoise(i, 56) - 0.5) * 0.5, 0),
-        scale: 0.48 + seededNoise(i, 57) * 0.12,
+        scale: (0.48 + seededNoise(i, 57) * 0.12) * userScale,
         layer: "bg",
       };
     }
 
     function buildAllTargets() {
       const targets = [];
-      for (let i = 0; i < MAX_TILES; i++) {
-        targets.push(activePreset === "depth" ? buildDepthTargets(i, MAX_TILES) : buildShowcaseTargets(i));
+      for (let i = 0; i < tileCount; i++) {
+        targets.push(activePreset === "depth" ? buildDepthTargets(i, tileCount) : buildShowcaseTargets(i));
       }
       if (activePreset === "depth") {
         separateTargets(targets.filter((t) => t.layer === "fg"), 28);
@@ -571,7 +580,7 @@ uniform float uImageMix;`
     }
 
     const initialTargets = buildAllTargets();
-    for (let i = 0; i < MAX_TILES; i++) {
+    for (let i = 0; i < tileCount; i++) {
       const materials = [
         sharedBaseMaterial,
         sharedBaseMaterial,
@@ -1222,6 +1231,16 @@ uniform float uImageMix;`
     return {
       stopped: false,
       syncPool,
+      applySettings(next) {
+        const hex = String((next && (next.color || next.primary)) || "");
+        if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+        cubeColor.set(hex);
+        sharedBaseMaterial.color.copy(cubeColor);
+        sharedBgMaterial.color.copy(cubeColor).multiplyScalar(0.55);
+        pctx.fillStyle = hex;
+        pctx.fillRect(0, 0, 4, 4);
+        tiles.forEach((tile) => syncTileLayerMaterials(tile));
+      },
       dispose() {
         stopped = true;
         renderer.setAnimationLoop(null);
@@ -1248,17 +1267,23 @@ uniform float uImageMix;`
   }
 
   root.BGTileField = {
-    mount(host, pool) {
+    mount(host, pool, options) {
       try {
         const theme = host && host.dataset ? host.dataset.theme : "";
-        const preset = theme === "depthfield" ? "depth" : "showcase";
-        return { field: createScene(host, pool, preset) };
+        const preset =
+          (options && options.preset) || (theme === "depthfield" ? "depth" : "showcase");
+        return { field: createScene(host, pool, preset, options || {}) };
       } catch {
         return { stopped: true };
       }
     },
     tick(root, pool, state) {
       if (state && state.field && state.field.syncPool) state.field.syncPool(pool);
+    },
+    applySettings(root, state, settings) {
+      if (state && state.field && typeof state.field.applySettings === "function") {
+        state.field.applySettings(settings);
+      }
     },
     unmount(root, state) {
       if (state && state.field && state.field.dispose) state.field.dispose();

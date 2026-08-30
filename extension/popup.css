@@ -446,6 +446,22 @@ textarea {
   grid-template-columns: 1fr;
 }
 
+.setting-row.scale {
+  grid-template-columns: 88px 1fr 44px;
+}
+
+.theme-scale {
+  width: 100%;
+  accent-color: var(--v2-primary);
+}
+
+.theme-scale-value {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--v2-light-gray);
+}
+
 .setting-row input,
 .setting-row .v2-select {
   width: 100%;

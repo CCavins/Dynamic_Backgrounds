@@ -139,10 +139,10 @@
     if (data.kind === "message" && !html.trim() && !engine) {
       throw new Error("Message themes need an html template or an engine.");
     }
-    const engineDefaults = engineMessageDefaults(engine);
+    const engineDefaults = engineThemeDefaults(data.kind, engine);
     const settings = {};
     const srcSettings = data.settings && typeof data.settings === "object" ? data.settings : {};
-    ["primary", "secondary", "background", "motion"].forEach((key) => {
+    ["primary", "secondary", "background", "motion", "scale"].forEach((key) => {
       const spec = srcSettings[key];
       const inherited = engineDefaults && engineDefaults[key];
       if ((!spec || typeof spec !== "object") && !inherited) return;
@@ -150,10 +150,16 @@
         label: String((spec && spec.label) || (inherited && inherited.label) || key).slice(0, 40),
       };
       const rawDefault = spec && spec.default != null ? spec.default : inherited && inherited.default;
-      if (key === "motion") next.default = String(rawDefault || "drift");
-      else if (isHex(rawDefault)) next.default = String(rawDefault).toLowerCase();
+      if (key === "scale") {
+        const n = Number(rawDefault);
+        next.default = Math.max(0.7, Math.min(1.5, isFinite(n) ? n : 1));
+      } else if (key === "motion") {
+        if (data.kind === "mosaic") return;
+        next.default = String(rawDefault || "drift");
+      } else if (isHex(rawDefault)) next.default = String(rawDefault).toLowerCase();
       else if (key === "primary") next.default = "#d52265";
       else if (key === "secondary") next.default = "#fec651";
+      else return;
       settings[key] = next;
     });
     const fit = Array.isArray(data.fit)
@@ -201,14 +207,28 @@
   }
 
   function engineMessageDefaults(engine) {
+    return engineThemeDefaults("message", engine);
+  }
+
+  function engineThemeDefaults(kind, engine) {
     const rules = root.BGExtensionRules;
-    const meta = rules && rules.MESSAGE_THEME_META && rules.MESSAGE_THEME_META[engine];
+    if (!rules) return null;
+    let meta = null;
+    if (kind === "message") {
+      meta = rules.MESSAGE_THEME_META && rules.MESSAGE_THEME_META[engine];
+    } else {
+      meta = rules.MOSAIC_THEME_META && rules.MOSAIC_THEME_META[engine];
+      if (!meta && engine && String(engine).endsWith("-brand")) {
+        meta = rules.MOSAIC_THEME_META[String(engine).slice(0, -6)];
+      }
+    }
     if (!meta) return null;
     const defaults = meta.defaults || {};
     const labels = meta.labels || {};
     const next = {};
-    ["primary", "secondary", "background", "motion"].forEach((key) => {
+    ["primary", "secondary", "background", "motion", "scale"].forEach((key) => {
       if (defaults[key] == null) return;
+      if (kind === "mosaic" && key === "motion") return;
       next[key] = { label: labels[key] || key, default: defaults[key] };
     });
     if (defaults.revealMs) next.revealMs = defaults.revealMs;
@@ -375,12 +395,12 @@
   align-self: center;
 }
 #dyn-mosaic-theme.dyn-layout-row .dyn-card {
-  flex: 0 0 18%;
-  width: 18%;
+  flex: 0 0 calc(18% * var(--scale, 1));
+  width: calc(18% * var(--scale, 1));
 }
 #dyn-mosaic-theme.dyn-layout-scatter .dyn-card {
   position: absolute;
-  width: 18%;
+  width: calc(18% * var(--scale, 1));
 }
 #dyn-mosaic-theme.dyn-layout-ribbon .dyn-custom-cards {
   display: flex;
@@ -390,8 +410,8 @@
   transform: rotate(-8deg) scale(1.08);
 }
 #dyn-mosaic-theme.dyn-layout-ribbon .dyn-card {
-  width: 16%;
-  flex: 0 0 16%;
+  width: calc(16% * var(--scale, 1));
+  flex: 0 0 calc(16% * var(--scale, 1));
 }
 #dyn-mosaic-theme.dyn-custom-mosaic .dyn-card {
   transition: opacity 0.22s ease, transform 0.4s ease;
@@ -405,18 +425,18 @@
 }
 #dyn-mosaic-theme.dyn-portrait.dyn-layout-row .dyn-card {
   flex: 0 0 auto;
-  width: 42%;
+  width: calc(42% * var(--scale, 1));
 }
 #dyn-mosaic-theme.dyn-portrait.dyn-layout-ribbon .dyn-custom-cards {
   flex-direction: column;
   transform: rotate(-6deg) scale(1.04);
 }
 #dyn-mosaic-theme.dyn-portrait.dyn-layout-ribbon .dyn-card {
-  width: 42%;
+  width: calc(42% * var(--scale, 1));
   flex: 0 0 auto;
 }
 #dyn-mosaic-theme.dyn-portrait.dyn-layout-scatter .dyn-card {
-  width: 32%;
+  width: calc(32% * var(--scale, 1));
 }
 `;
 
@@ -460,6 +480,16 @@
       if (mosaicApi && mosaicApi.themes) delete mosaicApi.themes[id];
     });
     registeredIds = { message: [], mosaic: [] };
+  }
+
+  function applyMosaicVars(root, settings) {
+    if (!root || !root.style) return;
+    const n = Number(settings && settings.scale);
+    const scale = isFinite(n) ? Math.max(0.7, Math.min(1.5, n)) : 1;
+    root.style.setProperty("--scale", String(scale));
+    if (settings && settings.primary) root.style.setProperty("--primary", settings.primary);
+    if (settings && settings.secondary) root.style.setProperty("--secondary", settings.secondary);
+    if (settings && settings.background) root.style.setProperty("--background", settings.background);
   }
 
   function compileFromEngine(pack, kind) {
@@ -520,7 +550,7 @@
     return {
       engine: pack.engine,
       interval: Number(pack.interval) || 2500,
-      mount(mosaicRoot, pool, api) {
+      mount(mosaicRoot, pool, api, settings) {
         const def = source();
         if (!def || typeof def.mount !== "function") {
           throw new Error(
@@ -536,11 +566,19 @@
           wrap.innerHTML = pack.html;
           mosaicRoot.appendChild(wrap);
         }
-        return def.mount(mosaicRoot, pool, api);
+        applyMosaicVars(mosaicRoot, settings);
+        return def.mount(mosaicRoot, pool, api, settings);
       },
       tick(mosaicRoot, pool, state, api) {
         const def = source();
         if (def && def.tick) def.tick(mosaicRoot, pool, state, api);
+      },
+      applySettings(mosaicRoot, state, settings) {
+        applyMosaicVars(mosaicRoot, settings);
+        const def = source();
+        if (def && typeof def.applySettings === "function") {
+          def.applySettings(mosaicRoot, state, settings);
+        }
       },
       unmount(mosaicRoot, state) {
         const def = source();
@@ -654,10 +692,11 @@
       pack.layout === "grid" ? pack.cols * pack.rows : pack.count;
     return {
       interval: pack.interval,
-      mount(root, pool, api) {
+      mount(root, pool, api, settings) {
         root.classList.add("dyn-custom-mosaic", "dyn-layout-" + pack.layout);
         root.style.setProperty("--cols", String(pack.cols));
         root.style.setProperty("--rows", String(pack.rows));
+        applyMosaicVars(root, settings);
         if (pack.html) {
           const wrap = document.createElement("div");
           wrap.className = "dyn-custom-chrome";
@@ -699,6 +738,9 @@
         };
         probe.src = src;
         if (probe.complete && probe.naturalWidth) probe.onload();
+      },
+      applySettings(root, _state, settings) {
+        applyMosaicVars(root, settings);
       },
       unmount(root) {
         if (root) root.replaceChildren();

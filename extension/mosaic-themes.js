@@ -254,6 +254,88 @@
     return card;
   }
 
+  function clampThemeScale(settings) {
+    const n = Number(settings && settings.scale);
+    if (!isFinite(n)) return 1;
+    return Math.max(0.7, Math.min(1.5, n));
+  }
+
+  function themeColor(settings, fallback) {
+    const v = String((settings && settings.primary) || "");
+    return /^#[0-9a-fA-F]{6}$/.test(v) ? v.toLowerCase() : fallback;
+  }
+
+  function mosaicThemeRoot(node) {
+    if (!node) return node;
+    if (node.id === "dyn-mosaic-theme") return node;
+    return (node.closest && node.closest("#dyn-mosaic-theme")) || node;
+  }
+
+  function applyPolaroidSettings(root, settings) {
+    const host = mosaicThemeRoot(root) || root;
+    if (!host || !host.style) return;
+    host.style.setProperty("--polaroid-frame", themeColor(settings, "#ffffff"));
+  }
+
+  function polaroidCardHeight(scale) {
+    const w = 370 * scale;
+    const imgH = Math.max(1, w - 24) * (4 / 3);
+    return 12 + imgH + 10 + w * 0.24 + 14;
+  }
+
+  function polaroidGridFor(layoutW, layoutH, scale) {
+    const s = clampThemeScale({ scale });
+    const cols = Math.max(1, Math.round(layoutW / (370 * s)));
+    const pitchY = 355 * s;
+    const cardH = polaroidCardHeight(s);
+    const originY = Math.round(-cardH * 0.2);
+    let rows = 1;
+    for (let n = 2; n <= 12; n += 1) {
+      const lastY = originY + (n - 1) * pitchY + pitchY * 0.05;
+      if ((lastY + cardH - layoutH) / cardH > 0.33) break;
+      rows = n;
+    }
+    return { cols, rows, pitchY, originY, cardH };
+  }
+
+  function applyPedestalSettings(root, settings) {
+    const host = mosaicThemeRoot(root) || root;
+    if (!host || !host.style) return;
+    host.style.setProperty("--pedestal-color", themeColor(settings, "#54585f"));
+  }
+
+  function flipLayoutFor(root, settings) {
+    const scale = clampThemeScale(settings);
+    const size = stageSize(root);
+    const tileW = Math.round(264 * scale);
+    const tileH = Math.round(261 * scale);
+    const gap = 12;
+    const cols = Math.max(1, Math.round((size.dw + gap) / (tileW + gap)));
+    const rows = Math.max(1, Math.round((size.dh + gap) / (tileH + gap)));
+    const depth = Math.round(56 * scale);
+    return { cols, rows, tileW, tileH, depth, scale };
+  }
+
+  function applyFlipSettings(root, settings, layout) {
+    const host = mosaicThemeRoot(root) || root;
+    if (!host || !host.style) return;
+    const next = layout || flipLayoutFor(root, settings);
+    host.style.setProperty("--flip-cols", String(next.cols));
+    host.style.setProperty("--flip-rows", String(next.rows));
+    host.style.setProperty("--flip-w", next.tileW + "px");
+    host.style.setProperty("--flip-h", next.tileH + "px");
+    host.style.setProperty("--flip-depth", next.depth + "px");
+    host.style.setProperty("--flip-edge", themeColor(settings, "#5a5e66"));
+    if (root && host !== root && root.style) {
+      root.style.setProperty("--flip-cols", String(next.cols));
+      root.style.setProperty("--flip-rows", String(next.rows));
+      root.style.setProperty("--flip-w", next.tileW + "px");
+      root.style.setProperty("--flip-h", next.tileH + "px");
+      root.style.setProperty("--flip-depth", next.depth + "px");
+      root.style.setProperty("--flip-edge", themeColor(settings, "#5a5e66"));
+    }
+  }
+
   function revealFromBottom(card, src) {
     if (!card || !src || imgSrc(card) === src) return Promise.resolve();
     const layer = document.createElement("img");
@@ -674,7 +756,7 @@ html.dyn-mosaic-on .logo-tile {
   will-change: transform, opacity;
 }
 #dyn-mosaic-theme[data-theme="polaroid"] .dyn-polaroid {
-  background: #fff;
+  background: var(--polaroid-frame, #fff);
   border-radius: 3px;
   padding: 12px 12px 14px 12px;
   overflow: visible;
@@ -741,20 +823,20 @@ html.dyn-mosaic-on .logo-tile {
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-flip-grid {
   display: grid;
-  grid-template-columns: repeat(7, 264px);
-  grid-template-rows: repeat(4, 261px);
+  grid-template-columns: repeat(var(--flip-cols, 7), var(--flip-w, 264px));
+  grid-template-rows: repeat(var(--flip-rows, 4), var(--flip-h, 261px));
   gap: 12px;
   place-content: center;
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-tile-scene {
-  width: 264px;
-  height: 261px;
+  width: var(--flip-w, 264px);
+  height: var(--flip-h, 261px);
   perspective: 1100px;
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-tile {
   position: relative;
-  width: 264px;
-  height: 261px;
+  width: var(--flip-w, 264px);
+  height: var(--flip-h, 261px);
   transform-style: preserve-3d;
   transition: transform 800ms cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -766,14 +848,14 @@ html.dyn-mosaic-on .logo-tile {
   overflow: hidden;
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-tile-face {
-  width: 264px;
-  height: 261px;
+  width: var(--flip-w, 264px);
+  height: var(--flip-h, 261px);
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-flip-front {
-  transform: translateZ(28px);
+  transform: translateZ(calc(var(--flip-depth, 56px) / 2));
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-flip-back {
-  transform: rotateY(180deg) translateZ(28px);
+  transform: rotateY(180deg) translateZ(calc(var(--flip-depth, 56px) / 2));
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-tile-face img {
   display: block;
@@ -789,28 +871,31 @@ html.dyn-mosaic-on .logo-tile {
   overflow: visible;
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-tile-edge {
-  background: #2a2e36 url("") center / cover;
-  background: linear-gradient(180deg, #5a5e66 0%, #1c1e24 100%);
+  background: linear-gradient(
+    180deg,
+    var(--flip-edge, #5a5e66) 0%,
+    color-mix(in srgb, var(--flip-edge, #5a5e66) 32%, #000) 100%
+  );
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-edge-left {
-  width: 56px; height: 261px; top: 0; left: 0;
+  width: var(--flip-depth, 56px); height: var(--flip-h, 261px); top: 0; left: 0;
   transform-origin: left center;
-  transform: rotateY(-90deg) translateX(-28px);
+  transform: rotateY(-90deg) translateX(calc(var(--flip-depth, 56px) / -2));
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-edge-right {
-  width: 56px; height: 261px; top: 0; right: 0;
+  width: var(--flip-depth, 56px); height: var(--flip-h, 261px); top: 0; right: 0;
   transform-origin: right center;
-  transform: rotateY(90deg) translateX(28px);
+  transform: rotateY(90deg) translateX(calc(var(--flip-depth, 56px) / 2));
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-edge-top {
-  width: 264px; height: 56px; top: 0; left: 0;
+  width: var(--flip-w, 264px); height: var(--flip-depth, 56px); top: 0; left: 0;
   transform-origin: center top;
-  transform: rotateX(90deg) translateY(-28px);
+  transform: rotateX(90deg) translateY(calc(var(--flip-depth, 56px) / -2));
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-edge-bottom {
-  width: 264px; height: 56px; bottom: 0; left: 0;
+  width: var(--flip-w, 264px); height: var(--flip-depth, 56px); bottom: 0; left: 0;
   transform-origin: center bottom;
-  transform: rotateX(-90deg) translateY(28px);
+  transform: rotateX(-90deg) translateY(calc(var(--flip-depth, 56px) / 2));
 }
 
 #dyn-mosaic-theme[data-theme="livewall"] {
@@ -927,6 +1012,7 @@ html.dyn-mosaic-on .logo-tile {
 #dyn-mosaic-theme[data-theme="pedestals"] {
   overflow: hidden;
   background: #000;
+  --pedestal-color: #54585f;
 }
 #dyn-mosaic-theme[data-theme="pedestals"] .dyn-ped-stage {
   position: absolute;
@@ -985,16 +1071,28 @@ html.dyn-mosaic-on .logo-tile {
   opacity: 0;
 }
 #dyn-mosaic-theme[data-theme="pedestals"] .dyn-ped-top {
-  background: linear-gradient(to top, #54585f 0%, #000 100%);
+  background: linear-gradient(to top, var(--pedestal-color, #54585f) 0%, #000 100%);
 }
 #dyn-mosaic-theme[data-theme="pedestals"] .dyn-ped-bottom {
-  background: linear-gradient(to bottom, #2b2e33 0%, #000 100%);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--pedestal-color, #54585f) 52%, #000) 0%,
+    #000 100%
+  );
 }
 #dyn-mosaic-theme[data-theme="pedestals"] .dyn-ped-left {
-  background: linear-gradient(to left, #393d43 0%, #000 100%);
+  background: linear-gradient(
+    to left,
+    color-mix(in srgb, var(--pedestal-color, #54585f) 68%, #000) 0%,
+    #000 100%
+  );
 }
 #dyn-mosaic-theme[data-theme="pedestals"] .dyn-ped-right {
-  background: linear-gradient(to right, #44484e 0%, #000 100%);
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--pedestal-color, #54585f) 80%, #000) 0%,
+    #000 100%
+  );
 }
 #dyn-mosaic-theme[data-theme="pedestals"] .dyn-card {
   background: transparent;
@@ -1127,8 +1225,8 @@ html.dyn-mosaic-on .logo-tile {
   width: min(58cqw, 340px);
 }
 #dyn-mosaic-theme.dyn-portrait[data-theme="flipwall"] .dyn-flip-grid {
-  grid-template-columns: repeat(4, 264px);
-  grid-template-rows: repeat(7, 261px);
+  grid-template-columns: repeat(var(--flip-cols, 4), var(--flip-w, 264px));
+  grid-template-rows: repeat(var(--flip-rows, 7), var(--flip-h, 261px));
 }
 
 /* Brand-aware variants (*): content lives in .dyn-brand-frame; chrome sits in the rail. */
@@ -2076,7 +2174,9 @@ html.dyn-mosaic-on .logo-tile {
 
     polaroid: {
       interval: 60000,
-      mount(root, pool) {
+      mount(root, pool, _api, settings) {
+        const scale = clampThemeScale(settings);
+        applyPolaroidSettings(root, settings);
         const vw = root.clientWidth || 1280;
         const vh = root.clientHeight || 720;
         const shortSide = 1080;
@@ -2096,17 +2196,19 @@ html.dyn-mosaic-on .logo-tile {
         const portrait = vh > vw;
         const layoutW = reserve && !portrait ? stageW * 0.78 : stageW;
         const layoutH = reserve && portrait ? stageH * 0.85 : stageH;
-        const cols = Math.max(1, Math.round(layoutW / 370));
-        const rows = Math.max(1, Math.round(layoutH / 355));
+        const grid = polaroidGridFor(layoutW, layoutH, scale);
+        const cols = grid.cols;
+        const rows = grid.rows;
         const cellW = layoutW / cols;
-        const cellH = layoutH / rows;
         const slotDefs = [];
         for (let r = 0; r < rows; r += 1) {
           for (let c = 0; c < cols; c += 1) {
             slotDefs.push({
               id: slotDefs.length,
               x: Math.round(c * cellW + cellW * 0.08 + (Math.random() - 0.5) * 44),
-              y: Math.round(r * cellH + cellH * 0.05 + (Math.random() - 0.5) * 36),
+              y: Math.round(
+                grid.originY + r * grid.pitchY + grid.pitchY * 0.05 + (Math.random() - 0.5) * 36
+              ),
               rot: +((3 + Math.random() * 5) * (Math.random() < 0.5 ? -1 : 1)).toFixed(1),
               col: c,
               row: r,
@@ -2134,7 +2236,8 @@ html.dyn-mosaic-on .logo-tile {
           let jy = (Math.random() - 0.5) * 140;
           // Softly keep rightmost / bottommost cards from leaping into the chrome rail.
           if (reserve && !portrait && slotDef.col >= cols - 1) jx = Math.min(jx, 28);
-          if (reserve && portrait && slotDef.row >= rows - 1) jy = Math.min(jy, 28);
+          if (slotDef.row >= rows - 1) jy = Math.min(jy, 16);
+          if (reserve && portrait && slotDef.row >= rows - 1) jy = Math.min(jy, 8);
           return {
             id: slotDef.id,
             x: slotDef.x + jx,
@@ -2144,7 +2247,7 @@ html.dyn-mosaic-on .logo-tile {
         }
 
         function makeCardAt(src, slot) {
-          const widths = [330, 343, 356, 370, 383];
+          const widths = [330, 343, 356, 370, 383].map((w) => Math.round(w * scale));
           const cardWidth = widths[Math.floor(Math.random() * widths.length)];
           const wrapper = document.createElement("div");
           wrapper.className = "dyn-polaroid-pos";
@@ -2285,6 +2388,9 @@ html.dyn-mosaic-on .logo-tile {
         // Pool only — on-screen cards change solely via cycleOne.
         if (state) state.poolRef = pool;
       },
+      applySettings(root, _state, settings) {
+        applyPolaroidSettings(root, settings);
+      },
       unmount(root, state) {
         if (state) state.stopped = true;
         stopTimers(state);
@@ -2293,11 +2399,12 @@ html.dyn-mosaic-on .logo-tile {
 
     flipwall: {
       interval: 60000,
-      mount(root, pool) {
+      mount(root, pool, _api, settings) {
+        const layout = flipLayoutFor(root, settings);
+        applyFlipSettings(root, settings, layout);
         const size = stageSize(root);
-        const portrait = size.portrait;
-        const cols = portrait ? 4 : 7;
-        const rows = portrait ? 7 : 4;
+        const cols = layout.cols;
+        const rows = layout.rows;
         const count = cols * rows;
         const stage = document.createElement("div");
         stage.className = "dyn-flip-stage";
@@ -2414,6 +2521,9 @@ html.dyn-mosaic-on .logo-tile {
       tick(root, pool, state) {
         if (state) state.poolRef = pool;
       },
+      applySettings(root, _state, settings) {
+        applyFlipSettings(root, settings);
+      },
       unmount(root, state) {
         if (state) state.stopped = true;
         stopTimers(state);
@@ -2422,15 +2532,16 @@ html.dyn-mosaic-on .logo-tile {
 
     livewall: {
       interval: 60000,
-      mount(root, pool) {
+      mount(root, pool, _api, settings) {
+        const scale = clampThemeScale(settings);
         const CONFIG = {
           CELL_W: 240,
           CELL_H: 360,
           GAP: 8,
           COLS: 34,
           ROWS: 22,
-          ZOOMED_TILES: [7.6, 9.8],
-          ZOOMED_ROWS: [3.1, 3.9],
+          ZOOMED_TILES: [7.6 / scale, 9.8 / scale],
+          ZOOMED_ROWS: [3.1 / scale, 3.9 / scale],
           START_CLUSTER_COL_RADIUS: 6,
           START_CLUSTER_ROW_RADIUS: 4,
           EXPAND_STRIP: [6, 11],
@@ -2994,14 +3105,27 @@ html.dyn-mosaic-on .logo-tile {
 
     cubes: {
       interval: 4000,
-      mount(root, pool) {
+      mount(root, pool, _api, settings) {
         const api = globalThis.BGTileField;
         if (!api || !globalThis.THREE) return { stopped: true, waiting: true };
-        return api.mount(root, pool);
+        return api.mount(root, pool, {
+          scale: clampThemeScale(settings),
+          color: themeColor(settings, "#10131c"),
+          preset: "showcase",
+        });
       },
       tick(root, pool, state) {
         const api = globalThis.BGTileField;
         if (api) api.tick(root, pool, state);
+      },
+      applySettings(root, state, settings) {
+        const api = globalThis.BGTileField;
+        if (api && typeof api.applySettings === "function") {
+          api.applySettings(root, state, {
+            scale: clampThemeScale(settings),
+            color: themeColor(settings, "#10131c"),
+          });
+        }
       },
       unmount(root, state) {
         const api = globalThis.BGTileField;
@@ -3011,14 +3135,27 @@ html.dyn-mosaic-on .logo-tile {
 
     depthfield: {
       interval: 4000,
-      mount(root, pool) {
+      mount(root, pool, _api, settings) {
         const api = globalThis.BGTileField;
         if (!api || !globalThis.THREE) return { stopped: true, waiting: true };
-        return api.mount(root, pool);
+        return api.mount(root, pool, {
+          scale: clampThemeScale(settings),
+          color: themeColor(settings, "#10131c"),
+          preset: "depth",
+        });
       },
       tick(root, pool, state) {
         const api = globalThis.BGTileField;
         if (api) api.tick(root, pool, state);
+      },
+      applySettings(root, state, settings) {
+        const api = globalThis.BGTileField;
+        if (api && typeof api.applySettings === "function") {
+          api.applySettings(root, state, {
+            scale: clampThemeScale(settings),
+            color: themeColor(settings, "#10131c"),
+          });
+        }
       },
       unmount(root, state) {
         const api = globalThis.BGTileField;
@@ -3028,7 +3165,8 @@ html.dyn-mosaic-on .logo-tile {
 
     pedestals: {
       interval: 60000,
-      mount(root, pool) {
+      mount(root, pool, _api, settings) {
+        applyPedestalSettings(root, settings);
         const size = stageSize(root);
         const DEPTH = 1800;
         const REST_Z = -DEPTH / 2;
@@ -3166,6 +3304,9 @@ html.dyn-mosaic-on .logo-tile {
       tick(root, pool, state) {
         if (state) state.poolRef = pool;
       },
+      applySettings(root, _state, settings) {
+        applyPedestalSettings(root, settings);
+      },
       unmount(root, state) {
         if (state) state.stopped = true;
         stopTimers(state);
@@ -3183,7 +3324,7 @@ html.dyn-mosaic-on .logo-tile {
     const useFrame = baseId !== "decks" && baseId !== "polaroid";
     return {
       interval: base.interval,
-      mount(root, pool, api) {
+      mount(root, pool, api, settings) {
         const rulesApi = root.BGExtensionRules || globalThis.BGExtensionRules;
         if (rulesApi && typeof rulesApi.ensureBrandChrome === "function") {
           rulesApi.ensureBrandChrome(root, "mosaic");
@@ -3192,19 +3333,24 @@ html.dyn-mosaic-on .logo-tile {
         const reserve =
           root.classList.contains("dyn-show-qr") || root.classList.contains("dyn-show-logo");
         if (!useFrame) {
-          return base.mount(root, pool, api) || {};
+          return base.mount(root, pool, api, settings) || {};
         }
         const frame = document.createElement("div");
         frame.className = "dyn-brand-frame" + (reserve ? " is-reserved" : "");
         root.appendChild(frame);
         void frame.offsetWidth;
-        const inner = base.mount(frame, pool, api) || {};
+        const inner = base.mount(frame, pool, api, settings) || {};
         return Object.assign(inner, { brandFrame: frame, brandBase: baseId });
       },
       tick(root, pool, state, api) {
         if (!state) return;
         const target = state.brandFrame || root;
         if (typeof base.tick === "function") base.tick(target, pool, state, api);
+      },
+      applySettings(root, state, settings) {
+        if (typeof base.applySettings !== "function") return;
+        const target = (state && state.brandFrame) || root;
+        base.applySettings(target, state, settings);
       },
       unmount(root, state) {
         const target = (state && state.brandFrame) || root;
