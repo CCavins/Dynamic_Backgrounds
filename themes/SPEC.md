@@ -305,7 +305,7 @@ Root classes the runtime toggles:
 - `data-aspect` — `vixi` when matching Vixi’s canvas, `auto` when matching the window, otherwise the forced ratio (`16-9`, `9-16`, `4-3`, `1-1`, `21-9`, …)
 - `dyn-show-bg` / `dyn-show-qr` / `dyn-show-logo` — that kind’s popup toggles are on
 - `html.dyn-kind-message` / `html.dyn-kind-mosaic` — which output kind is live
-- `html.dyn-show-bg` — the live kind’s event background is visible and fitted to the stage; that kind’s theme backdrops go transparent so the asset shows through
+- `html.dyn-show-bg` — the live kind’s selected / event background is visible and fitted to the stage. With a **selected custom** image/video/iframe, that asset sits **above** the theme’s Background color and **below** cards/copy, so PNG/GIF transparency shows the theme color through. Without a custom asset, theme root backdrops go transparent so Vixi’s own event background can show through.
 
 Add portrait overrides under `#dyn-message-theme.dyn-portrait[data-theme="your-id"]` (or the mosaic equivalent). Photo-above-copy and banner-above-photo both work; pick the one that fits the theme.
 

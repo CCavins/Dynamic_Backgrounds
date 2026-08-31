@@ -6,9 +6,9 @@
   const IFRAME_ID = "dyn-bg-embed";
   const MEDIA_ID = "dyn-bg-media";
   const IFRAME_STYLE =
-    "position:absolute;inset:0;width:100%;height:100%;border:0;z-index:0;pointer-events:none;";
-  const MEDIA_HOST_STYLE =
-    "position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:hidden;background:#000;";
+    "position:absolute;inset:0;width:100%;height:100%;border:0;z-index:0;pointer-events:none;background:transparent;";
+  const MEDIA_HOST_STYLE_BASE =
+    "position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:hidden;";
 
   let applyTimer = 0;
   let lastMediaKey = "";
@@ -39,29 +39,90 @@
   function removeAllCustom() {
     removeIframe();
     removeMedia();
+    document.documentElement.classList.remove("dyn-custom-bg");
     restoreOriginalBackground();
   }
 
-  function injectIframe(src) {
+  function showBackgroundWanted(settings) {
+    if (!rules.liveThemeIsOn || !rules.liveThemeIsOn(settings)) return true;
+    const chrome = rules.chromeForKind
+      ? rules.chromeForKind(settings, rules.activeThemeKind ? rules.activeThemeKind(settings) : "")
+      : { showBackground: false };
+    return Boolean(chrome && chrome.showBackground);
+  }
+
+  /** Live theme root when Show background is on; otherwise the Vixi wrapper. */
+  function findBgMountParent(settings) {
     const wrapper = rules.findWrapper();
-    if (!wrapper) return false;
-    hideOriginalBackground(wrapper);
+    const themeOn = rules.liveThemeIsOn
+      ? rules.liveThemeIsOn(settings)
+      : false;
+    if (!themeOn || !showBackgroundWanted(settings)) {
+      return wrapper;
+    }
+    const kind = rules.activeThemeKind ? rules.activeThemeKind(settings) : "";
+    const themeId = kind === "message" ? "dyn-message-theme" : kind === "mosaic" ? "dyn-mosaic-theme" : "";
+    if (themeId) {
+      const themeRoot = document.getElementById(themeId);
+      if (
+        themeRoot &&
+        !themeRoot.classList.contains("is-parked") &&
+        !themeRoot.classList.contains("dyn-awaiting-show")
+      ) {
+        return themeRoot;
+      }
+    }
+    const host = document.getElementById("dyn-theme-host");
+    return host || wrapper;
+  }
+
+  function mediaHostStyle(parent) {
+    const insideTheme =
+      parent &&
+      (parent.id === "dyn-message-theme" ||
+        parent.id === "dyn-mosaic-theme" ||
+        parent.id === "dyn-theme-host");
+    // Inside a theme: transparent host so PNG/GIF alpha shows the theme Background color.
+    // On the bare wrapper (no theme): black fill behind the asset.
+    return (
+      MEDIA_HOST_STYLE_BASE +
+      "background:" +
+      (insideTheme ? "transparent" : "#000") +
+      ";"
+    );
+  }
+
+  function markCustomBg(parent) {
+    const insideTheme =
+      parent &&
+      (parent.id === "dyn-message-theme" ||
+        parent.id === "dyn-mosaic-theme" ||
+        parent.id === "dyn-theme-host");
+    document.documentElement.classList.toggle("dyn-custom-bg", Boolean(insideTheme));
+  }
+
+  function injectIframe(src, settings) {
+    const parent = findBgMountParent(settings);
+    if (!parent) return false;
+    const wrapper = rules.findWrapper();
+    if (wrapper) hideOriginalBackground(wrapper);
     removeMedia();
 
     let iframe = document.getElementById(IFRAME_ID);
-    if (!iframe || iframe.parentElement !== wrapper) {
+    if (!iframe || iframe.parentElement !== parent) {
       if (iframe) iframe.remove();
       iframe = document.createElement("iframe");
       iframe.id = IFRAME_ID;
       iframe.setAttribute("title", "Dynamic background");
       iframe.setAttribute("allow", "autoplay");
       iframe.style.cssText = IFRAME_STYLE;
-      wrapper.insertBefore(iframe, wrapper.firstChild);
+      parent.insertBefore(iframe, parent.firstChild);
     }
 
     if (iframe.getAttribute("src") !== src) {
       iframe.setAttribute("src", src);
     }
+    markCustomBg(parent);
     return true;
   }
 
@@ -74,23 +135,26 @@
     el.style.display = "block";
   }
 
-  async function injectMedia(mediaId, fit) {
+  async function injectMedia(mediaId, fit, settings) {
     if (!mediaApi || typeof mediaApi.getMedia !== "function") return false;
     const asset = await mediaApi.getMedia(mediaId);
     if (!asset || !asset.dataUrl) return false;
 
+    const parent = findBgMountParent(settings);
+    if (!parent) return false;
     const wrapper = rules.findWrapper();
-    if (!wrapper) return false;
-    hideOriginalBackground(wrapper);
+    if (wrapper) hideOriginalBackground(wrapper);
     removeIframe();
 
     let host = document.getElementById(MEDIA_ID);
-    if (!host || host.parentElement !== wrapper) {
+    if (!host || host.parentElement !== parent) {
       if (host) host.remove();
       host = document.createElement("div");
       host.id = MEDIA_ID;
-      host.style.cssText = MEDIA_HOST_STYLE;
-      wrapper.insertBefore(host, wrapper.firstChild);
+      host.style.cssText = mediaHostStyle(parent);
+      parent.insertBefore(host, parent.firstChild);
+    } else {
+      host.style.cssText = mediaHostStyle(parent);
     }
 
     const key = mediaId + "|" + (asset.mime || "") + "|" + (fit || "cover") + "|" + asset.dataUrl.length;
@@ -117,15 +181,8 @@
       const play = node.play();
       if (play && typeof play.catch === "function") play.catch(() => {});
     }
+    markCustomBg(parent);
     return true;
-  }
-
-  function showBackgroundWanted(settings) {
-    if (!rules.liveThemeIsOn || !rules.liveThemeIsOn(settings)) return true;
-    const chrome = rules.chromeForKind
-      ? rules.chromeForKind(settings, rules.activeThemeKind ? rules.activeThemeKind(settings) : "")
-      : { showBackground: false };
-    return Boolean(chrome && chrome.showBackground);
   }
 
   async function apply() {
@@ -145,6 +202,7 @@
     if (themeOn && !wantCustom) {
       removeIframe();
       removeMedia();
+      document.documentElement.classList.remove("dyn-custom-bg");
       if (rules.themeReplacesBackground && rules.themeReplacesBackground(settings)) {
         hideOriginalBackground(rules.findWrapper());
       } else {
@@ -158,7 +216,7 @@
         ? rules.resolveBackgroundMediaId(settings, location.href)
         : "";
     if (mediaId) {
-      const ok = await injectMedia(mediaId, settings.bgFit || "cover");
+      const ok = await injectMedia(mediaId, settings.bgFit || "cover", settings);
       if (ok) return;
     }
 
@@ -170,7 +228,7 @@
       }
       return;
     }
-    injectIframe(src);
+    injectIframe(src, settings);
   }
 
   function scheduleApply() {
@@ -198,5 +256,5 @@
     /* extension reloaded */
   }
 
-  apply().catch(() => {});
+  scheduleApply();
 })();

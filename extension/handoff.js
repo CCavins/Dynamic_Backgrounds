@@ -67,6 +67,17 @@
       "pointer-events:none!important;z-index:0!important;" +
       "display:block!important;" +
     "}" +
+    /* Custom media lives inside the theme root: above the theme Background
+       color, below cards/copy. Transparent PNG/GIF holes show that color. */
+    "html.dyn-custom-bg #dyn-message-theme > #dyn-bg-media," +
+    "html.dyn-custom-bg #dyn-mosaic-theme > #dyn-bg-media," +
+    "html.dyn-custom-bg #dyn-theme-host > #dyn-bg-media," +
+    "html.dyn-custom-bg #dyn-message-theme > #dyn-bg-embed," +
+    "html.dyn-custom-bg #dyn-mosaic-theme > #dyn-bg-embed," +
+    "html.dyn-custom-bg #dyn-theme-host > #dyn-bg-embed{" +
+      "background:transparent!important;" +
+      "z-index:0!important;" +
+    "}" +
     "html.dyn-show-bg #dyn-bg-media > img," +
     "html.dyn-show-bg #dyn-bg-media > video{" +
       "visibility:visible!important;opacity:1!important;" +
@@ -125,21 +136,30 @@
     "html.dyn-handoff .mosaic-image{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
-    "html.dyn-show-bg #dyn-theme-host," +
-    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme," +
-    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme[data-theme]," +
+    /* Custom selected media (dyn-custom-bg): keep the theme root Background
+       color under the asset. Only clear full-bleed stage fills so media shows
+       around cards/copy. Without custom media, clear the root too so Vixi’s
+       own event background can show through. */
+    "html.dyn-show-bg:not(.dyn-custom-bg) #dyn-theme-host," +
+    "html.dyn-show-bg:not(.dyn-custom-bg).dyn-kind-message #dyn-message-theme," +
+    "html.dyn-show-bg:not(.dyn-custom-bg).dyn-kind-message #dyn-message-theme[data-theme]," +
+    "html.dyn-show-bg:not(.dyn-custom-bg).dyn-kind-mosaic #dyn-mosaic-theme{" +
+      "background:transparent!important;background-image:none!important;" +
+    "}" +
     "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .dyn-fit-stage," +
     "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .dyn-stage," +
     "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .frame," +
     "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .scene," +
-    "html.dyn-show-bg.dyn-kind-mosaic #dyn-mosaic-theme{" +
-      "background:transparent!important;background-image:none!important;" +
-    "}" +
     "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .frame::before," +
     "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .frame::after," +
     "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .scene::before," +
     "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .scene::after{" +
       "background:transparent!important;background-image:none!important;" +
+    "}" +
+    "html.dyn-custom-bg.dyn-kind-message #dyn-message-theme > *:not(#dyn-bg-media):not(#dyn-bg-embed)," +
+    "html.dyn-custom-bg.dyn-kind-mosaic #dyn-mosaic-theme > *:not(#dyn-bg-media):not(#dyn-bg-embed)," +
+    "html.dyn-custom-bg #dyn-theme-host > *:not(#dyn-bg-media):not(#dyn-bg-embed):not(#dyn-message-theme):not(#dyn-mosaic-theme){" +
+      "z-index:2;" +
     "}" +
     "html.dyn-theme-on,html.dyn-theme-on body,html.dyn-theme-on .output-page{" +
       "background:#000!important;" +

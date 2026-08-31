@@ -973,7 +973,15 @@
         applyMosaicVars(root, settings);
       },
       unmount(root) {
-        if (root) root.replaceChildren();
+        if (root) {
+          const keep = [];
+          ["dyn-bg-media", "dyn-bg-embed"].forEach((id) => {
+            const el = root.querySelector(":scope > #" + id);
+            if (el) keep.push(el);
+          });
+          root.replaceChildren();
+          keep.forEach((el) => root.insertBefore(el, root.firstChild));
+        }
       },
     };
   }

@@ -37,7 +37,7 @@
     inset: 0;
     z-index: 0;
     overflow: hidden;
-    background: #000;
+    background: transparent;
     pointer-events: none;
   }
 
@@ -63,10 +63,28 @@
     container-type: size;
   }
 
-  /* Match extension “Show background”: let the stage media show through. */
-  body.has-preview-bg #dyn-message-theme,
-  body.has-preview-bg #dyn-mosaic-theme {
+  /* Selected preview media sits inside the theme root, above that theme’s
+     Background color and below cards/copy. Transparent PNG/GIF holes show
+     the theme color through. */
+  #dyn-message-theme > #preview-bg,
+  #dyn-mosaic-theme > #preview-bg {
+    z-index: 0;
+    background: transparent;
+  }
+
+  body.has-preview-bg #dyn-message-theme > *:not(#preview-bg),
+  body.has-preview-bg #dyn-mosaic-theme > *:not(#preview-bg) {
+    z-index: 2;
+  }
+
+  /* Stage fills around cards stay clear so the selected media shows;
+     the theme root keeps its Background color. */
+  body.has-preview-bg #dyn-message-theme .dyn-fit-stage,
+  body.has-preview-bg #dyn-message-theme .dyn-stage,
+  body.has-preview-bg #dyn-message-theme .frame,
+  body.has-preview-bg #dyn-message-theme .scene {
     background: transparent !important;
+    background-image: none !important;
   }
 
   /* Hide the inactive root only — never force display:block, or theme
@@ -662,23 +680,23 @@
     </div>
   </div>
 
-<script src="../extension/rules.js?v=1.19.0"></script>
-<script src="../extension/media.js?v=1.19.0"></script>
-<script src="../extension/message-themes.js?v=1.19.0"></script>
+<script src="../extension/rules.js?v=1.20.0"></script>
+<script src="../extension/media.js?v=1.20.0"></script>
+<script src="../extension/message-themes.js?v=1.20.0"></script>
 <script src="../extension/vendor/three.min.js"></script>
 <script src="../extension/vendor/RoundedBoxGeometry.js"></script>
-<script src="../extension/vendor/tile-field.js?v=1.19.0"></script>
-<script src="../extension/mosaic-themes.js?v=1.19.0"></script>
+<script src="../extension/vendor/tile-field.js?v=1.20.0"></script>
+<script src="../extension/mosaic-themes.js?v=1.20.0"></script>
 <script src="../extension/engines/api.js"></script>
-<script src="../extension/engines/xmas-snow-particles.js?v=1.19.0"></script>
-<script src="../extension/engines/message-aurora-engine.js?v=1.19.0"></script>
-<script src="../extension/engines/message-text-message-engine.js?v=1.19.0"></script>
-<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.19.0"></script>
-<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.19.0"></script>
-<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.19.0"></script>
-<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.19.0"></script>
-<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.19.0"></script>
-<script src="../extension/custom-themes.js?v=1.19.0"></script>
+<script src="../extension/engines/xmas-snow-particles.js?v=1.20.0"></script>
+<script src="../extension/engines/message-aurora-engine.js?v=1.20.0"></script>
+<script src="../extension/engines/message-text-message-engine.js?v=1.20.0"></script>
+<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.20.0"></script>
+<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.20.0"></script>
+<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.20.0"></script>
+<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.20.0"></script>
+<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.20.0"></script>
+<script src="../extension/custom-themes.js?v=1.20.0"></script>
 <script>
 (async () => {
   const SAMPLE_DIR = "../samples/patriots/";
@@ -1039,8 +1057,17 @@
     root.replaceChildren();
   }
 
+  function parkPreviewBgHost() {
+    const host = document.getElementById("preview-bg");
+    const stage = document.getElementById("stage");
+    if (host && stage && host.parentElement !== stage) {
+      stage.insertBefore(host, stage.firstChild);
+    }
+  }
+
   function unmountCurrent() {
     clearTimers();
+    parkPreviewBgHost();
     if (mosaicState && mosaicApi.themes[mosaicState.id] && mosaicApi.themes[mosaicState.id].unmount) {
       try {
         mosaicApi.themes[mosaicState.id].unmount(mosaicRoot, mosaicState.state);
@@ -1437,6 +1464,7 @@
       if (!def) {
         metaSub.textContent = "Theme engine not found.";
         scheduleUrlSync();
+        void renderPreviewBackground();
         return;
       }
       const pool = photos.length ? shuffle(photos) : [];
@@ -1461,6 +1489,7 @@
         }, def.interval || (entry.pack && entry.pack.interval) || 2400);
       }
       scheduleUrlSync();
+      void renderPreviewBackground();
       return;
     }
 
@@ -1472,6 +1501,7 @@
     if (!def) {
       metaSub.textContent = "Theme engine not found.";
       scheduleUrlSync();
+      void renderPreviewBackground();
       return;
     }
     const settings = settingsFor(entry.id, entry.pack);
@@ -1497,6 +1527,7 @@
       }
     }, MESSAGE_CYCLE_MS);
     scheduleUrlSync();
+    void renderPreviewBackground();
   }
 
   function findEntry(value) {
@@ -1590,17 +1621,35 @@
 
   async function renderPreviewBackground() {
     if (!previewBgHost) return;
+    const stage = document.getElementById("stage");
+    const activeTheme = document.body.classList.contains("is-mosaic")
+      ? document.getElementById("dyn-mosaic-theme")
+      : document.getElementById("dyn-message-theme");
+
+    function parkPreviewBg() {
+      if (stage && previewBgHost.parentElement !== stage) {
+        stage.insertBefore(previewBgHost, stage.firstChild);
+      }
+    }
+
     if (!previewBgMediaId || !mediaApi) {
       previewBgHost.replaceChildren();
       document.body.classList.remove("has-preview-bg");
+      parkPreviewBg();
       return;
     }
     const asset = await mediaApi.getMedia(previewBgMediaId);
     if (!asset || !asset.dataUrl) {
       previewBgHost.replaceChildren();
       document.body.classList.remove("has-preview-bg");
+      parkPreviewBg();
       return;
     }
+
+    if (activeTheme && previewBgHost.parentElement !== activeTheme) {
+      activeTheme.insertBefore(previewBgHost, activeTheme.firstChild);
+    }
+
     const wantVideo = mediaApi.isVideoMime && mediaApi.isVideoMime(asset.mime);
     let node = previewBgHost.firstElementChild;
     const tag = wantVideo ? "VIDEO" : "IMG";
