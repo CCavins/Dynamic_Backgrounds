@@ -221,8 +221,12 @@
     const src = rules.resolveIframeSrc(settings, location.href);
     if (!src) {
       removeAllCustom();
+      // With Show background on and Source = Vixi (or no custom asset), leave
+      // Vixi’s event layers visible. Only hide them when the theme replaces bg.
       if (themeOn && rules.themeReplacesBackground && rules.themeReplacesBackground(settings)) {
         hideOriginalBackground(rules.findWrapper());
+      } else {
+        restoreOriginalBackground();
       }
       return;
     }
