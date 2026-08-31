@@ -446,6 +446,8 @@ html.dyn-mosaic-on .logo-tile {
   aspect-ratio: 2 / 3;
   flex: 0 0 auto;
   overflow: visible;
+  isolation: isolate;
+  contain: layout;
 }
 #dyn-mosaic-theme[data-theme="decks"] .dyn-card {
   position: absolute;
@@ -1697,9 +1699,113 @@ html.dyn-mosaic-on .logo-tile {
     });
   }
 
+  const DECK_HOLD_MIN_MS = 5000;
+  const DECK_HOLD_MAX_MS = 8000;
+  const DECK_TICK_MS = 400;
+  const DECK_STAGGER_MS = 2000;
+  // Left, right, then middle — not a left-to-right wave.
+  const DECK_FIRST_ORDER = [0, 2, 1];
+
+  function nextDeckHold(state, pileIndex) {
+    const span = DECK_HOLD_MAX_MS - DECK_HOLD_MIN_MS;
+    let ms = DECK_HOLD_MIN_MS + Math.random() * span;
+    if (!state.lastHoldMs) state.lastHoldMs = [];
+    const prev = state.lastHoldMs[pileIndex];
+    if (prev != null && Math.abs(ms - prev) < 900) {
+      ms = DECK_HOLD_MIN_MS + Math.random() * span;
+    }
+    state.lastHoldMs[pileIndex] = ms;
+    return ms;
+  }
+
+  function scheduleClashes(state, pileIndex, at) {
+    return (state.nextDealAt || []).some((other, j) => {
+      if (j === pileIndex || !Number.isFinite(other)) return false;
+      return Math.abs(other - at) < DECK_STAGGER_MS;
+    });
+  }
+
+  function schedulePileDeal(state, pileIndex, extraMs) {
+    if (!state.nextDealAt) state.nextDealAt = [];
+    let ms = nextDeckHold(state, pileIndex) + (extraMs || 0);
+    const now = performance.now();
+    for (let tries = 0; tries < 6; tries += 1) {
+      if (!scheduleClashes(state, pileIndex, now + ms)) break;
+      ms += DECK_STAGGER_MS;
+    }
+    state.nextDealAt[pileIndex] = now + ms;
+  }
+
+  function scheduleFirstDeals(state, pileCount) {
+    const now = performance.now();
+    state.nextDealAt = Array.from({ length: pileCount }, () => now + DECK_HOLD_MIN_MS);
+    state.lastHoldMs = Array.from({ length: pileCount }, () => DECK_HOLD_MIN_MS);
+    const order = DECK_FIRST_ORDER.filter((i) => i < pileCount);
+    const sequence = order.length === pileCount ? order : Array.from({ length: pileCount }, (_, i) => i);
+    sequence.forEach((pileIndex, step) => {
+      const ms = DECK_HOLD_MIN_MS + step * DECK_STAGGER_MS;
+      state.lastHoldMs[pileIndex] = ms;
+      state.nextDealAt[pileIndex] = now + ms;
+    });
+  }
+
+  function dealOnePile(root, pool, state, api, pileIndex) {
+    const pile = state.piles[pileIndex];
+    const pileEl = state.pileEls[pileIndex];
+    if (!pileEl || !pileEl.children.length) {
+      schedulePileDeal(state, pileIndex);
+      return;
+    }
+    if (state.dealing[pileIndex]) return;
+    const incoming = pileEl.firstElementChild;
+    const face = pileEl.children.length > 1 ? pileEl.lastElementChild : null;
+    if (!incoming || incoming === face) {
+      schedulePileDeal(state, pileIndex);
+      return;
+    }
+
+    const usedNow = () => [...root.querySelectorAll(".dyn-card img")].map((img) => img.src);
+    state.dealing[pileIndex] = true;
+    state.nextDealAt[pileIndex] = Number.POSITIVE_INFINITY;
+    const dir = pileIndex === 0 ? -1 : 1;
+    dealFromSide(pileEl, incoming, face, dir)
+      .then(() => {
+        const underSrc = face ? feedSrc(api, pool, usedNow()) : "";
+        const swap =
+          face && face.parentElement && face !== incoming && underSrc
+            ? replaceImg(face, underSrc)
+            : Promise.resolve();
+        return swap.then(() => {
+          if (face) face.classList.remove("is-face");
+          incoming.classList.remove("is-dealing");
+          while (pileEl.children.length < state.perPile) {
+            const fillSrc = feedSrc(api, pool, usedNow());
+            if (!fillSrc) break;
+            const back = makeCard(fillSrc);
+            back.style.opacity = "0";
+            pileEl.insertBefore(back, pileEl.firstChild);
+            requestAnimationFrame(() => {
+              back.style.transition = "opacity 0.4s ease";
+              back.style.opacity = "1";
+            });
+          }
+          const ordered = [...pileEl.children].map((node) => imgSrc(node)).filter(Boolean);
+          pile.length = 0;
+          ordered.forEach((url) => pile.push(url));
+          restackDeck(pileEl);
+          state.dealing[pileIndex] = false;
+          schedulePileDeal(state, pileIndex);
+        });
+      })
+      .catch(() => {
+        state.dealing[pileIndex] = false;
+        schedulePileDeal(state, pileIndex);
+      });
+  }
+
   const themes = {
     decks: {
-      interval: 2800,
+      interval: DECK_TICK_MS,
       mount(root, pool) {
         const pileCount = 3;
         const perPile = 5;
@@ -1716,67 +1822,24 @@ html.dyn-mosaic-on .logo-tile {
           root.appendChild(pileEl);
           pileEls.push(pileEl);
         });
-        return { piles, pileEls, perPile, dealing: {}, wait: [0, 0, 0] };
+        const state = {
+          piles,
+          pileEls,
+          perPile,
+          dealing: [false, false, false],
+          lastHoldMs: [],
+          nextDealAt: [],
+        };
+        scheduleFirstDeals(state, pileCount);
+        return state;
       },
       tick(root, pool, state, api) {
-        if (!pool.length) return;
-        const usedNow = () => [...root.querySelectorAll(".dyn-card img")].map((img) => img.src);
-        [...root.querySelectorAll(".dyn-card")].forEach((card) => {
-          const src = imgSrc(card);
-          if (!src) return;
-          if (api && typeof api.isRetiring === "function" && api.isRetiring(src)) {
-            const next = feedSrc(api, pool, usedNow());
-            if (next && next !== src) replaceImg(card, next);
-          }
-        });
-        const pileIndex = pickFairTurn(state, state.piles.length, state.dealing);
-        if (pileIndex < 0) return;
-        const pile = state.piles[pileIndex];
-        const pileEl = state.pileEls[pileIndex];
-        if (!pileEl || !pileEl.children.length) return;
-
-        const incoming = pileEl.firstElementChild;
-        const face = pileEl.children.length > 1 ? pileEl.lastElementChild : null;
-        if (!incoming || incoming === face) return;
-
-        restackDeck(pileEl);
-
-        state.dealing[pileIndex] = true;
-        const dir = pileIndex === 0 ? -1 : 1;
-        dealFromSide(pileEl, incoming, face, dir).then(() => {
-          const underSrc = face ? feedSrc(api, pool, usedNow()) : "";
-          const swap =
-            face && face.parentElement && face !== incoming && underSrc
-              ? replaceImg(face, underSrc)
-              : Promise.resolve();
-          return swap.then(() => {
-            if (face) face.classList.remove("is-face");
-            incoming.classList.remove("is-dealing");
-            [...pileEl.children].forEach((card) => {
-              const src = imgSrc(card);
-              if (!src) return;
-              if (api && typeof api.isRetiring === "function" && api.isRetiring(src)) {
-                const next = feedSrc(api, pool, usedNow());
-                if (next && next !== src) replaceImg(card, next);
-              }
-            });
-            while (pileEl.children.length < state.perPile) {
-              const fillSrc = feedSrc(api, pool, usedNow());
-              if (!fillSrc) break;
-              const back = makeCard(fillSrc);
-              back.style.opacity = "0";
-              pileEl.insertBefore(back, pileEl.firstChild);
-              requestAnimationFrame(() => {
-                back.style.transition = "opacity 0.4s ease";
-                back.style.opacity = "1";
-              });
-            }
-            const ordered = [...pileEl.children].map((node) => imgSrc(node)).filter(Boolean);
-            pile.length = 0;
-            ordered.forEach((url) => pile.push(url));
-            restackDeck(pileEl);
-            state.dealing[pileIndex] = false;
-          });
+        if (!pool.length || !state || !state.pileEls) return;
+        const now = performance.now();
+        state.pileEls.forEach((_, pileIndex) => {
+          if (state.dealing[pileIndex]) return;
+          if (now < (state.nextDealAt[pileIndex] || 0)) return;
+          dealOnePile(root, pool, state, api, pileIndex);
         });
       },
     },

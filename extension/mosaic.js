@@ -533,6 +533,8 @@
       theme === "cubes-brand" ||
       theme === "fan" ||
       theme === "fan-brand" ||
+      theme === "decks" ||
+      theme === "decks-brand" ||
       theme === "depthfield"
     ) {
       return true;
