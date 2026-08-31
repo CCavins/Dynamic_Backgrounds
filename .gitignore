@@ -1,3 +1,9 @@
 .DS_Store
 .preview-frames
 scripts/node_modules
+.chrome-dyn-profile/
+.chrome-ext-profile/
+.cursor/debug*.log
+.cursor/**/*.log
+.netlify/
+themes/xmas-assets/

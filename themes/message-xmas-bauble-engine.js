@@ -120,7 +120,11 @@
         : themeRoot;
       stage.querySelectorAll(".snow").forEach((node) => node.remove());
       const state = {
-        photos: [...themeRoot.querySelectorAll("[data-photo], img")],
+        photos: helpers.collectMessagePhotos
+          ? helpers.collectMessagePhotos(themeRoot, "[data-photo], img")
+          : [...themeRoot.querySelectorAll("[data-photo], img")].filter(
+              (img) => !img.closest("#dyn-bg-media, #dyn-bg-embed, #preview-bg")
+            ),
         messages: [...themeRoot.querySelectorAll("[data-message]")],
         names: [...themeRoot.querySelectorAll("[data-name]")],
         idleTimer: 0,
