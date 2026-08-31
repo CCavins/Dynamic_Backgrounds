@@ -1266,24 +1266,6 @@ html.dyn-mosaic-on .logo-tile {
   right: 0;
   bottom: 15%;
 }
-/* Card decks*: keep piles in-flow on the root and open a right/bottom rail. */
-#dyn-mosaic-theme[data-theme="decks-brand"].dyn-show-qr,
-#dyn-mosaic-theme[data-theme="decks-brand"].dyn-show-logo {
-  justify-content: flex-start;
-  padding-left: 5%;
-  padding-right: 22%;
-  gap: 7%;
-}
-#dyn-mosaic-theme[data-theme="decks-brand"].dyn-show-qr .dyn-pile,
-#dyn-mosaic-theme[data-theme="decks-brand"].dyn-show-logo .dyn-pile {
-  width: min(22vw, 300px);
-}
-#dyn-mosaic-theme.dyn-portrait[data-theme="decks-brand"].dyn-show-qr,
-#dyn-mosaic-theme.dyn-portrait[data-theme="decks-brand"].dyn-show-logo {
-  padding-right: 8%;
-  padding-bottom: 18%;
-  justify-content: center;
-}
 #dyn-mosaic-theme[data-theme$="-brand"] > .dyn-brand-chrome .dyn-brand-logo {
   left: auto;
   right: 3.2%;
@@ -1305,6 +1287,35 @@ html.dyn-mosaic-on .logo-tile {
 #dyn-mosaic-theme.dyn-portrait[data-theme$="-brand"] > .dyn-brand-chrome .dyn-brand-qr {
   bottom: 4.2%;
   right: 4%;
+  width: min(20%, 150px);
+}
+/* Card decks*: keep full-stage piles; logo top-left, QR top-right. */
+#dyn-mosaic-theme[data-theme="decks-brand"] > .dyn-brand-chrome .dyn-brand-logo {
+  left: 3.2%;
+  right: auto;
+  top: 3.2%;
+  bottom: auto;
+  width: min(12%, 160px);
+}
+#dyn-mosaic-theme[data-theme="decks-brand"] > .dyn-brand-chrome .dyn-brand-qr {
+  left: auto;
+  right: 3.2%;
+  top: 3.2%;
+  bottom: auto;
+  width: min(11%, 140px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="decks-brand"] > .dyn-brand-chrome .dyn-brand-logo {
+  left: 4%;
+  right: auto;
+  top: 3.5%;
+  bottom: auto;
+  width: min(22%, 160px);
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="decks-brand"] > .dyn-brand-chrome .dyn-brand-qr {
+  left: auto;
+  right: 4%;
+  top: 3.5%;
+  bottom: auto;
   width: min(20%, 150px);
 }
 `.replace(
