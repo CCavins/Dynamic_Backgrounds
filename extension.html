@@ -19,7 +19,7 @@
                 <a href="extension.html" aria-current="page">Extension</a>
                 <a href="create.html">Create</a>
             </nav>
-            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.18.0</span></a>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.19.0</span></a>
         </header>
 
         <div class="page-intro">
@@ -75,7 +75,7 @@
             <p>Tokens and extra query params on an output URL are ignored when matching.</p>
 
             <h2>Imported themes</h2>
-            <p>The popup <strong>Imported themes</strong> section uses <strong>Import packs…</strong>. Select several <code>.json</code> files, optional engines, and optional font files (<code>.woff2</code> / <code>.woff</code> / <code>.ttf</code> / <code>.otf</code>) at once. Matching is by <code>engine</code> / filename and by JSON <code>fontFile</code>. Shared fonts are stored once; re-importing the same ids replaces. Sample packs and the import walkthrough are on <a href="create.html">Create</a>.</p>
+            <p>The popup <strong>Imported themes</strong> section uses <strong>Import packs…</strong>. Select several <code>.json</code> files, optional engines, and optional font files (<code>.woff2</code> / <code>.woff</code> / <code>.ttf</code> / <code>.otf</code>) at once. Matching is by <code>engine</code> / filename and by each JSON <code>fontFile</code> / <code>fontFaces</code> entry. A pack can use several custom fonts plus Google Fonts. Shared fonts are stored once; re-importing the same ids replaces. Sample packs and the import walkthrough are on <a href="create.html">Create</a>.</p>
         </article>
 
         <footer>Reload the unpacked extension after you update files.</footer>

@@ -433,11 +433,25 @@
       badges.appendChild(eng);
     }
 
-    if (pack.fontId || pack.fontFile) {
+    if (pack.fontId || pack.fontFile || (pack.fontFaces && pack.fontFaces.length)) {
+      const faces =
+        customApi && customApi.getPackFontFaces
+          ? customApi.getPackFontFaces(pack)
+          : pack.fontFaces && pack.fontFaces.length
+            ? pack.fontFaces
+            : [{ fontFile: pack.fontFile, fontFamily: pack.fontFamily, fontId: pack.fontId }];
+      const families = faces
+        .map((face) => face.fontFamily || face.fontFile || "")
+        .filter(Boolean);
       const font = document.createElement("span");
       font.className = "theme-badge theme-badge-font";
-      font.textContent = pack.fontFamily ? "Font · " + pack.fontFamily : "Font";
-      font.title = pack.fontFile || pack.fontId || "";
+      if (families.length > 1) {
+        font.textContent = "Fonts · " + families.length;
+        font.title = families.join(", ");
+      } else {
+        font.textContent = families[0] ? "Font · " + families[0] : "Font";
+        font.title = faces.map((face) => face.fontFile || face.fontId || "").filter(Boolean).join(", ");
+      }
       badges.appendChild(font);
     }
 
@@ -1237,10 +1251,19 @@
       }
     }
 
-    function findFontForPack(pack) {
-      const want = String(pack.fontFile || "").toLowerCase();
-      if (!want) return null;
-      return fonts.find((item) => item.name.toLowerCase() === want) || null;
+    function findFontsForPack(pack) {
+      const faces =
+        customApi.getPackFontFaces ? customApi.getPackFontFaces(pack) : [];
+      const matched = [];
+      const missing = [];
+      faces.forEach((face) => {
+        const want = String(face.fontFile || "").toLowerCase();
+        if (!want) return;
+        const hit = fonts.find((item) => item.name.toLowerCase() === want);
+        if (hit) matched.push(hit);
+        else missing.push(face.fontFile);
+      });
+      return { matched, missing };
     }
 
     const usedEngines = new Set();
@@ -1260,23 +1283,23 @@
       }
       const match = findEngineForPack(pack, engines);
       if (match) usedEngines.add(match.name);
-      const fontMatch = findFontForPack(pack);
-      if (fontMatch) usedFonts.add(fontMatch.name);
-      else if (pack.fontFile) {
+      const fontPlan = findFontsForPack(pack);
+      fontPlan.matched.forEach((item) => usedFonts.add(item.name));
+      fontPlan.missing.forEach((fontName) => {
         notes.push(
           name +
-            ": fontFile \"" +
-            pack.fontFile +
-            "\" not in this selection (will reuse a stored copy if one exists)."
+            ': fontFile "' +
+            fontName +
+            '" not in this selection (will reuse a stored copy if one exists).'
         );
-      }
+      });
       jobs.push({
         raw,
         pack,
         jsonName: name,
         engineSource: match ? match.text : "",
         engineName: match ? match.name : "",
-        fontAsset: fontMatch ? fontMatch.asset : null,
+        fontAssets: fontPlan.matched.map((item) => item.asset),
       });
     }
 
@@ -1341,7 +1364,7 @@
 
         for (const job of plan.jobs) {
           try {
-            const pack = await customApi.importPack(job.raw, job.engineSource, job.fontAsset);
+            const pack = await customApi.importPack(job.raw, job.engineSource, job.fontAssets);
             if (existingIds.has(pack.id)) replaced.push(pack);
             else imported.push(pack);
             existingIds.add(pack.id);

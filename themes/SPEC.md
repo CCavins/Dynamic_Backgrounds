@@ -32,7 +32,8 @@ Decision tree:
 
 - `my-theme.json` — required. Must parse as the schema below.
 - `my-theme-engine.js` — required only when the pack uses a new engine. Classic script. Calls `BGThemeEngines.define({...})`.
-- Import in the extension popup: select the JSON, or the JSON **and** the JS together. One JSON, at most one JS.
+- Optional font file(s) — `.woff2` / `.woff` / `.ttf` / `.otf` when the pack uses `fontFile` / `fontFaces` (see [Custom fonts](#custom-fonts)).
+- Import in the extension popup (**Import packs…**): select one or many `.json` files from a themes folder, plus each pack’s `*-engine.js` if needed, plus any custom fonts those packs name. Matching is automatic (engines by `engine` / filename; fonts by each `fontFile` basename).
 - `"engine"` in the JSON must match `id` in `BGThemeEngines.define`.
 - `"engineFile"` is an optional human hint (`message-aurora-engine.js`). It is never fetched.
 
@@ -45,6 +46,7 @@ Decision tree:
 | Mosaic JSON | `mosaic-<name>.json` | `mosaic-orbit-swap.json` |
 | Mosaic engine | `mosaic-<name>-engine.js` | `mosaic-orbit-swap-engine.js` |
 | JSON only | same kind prefix, no `-engine` file | `message-stamp.json`, `mosaic-ribbon.json` |
+| Custom fonts | any basename; prefer `.woff2` | `BrandDisplay.woff2`, `BrandBody.woff2` (listed in `fontFaces`) |
 
 Any valid `id` / `engine` that passes the regex and reserved-id checks is fine — this pattern is only for keeping packs easy to spot.
 
@@ -77,6 +79,7 @@ Every field the parser keeps. Extra fields are ignored. Do not invent settings k
   "css": "",
   "html": "",
   "fonts": "",
+  "fontFaces": [],
   "fontFile": "",
   "fontFamily": "",
   "settings": {},
@@ -102,9 +105,10 @@ Every field the parser keeps. Extra fields are ignored. Do not invent settings k
 | `engineFile` | no | string | Basename ending in `.js`, max 80 chars. Hint only |
 | `css` | no | string | Max 100 KB. Scoped selectors required |
 | `html` | message unless `engine` | string | Max 50 KB. Message themes need `html` or `engine` |
-| `fonts` | no | string | Google Fonts only: must start with `https://fonts.googleapis.com/`. Anything else is dropped |
-| `fontFile` | no | string | Basename of a custom font to import with the pack (`.woff2`, `.woff`, `.ttf`, `.otf`). Matched when that file is selected in the same Import packs… batch. Shared across packs that name the same file |
-| `fontFamily` | no | string | CSS `font-family` name for `fontFile` (max 80). Defaults from the filename stem if omitted |
+| `fonts` | no | string or string[] | Google Fonts stylesheet URL(s) only: each must start with `https://fonts.googleapis.com/`. One URL may list several families (`family=…&family=…`). Or pass an array of URLs (max 8). Dropped if not Google Fonts. Works together with `fontFaces` |
+| `fontFaces` | no | array | Custom fonts for this pack (max 12). Each item: `{ "fontFile": "Face.woff2", "fontFamily": "Face Name" }`. Preferred when you need more than one face |
+| `fontFile` | no | string | Legacy single custom font basename (`.woff2`, `.woff`, `.ttf`, `.otf`). Used only when `fontFaces` is omitted. Same matching / sharing rules |
+| `fontFamily` | no | string | CSS `font-family` for singular `fontFile` (max 80). Defaults from the filename stem if omitted |
 | `settings` | no | object | Keys only: `primary`, `secondary`, `background`, `motion`, `scale` |
 | `revealMs` | no | number | Message enter. Clamped 200–4000. Default 1000 |
 | `hideMs` | no | number | Message leave. Clamped 120–2000. Default 320 |
@@ -114,6 +118,65 @@ Every field the parser keeps. Extra fields are ignored. Do not invent settings k
 | `rows` | mosaic grid | number | 1–6. Default 3 |
 | `count` | mosaic | number | 3–24. Default 8. Used by row / scatter / ribbon |
 | `interval` | mosaic | number | 800–12000 ms. `0` / omitted means the engine default |
+
+### Custom fonts
+
+Use **Google Fonts** and/or **imported files**. Both can appear on the same pack. Custom files are **copied into extension storage** at import time (not live-linked to a folder on disk).
+
+**Google Fonts** — one URL with several families, or an array of URLs:
+
+```json
+"fonts": "https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Playfair+Display:wght@600&display=swap"
+```
+
+```json
+"fonts": [
+  "https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap",
+  "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&display=swap"
+]
+```
+
+**Custom files** — prefer `fontFaces` for multiple faces:
+
+```json
+{
+  "format": "dynamic-backgrounds-theme",
+  "version": 1,
+  "kind": "message",
+  "id": "my-theme",
+  "label": "My Theme",
+  "fonts": "https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap",
+  "fontFaces": [
+    { "fontFile": "BrandDisplay.woff2", "fontFamily": "Brand Display" },
+    { "fontFile": "BrandBody.woff2", "fontFamily": "Brand Body" }
+  ],
+  "css": "#dyn-message-theme .title { font-family: \"Brand Display\", \"Playfair Display\", serif; }\n#dyn-message-theme .caption { font-family: \"Brand Body\", Inter, sans-serif; }",
+  "html": "…"
+}
+```
+
+Single-font shorthand (still supported):
+
+```json
+"fontFile": "BrandDisplay.woff2",
+"fontFamily": "Brand Display"
+```
+
+**Steps**
+
+1. Put each `.woff2` / `.woff` / `.ttf` / `.otf` beside the pack (prefer `.woff2`, about **2 MB** max each).
+2. List them in `fontFaces` (or use singular `fontFile` / `fontFamily`).
+3. Optionally set `fonts` to one or more Google Fonts CSS URLs.
+4. In **Import packs…**, multi-select the `.json`, every named font file, and the `*-engine.js` if the pack has one.
+5. The runtime injects Google `<link>`s and `@font-face` for imported files. Use the same family names in CSS (and in any engine-drawn text).
+
+**Rules**
+
+- Each `fontFile` is a **basename only** (no paths). Case-insensitive match against selected files.
+- Several packs in one batch may share one font file → stored **once**.
+- Re-importing the same theme `id`, engine id, or font file **replaces** the previous copy.
+- Missing font files in the batch note a warning; the pack still imports and reuses a stored copy of that file if one exists.
+- `fontFaces` wins when present; singular `fontFile` / `fontFamily` are ignored in that case (except as the first-face mirror written after import).
 
 ### settings
 

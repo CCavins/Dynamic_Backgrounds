@@ -19,7 +19,7 @@
                 <a href="extension.html">Extension</a>
                 <a href="create.html" aria-current="page">Create</a>
             </nav>
-            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.18.0</span></a>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.19.0</span></a>
         </header>
 
         <div class="page-intro">
@@ -41,7 +41,7 @@
                 <li>Reload the unpacked extension (or reinstall <code>extension.zip</code>).</li>
                 <li>Open the extension popup.</li>
                 <li>Under <strong>Imported themes</strong>, click <strong>Import packs…</strong>.</li>
-                <li>Select one or many theme <code>.json</code> files, plus each pack’s <code>*-engine.js</code> if it has one, plus optional custom font files (<code>.woff2</code> / <code>.woff</code> / <code>.ttf</code> / <code>.otf</code>). Matching is automatic: engines by <code>engine</code> / filename; fonts by JSON <code>fontFile</code>. Several themes can share one font file in the same selection.</li>
+                <li>Select one or many theme <code>.json</code> files, plus each pack’s <code>*-engine.js</code> if it has one, plus optional custom font files (<code>.woff2</code> / <code>.woff</code> / <code>.ttf</code> / <code>.otf</code>). Matching is automatic: engines by <code>engine</code> / filename; fonts by each JSON <code>fontFile</code> / <code>fontFaces[].fontFile</code>. A pack can use several custom fonts plus Google Fonts; shared files are stored once.</li>
                 <li>Select the imported theme in <strong>Message theme</strong> or <strong>Mosaic theme</strong>.</li>
                 <li>Under Stage, Match Vixi follows Vixi’s canvas (the default). Match the window fills the browser. Under Mosaic and Message, turn Show background / QR / logo on only for that kind.</li>
                 <li>Open a Vixi output page.</li>
@@ -49,13 +49,16 @@
             <p>A pack that includes JS runs on matching output pages. Only import engines you wrote or trust. The popup warns the first time. Re-importing the same theme <code>id</code> (or the same engine / font file) replaces the previous copy. Remove an imported theme from the same section — if it was selected, the dropdown returns to Off.</p>
 
             <h2>Custom fonts</h2>
-            <p>For Google Fonts, set <code>"fonts": "https://fonts.googleapis.com/css2?family=…"</code> in the JSON and use that family in CSS.</p>
-            <p>For a non-Google face, put the font file next to your packs and set:</p>
+            <p>Google Fonts and imported files can both be used on the same pack. For Google Fonts, set <code>"fonts"</code> to a CSS URL (several families in one URL is fine) or an array of URLs, then use those families in CSS.</p>
+            <p>For one or more non-Google faces, put the files next to your packs and prefer <code>fontFaces</code>:</p>
             <pre>{
-  "fontFile": "BrandDisplay.woff2",
-  "fontFamily": "Brand Display"
+  "fonts": "https://fonts.googleapis.com/css2?family=Inter:wght@400;700&amp;display=swap",
+  "fontFaces": [
+    { "fontFile": "BrandDisplay.woff2", "fontFamily": "Brand Display" },
+    { "fontFile": "BrandBody.woff2", "fontFamily": "Brand Body" }
+  ]
 }</pre>
-            <p>Select the font with the JSON (and engine, if any) in <strong>Import packs…</strong>. Prefer <code>.woff2</code> (about 2&nbsp;MB max). In CSS: <code>font-family: "Brand Display", sans-serif;</code></p>
+            <p>Singular <code>fontFile</code> / <code>fontFamily</code> still works for one face. Select every named font with the JSON (and engine, if any) in <strong>Import packs…</strong>. Prefer <code>.woff2</code> (about 2&nbsp;MB max each). In CSS: <code>font-family: "Brand Display", Inter, sans-serif;</code></p>
 
             <h2>Other examples</h2>
             <ul class="pack-list">
