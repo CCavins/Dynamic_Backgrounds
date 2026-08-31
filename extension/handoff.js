@@ -47,10 +47,10 @@
     "html.dyn-theme-on.dyn-kind-message:not(.dyn-show-bg) #dyn-bg-media{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
-    "html.dyn-show-bg .v2-app-wrapper__bg-image," +
-    "html.dyn-show-bg .output-wrapper > .asset-view," +
-    "html.dyn-show-bg .output-wrapper > .asset-view img," +
-    "html.dyn-show-bg .output-wrapper > .asset-view video," +
+    "html.dyn-show-bg:not(.dyn-custom-bg) .v2-app-wrapper__bg-image," +
+    "html.dyn-show-bg:not(.dyn-custom-bg) .output-wrapper > .asset-view," +
+    "html.dyn-show-bg:not(.dyn-custom-bg) .output-wrapper > .asset-view img," +
+    "html.dyn-show-bg:not(.dyn-custom-bg) .output-wrapper > .asset-view video," +
     "html.dyn-show-bg #dyn-bg-embed{" +
       "position:absolute!important;inset:0!important;" +
       "left:0!important;top:0!important;right:0!important;bottom:0!important;" +
@@ -60,6 +60,14 @@
       "visibility:visible!important;opacity:1!important;" +
       "pointer-events:none!important;z-index:0!important;" +
       "transform:none!important;display:block!important;" +
+    "}" +
+    /* Custom upload/iframe replaces Vixi’s event background — never flash it. */
+    "html.dyn-custom-bg .v2-app-wrapper__bg-image," +
+    "html.dyn-custom-bg .output-wrapper > .asset-view," +
+    "html.dyn-custom-bg .output-wrapper > .asset-view img," +
+    "html.dyn-custom-bg .output-wrapper > .asset-view video{" +
+      "visibility:hidden!important;opacity:0!important;" +
+      "pointer-events:none!important;display:none!important;" +
     "}" +
     "html.dyn-show-bg #dyn-bg-media{" +
       "position:absolute!important;inset:0!important;" +
@@ -285,13 +293,34 @@
     else if (eitherTheme && rules.applyOutputCanvas) rules.applyOutputCanvas(s.stageAspect);
     else if (rules.resetOutputCanvas) rules.resetOutputCanvas();
     if (!liveOn) {
-      if (rules.restoreBackgroundLayers) rules.restoreBackgroundLayers();
-      if (rules.resumeBackgroundMedia) rules.resumeBackgroundMedia();
+      // Native/CTA: keep Vixi hidden when a custom Background is selected so
+      // leaving CTA cannot flash the event art before #dyn-bg-media re-hides it.
+      if (rules.usesCustomBackground && rules.usesCustomBackground(s)) {
+        if (rules.hideBackgroundLayers) rules.hideBackgroundLayers();
+        if (rules.silenceReplacedMedia) rules.silenceReplacedMedia();
+        html.classList.add("dyn-custom-bg");
+      } else {
+        if (rules.restoreBackgroundLayers) rules.restoreBackgroundLayers();
+        if (rules.resumeBackgroundMedia) rules.resumeBackgroundMedia();
+        html.classList.remove("dyn-custom-bg");
+      }
     } else if (chrome.showBackground) {
-      if (rules.restoreBackgroundLayers) rules.restoreBackgroundLayers();
-      if (rules.resumeBackgroundMedia) rules.resumeBackgroundMedia();
+      if (rules.usesCustomBackground && rules.usesCustomBackground(s)) {
+        if (rules.hideBackgroundLayers) rules.hideBackgroundLayers();
+        if (rules.silenceReplacedMedia) rules.silenceReplacedMedia();
+        html.classList.add("dyn-custom-bg");
+      } else {
+        if (rules.restoreBackgroundLayers) rules.restoreBackgroundLayers();
+        if (rules.resumeBackgroundMedia) rules.resumeBackgroundMedia();
+        html.classList.remove("dyn-custom-bg");
+      }
     } else if (rules.silenceReplacedMedia) {
       rules.silenceReplacedMedia();
+      if (rules.hideBackgroundLayers) rules.hideBackgroundLayers();
+    }
+    const bgApi = root.BGCustomBackground;
+    if (bgApi && typeof bgApi.scheduleApply === "function") {
+      bgApi.scheduleApply(0);
     }
   }
 

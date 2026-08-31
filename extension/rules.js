@@ -1032,6 +1032,20 @@
     });
   }
 
+  function hideBackgroundLayers(root) {
+    backgroundLayers(root).forEach((el) => {
+      if (el && el.style) el.style.setProperty("display", "none", "important");
+    });
+  }
+
+  /** True when the popup Background is a custom upload/iframe (not Vixi's event art). */
+  function usesCustomBackground(settings, pageUrl) {
+    const href = pageUrl || (typeof location !== "undefined" ? location.href : "");
+    if (resolveBackgroundMediaId(settings, href)) return true;
+    const src = typeof resolveIframeSrc === "function" ? resolveIframeSrc(settings, href) : "";
+    return Boolean(src);
+  }
+
   function silenceReplacedMedia() {
     eachBackgroundMedia((node) => {
       node.pause();
@@ -1957,6 +1971,8 @@
     tagChromeKinds,
     themeReplacesBackground,
     restoreBackgroundLayers,
+    hideBackgroundLayers,
+    usesCustomBackground,
     silenceReplacedMedia,
     resumeBackgroundMedia,
     findBrandNodes,

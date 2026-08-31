@@ -92,13 +92,16 @@
     );
   }
 
-  function markCustomBg(parent) {
-    const insideTheme =
-      parent &&
-      (parent.id === "dyn-message-theme" ||
-        parent.id === "dyn-mosaic-theme" ||
-        parent.id === "dyn-theme-host");
-    document.documentElement.classList.toggle("dyn-custom-bg", Boolean(insideTheme));
+  function markCustomBg(active) {
+    document.documentElement.classList.toggle("dyn-custom-bg", Boolean(active));
+  }
+
+  function moveIntoParent(node, parent, styleCss) {
+    if (!node || !parent) return;
+    if (styleCss) node.style.cssText = styleCss;
+    if (node.parentElement !== parent) {
+      parent.insertBefore(node, parent.firstChild);
+    }
   }
 
   function injectIframe(src, settings) {
@@ -109,20 +112,18 @@
     removeMedia();
 
     let iframe = document.getElementById(IFRAME_ID);
-    if (!iframe || iframe.parentElement !== parent) {
-      if (iframe) iframe.remove();
+    if (!iframe) {
       iframe = document.createElement("iframe");
       iframe.id = IFRAME_ID;
       iframe.setAttribute("title", "Dynamic background");
       iframe.setAttribute("allow", "autoplay");
-      iframe.style.cssText = IFRAME_STYLE;
-      parent.insertBefore(iframe, parent.firstChild);
     }
+    moveIntoParent(iframe, parent, IFRAME_STYLE);
 
     if (iframe.getAttribute("src") !== src) {
       iframe.setAttribute("src", src);
     }
-    markCustomBg(parent);
+    markCustomBg(true);
     return true;
   }
 
@@ -147,15 +148,12 @@
     removeIframe();
 
     let host = document.getElementById(MEDIA_ID);
-    if (!host || host.parentElement !== parent) {
-      if (host) host.remove();
+    if (!host) {
       host = document.createElement("div");
       host.id = MEDIA_ID;
-      host.style.cssText = mediaHostStyle(parent);
-      parent.insertBefore(host, parent.firstChild);
-    } else {
-      host.style.cssText = mediaHostStyle(parent);
     }
+    // Reparent without destroy so CTA → theme handoff does not blank a frame.
+    moveIntoParent(host, parent, mediaHostStyle(parent));
 
     const key = mediaId + "|" + (asset.mime || "") + "|" + (fit || "cover") + "|" + asset.dataUrl.length;
     const wantVideo = mediaApi.isVideoMime && mediaApi.isVideoMime(asset.mime);
@@ -181,7 +179,7 @@
       const play = node.play();
       if (play && typeof play.catch === "function") play.catch(() => {});
     }
-    markCustomBg(parent);
+    markCustomBg(true);
     return true;
   }
 
@@ -231,12 +229,13 @@
     injectIframe(src, settings);
   }
 
-  function scheduleApply() {
+  function scheduleApply(delayMs) {
     if (applyTimer) clearTimeout(applyTimer);
+    const wait = delayMs == null ? 50 : Math.max(0, Number(delayMs) || 0);
     applyTimer = setTimeout(() => {
       applyTimer = 0;
       apply().catch(() => {});
-    }, 50);
+    }, wait);
   }
 
   const observer = new MutationObserver(() => {
@@ -256,5 +255,12 @@
     /* extension reloaded */
   }
 
-  scheduleApply();
+  globalThis.BGCustomBackground = {
+    scheduleApply,
+    applyNow() {
+      return apply();
+    },
+  };
+
+  scheduleApply(0);
 })();
