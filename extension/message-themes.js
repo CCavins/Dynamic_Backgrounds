@@ -3943,6 +3943,35 @@ html.dyn-message-on .mosaic-layout > .asset-view {
     state.raf = requestAnimationFrame(frame);
   }
 
+  function isBackgroundMediaNode(node) {
+    return Boolean(
+      node &&
+        typeof node.closest === "function" &&
+        node.closest("#dyn-bg-media, #dyn-bg-embed, #preview-bg")
+    );
+  }
+
+  /** Capture photo slot — never the selected Show-background media img. */
+  function findMessagePhoto(themeRoot) {
+    if (!themeRoot) return null;
+    const preferred = themeRoot.querySelector(
+      ".well img, [data-photo], .tm-hero-img, .photo-panel img, .photo-holder img, .photo-well img, .program img, .aurora-card img"
+    );
+    if (preferred && !isBackgroundMediaNode(preferred)) return preferred;
+    const framePhoto = themeRoot.querySelector(".frame img");
+    if (framePhoto && !isBackgroundMediaNode(framePhoto)) return framePhoto;
+    return (
+      [...themeRoot.querySelectorAll("img")].find((img) => !isBackgroundMediaNode(img)) || null
+    );
+  }
+
+  function collectMessagePhotos(themeRoot, selector) {
+    if (!themeRoot) return [];
+    return [...themeRoot.querySelectorAll(selector || "[data-photo], img")].filter(
+      (img) => !isBackgroundMediaNode(img)
+    );
+  }
+
   root.BGMessageThemes = {
     STYLE,
     FONTS,
@@ -3954,5 +3983,8 @@ html.dyn-message-on .mosaic-layout > .asset-view {
     finishShow,
     hideTheme,
     whenDecoded,
+    isBackgroundMediaNode,
+    findMessagePhoto,
+    collectMessagePhotos,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

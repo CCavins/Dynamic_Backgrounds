@@ -184,8 +184,10 @@
       root.classList.add("is-parked", "dyn-awaiting-show");
       root.classList.remove("on", "off", "idle", "held");
       if (reason === "native") {
-        const img = root.querySelector(".well img, img");
-        if (img) {
+        const img =
+          (themeApi && themeApi.findMessagePhoto && themeApi.findMessagePhoto(root)) ||
+          root.querySelector(".well img, [data-photo]");
+        if (img && !(themeApi && themeApi.isBackgroundMediaNode && themeApi.isBackgroundMediaNode(img))) {
           img.removeAttribute("src");
           img.removeAttribute("srcset");
         }
@@ -289,8 +291,18 @@
     if (token !== cycle) return;
     // Swap the photo while still hidden so a CTA return cannot flash the
     // previous card, then reveal for the entrance of the new capture.
-    const img = root.querySelector(".well img, img");
-    if (img && next.src) img.src = next.src;
+    // Never target #dyn-bg-media (selected Show-background asset) — a bare
+    // `img` query matches that first when it is mounted inside the theme root.
+    const img =
+      (themeApi && themeApi.findMessagePhoto && themeApi.findMessagePhoto(root)) ||
+      root.querySelector(".well img, [data-photo]");
+    if (
+      img &&
+      next.src &&
+      !(themeApi && themeApi.isBackgroundMediaNode && themeApi.isBackgroundMediaNode(img))
+    ) {
+      img.src = next.src;
+    }
     root.classList.remove("dyn-awaiting-show");
     unparkOverlay(root);
     try {
