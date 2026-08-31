@@ -239,7 +239,7 @@
       log(addedBack.length > 0, "New mosaic photos appear on decks", addedBack.length ? addedBack.join(", ") : "none");
 
       log(null, "Rapid theme switching stress (blank-stage race)");
-      const stressThemes = ["spotlight", "coverflow", "decks-brand", "fan", "cascade", "orbit", "reels", "polaroid-brand"];
+      const stressThemes = ["spotlight", "coverflow", "decks-brand", "fan-brand", "cascade", "orbit", "reels", "polaroid-brand"];
       let blankHits = 0;
       for (let i = 0; i < 12; i += 1) {
         const next = stressThemes[i % stressThemes.length];

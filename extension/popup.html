@@ -119,9 +119,43 @@
   </section>
 
   <section>
-    <h2>Any output URL</h2>
-    <p class="help">Used when the page is an output and does not match a specific row. Leave blank to skip.</p>
-    <textarea id="any-output" rows="4" placeholder="Paste iframe or background URL"></textarea>
+    <h2>Background</h2>
+    <p class="help">Used on output pages that do not match a specific row below. Pick a link/iframe or upload an image, video, or GIF. When a message or mosaic theme is on, turn on Show background for that theme to keep this behind it.</p>
+    <label class="select-label">
+      <span>Source</span>
+      <select id="bg-mode">
+        <option value="auto">Auto — upload if set, otherwise link</option>
+        <option value="link">Link / iframe</option>
+        <option value="media">Uploaded media</option>
+      </select>
+    </label>
+    <label class="bg-link-label">
+      <span>Link or iframe</span>
+      <textarea id="any-output" rows="3" placeholder="Paste iframe or background URL"></textarea>
+    </label>
+    <div class="media-row" id="bg-media-row">
+      <div class="media-row-head">
+        <span>Upload</span>
+        <span class="media-file-name" id="bg-media-name">No file</span>
+      </div>
+      <div class="media-row-actions">
+        <label class="v2-btn v2-btn-secondary media-upload-btn">
+          Choose file…
+          <input type="file" id="bg-media-file" accept="image/*,video/*,.gif" hidden>
+        </label>
+        <button type="button" class="v2-btn v2-btn-secondary" id="bg-media-clear">Clear</button>
+      </div>
+      <p class="media-status" id="bg-media-status" role="status"></p>
+    </div>
+    <label class="select-label">
+      <span>Fit</span>
+      <select id="bg-fit">
+        <option value="cover">Fill — crop to cover</option>
+        <option value="contain">Fit — letterbox</option>
+        <option value="fill">Stretch</option>
+        <option value="center">Center — native size</option>
+      </select>
+    </label>
   </section>
 
   <section>
@@ -168,8 +202,10 @@
   </template>
 
   <script src="rules.js"></script>
+  <script src="media.js"></script>
   <script src="engines/api.js"></script>
   <script src="engines/message-aurora-engine.js"></script>
+  <script src="engines/message-text-message-engine.js"></script>
   <script src="engines/mosaic-orbit-swap-engine.js"></script>
   <script src="custom-themes.js"></script>
   <script src="popup.js"></script>

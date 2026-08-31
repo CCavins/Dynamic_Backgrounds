@@ -9,7 +9,7 @@ const extDir = path.join(root, "extension");
 const manifestPath = path.join(extDir, "manifest.json");
 const enginesPath = path.join(extDir, "engines.json");
 
-const BEFORE = ["rules.js", "handoff.js", "content.js", "mosaic-themes.js", "message-themes.js"];
+const BEFORE = ["rules.js", "media.js", "handoff.js", "content.js", "mosaic-themes.js", "message-themes.js"];
 const AFTER = ["custom-themes.js", "mosaic.js", "message.js"];
 
 function listedEngines() {

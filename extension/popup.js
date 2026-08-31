@@ -20,6 +20,12 @@
   const messageThemeSettings = document.getElementById("message-theme-settings");
   const mosaicThemeSettings = document.getElementById("mosaic-theme-settings");
   const anyOutput = document.getElementById("any-output");
+  const bgMode = document.getElementById("bg-mode");
+  const bgFit = document.getElementById("bg-fit");
+  const bgMediaFile = document.getElementById("bg-media-file");
+  const bgMediaClear = document.getElementById("bg-media-clear");
+  const bgMediaName = document.getElementById("bg-media-name");
+  const bgMediaStatus = document.getElementById("bg-media-status");
   const rulesRoot = document.getElementById("rules");
   const addRule = document.getElementById("add-rule");
   const template = document.getElementById("rule-template");
@@ -27,6 +33,9 @@
   const customThemeCount = document.getElementById("custom-theme-count");
   const importInput = document.getElementById("import-theme");
   const importStatus = document.getElementById("import-status");
+  const mediaApi = globalThis.BGMediaStore;
+  const BG_MEDIA_ID = "bg-any-output";
+  const WALLPAPER_PREFIX = "theme-wallpaper:";
 
   let persistTimer = 0;
   let cachedSettings = null;
@@ -42,6 +51,46 @@
     importStatus.textContent = message || "";
     importStatus.classList.remove("is-ok", "is-error", "is-warn");
     if (tone) importStatus.classList.add(tone);
+  }
+
+  function setMediaStatus(el, message, tone) {
+    if (!el) return;
+    el.textContent = message || "";
+    el.classList.remove("is-ok", "is-error");
+    if (tone) el.classList.add(tone);
+  }
+
+  function wallpaperIdForTheme(themeId) {
+    return WALLPAPER_PREFIX + String(themeId || "");
+  }
+
+  async function refreshMediaName(nameEl, mediaId, emptyLabel) {
+    if (!nameEl) return;
+    if (!mediaId || !mediaApi) {
+      nameEl.textContent = emptyLabel || "No file";
+      return;
+    }
+    const asset = await mediaApi.getMedia(mediaId);
+    nameEl.textContent = asset && asset.name ? asset.name : emptyLabel || "No file";
+  }
+
+  async function handleMediaUpload(file, mediaId, nameEl, statusEl) {
+    if (!mediaApi) {
+      setMediaStatus(statusEl, "Media uploads are unavailable.", "is-error");
+      return null;
+    }
+    try {
+      setMediaStatus(statusEl, "Importing…");
+      const asset = await mediaApi.ingestFile(file);
+      const ok = await mediaApi.putMedia(mediaId, asset);
+      if (!ok) throw new Error("Could not save that file.");
+      await refreshMediaName(nameEl, mediaId, "No file");
+      setMediaStatus(statusEl, "Saved.", "is-ok");
+      return mediaId;
+    } catch (err) {
+      setMediaStatus(statusEl, err && err.message ? err.message : "Import failed.", "is-error");
+      return null;
+    }
   }
 
   function themeSelectGroup(id, meta) {
@@ -435,6 +484,69 @@
     });
   }
 
+  function mediaRow(themeId, label, mediaId) {
+    const wrap = document.createElement("div");
+    wrap.className = "media-row setting-row";
+    wrap.dataset.setting = "wallpaper";
+    const head = document.createElement("div");
+    head.className = "media-row-head";
+    const title = document.createElement("span");
+    title.textContent = label || "Wallpaper";
+    const nameEl = document.createElement("span");
+    nameEl.className = "media-file-name";
+    nameEl.textContent = "No file";
+    head.appendChild(title);
+    head.appendChild(nameEl);
+    const actions = document.createElement("div");
+    actions.className = "media-row-actions";
+    const uploadLabel = document.createElement("label");
+    uploadLabel.className = "v2-btn v2-btn-secondary media-upload-btn";
+    uploadLabel.textContent = "Choose file…";
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*,video/*,.gif";
+    input.hidden = true;
+    uploadLabel.appendChild(input);
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.className = "v2-btn v2-btn-secondary";
+    clearBtn.textContent = "Clear";
+    actions.appendChild(uploadLabel);
+    actions.appendChild(clearBtn);
+    const status = document.createElement("p");
+    status.className = "media-status";
+    status.setAttribute("role", "status");
+    const hidden = document.createElement("input");
+    hidden.type = "hidden";
+    hidden.className = "theme-wallpaper";
+    hidden.value = mediaId || "";
+    wrap.appendChild(head);
+    wrap.appendChild(actions);
+    wrap.appendChild(status);
+    wrap.appendChild(hidden);
+    refreshMediaName(nameEl, mediaId, "No file");
+    input.addEventListener("change", async () => {
+      const file = input.files && input.files[0];
+      input.value = "";
+      if (!file) return;
+      const id = wallpaperIdForTheme(themeId);
+      const saved = await handleMediaUpload(file, id, nameEl, status);
+      if (saved) {
+        hidden.value = saved;
+        persist();
+      }
+    });
+    clearBtn.addEventListener("click", async () => {
+      const id = hidden.value || wallpaperIdForTheme(themeId);
+      if (mediaApi && id) await mediaApi.removeMedia(id);
+      hidden.value = "";
+      nameEl.textContent = "No file";
+      setMediaStatus(status, "Cleared.");
+      persist();
+    });
+    return wrap;
+  }
+
   function renderThemeSettings(id) {
     messageThemeSettings.replaceChildren();
     const allMeta = rulesApi.messageThemeMetaAll ? rulesApi.messageThemeMetaAll() : rulesApi.MESSAGE_THEME_META || {};
@@ -460,13 +572,20 @@
     if (meta.defaults.motion) {
       messageThemeSettings.appendChild(motionRow(values.motion));
     }
+    if (Object.prototype.hasOwnProperty.call(meta.defaults, "wallpaper")) {
+      messageThemeSettings.appendChild(
+        mediaRow(id, labels.wallpaper || "Chat wallpaper", values.wallpaper || "")
+      );
+    }
 
     const reset = document.createElement("button");
     reset.type = "button";
     reset.className = "reset-theme v2-btn v2-btn-secondary";
     reset.textContent = "Reset theme colors";
-    reset.addEventListener("click", () => {
+    reset.addEventListener("click", async () => {
       if (!cachedSettings) cachedSettings = {};
+      const prev = (cachedSettings.messageThemeSettings && cachedSettings.messageThemeSettings[id]) || {};
+      if (prev.wallpaper && mediaApi) await mediaApi.removeMedia(prev.wallpaper);
       cachedSettings.messageThemeSettings = { ...(cachedSettings.messageThemeSettings || {}) };
       cachedSettings.messageThemeSettings[id] = rulesApi.normalizeOneThemeSettings(id, {});
       renderThemeSettings(id);
@@ -548,8 +667,10 @@
     };
     const bg = get('.theme-hex[data-key="background"]');
     const motion = get(".theme-motion");
+    const wallpaper = get(".theme-wallpaper");
     if (bg) raw.background = bg.value;
     if (motion) raw.motion = motion.value;
+    if (wallpaper) raw.wallpaper = wallpaper.value;
     return rulesApi.normalizeOneThemeSettings(id, raw);
   }
 
@@ -628,7 +749,10 @@
       messageTheme: theme,
       messageThemeSettings: themeSettings,
       mosaicThemeSettings: mosaicSettings,
-      anyOutputIframeHtml: anyOutput.value,
+      anyOutputIframeHtml: anyOutput ? anyOutput.value : "",
+      bgMode: bgMode ? bgMode.value : "auto",
+      bgMediaId: cachedSettings && cachedSettings.bgMediaId ? cachedSettings.bgMediaId : "",
+      bgFit: bgFit ? bgFit.value : "cover",
       rules: rows,
     };
   }
@@ -748,6 +872,40 @@
     persist();
   });
   anyOutput.addEventListener("input", schedulePersist);
+  if (bgMode) {
+    enhanceSelect(bgMode);
+    bgMode.addEventListener("change", persist);
+  }
+  if (bgFit) {
+    enhanceSelect(bgFit);
+    bgFit.addEventListener("change", persist);
+  }
+  if (bgMediaFile) {
+    bgMediaFile.addEventListener("change", async () => {
+      const file = bgMediaFile.files && bgMediaFile.files[0];
+      bgMediaFile.value = "";
+      if (!file) return;
+      if (!cachedSettings) cachedSettings = {};
+      const saved = await handleMediaUpload(file, BG_MEDIA_ID, bgMediaName, bgMediaStatus);
+      if (saved) {
+        cachedSettings.bgMediaId = saved;
+        if (bgMode && bgMode.value === "auto") {
+          /* keep auto */
+        }
+        persist();
+      }
+    });
+  }
+  if (bgMediaClear) {
+    bgMediaClear.addEventListener("click", async () => {
+      if (mediaApi) await mediaApi.removeMedia(BG_MEDIA_ID);
+      if (!cachedSettings) cachedSettings = {};
+      cachedSettings.bgMediaId = "";
+      if (bgMediaName) bgMediaName.textContent = "No file";
+      setMediaStatus(bgMediaStatus, "Cleared.");
+      persist();
+    });
+  }
   addRule.addEventListener("click", () => {
     addRuleRow({});
   });
@@ -966,7 +1124,17 @@
     syncSelectUI(messageTheme);
     renderThemeSettings(settings.messageTheme);
     renderMosaicThemeSettings(settings.mosaicTheme);
-    anyOutput.value = settings.anyOutputIframeHtml;
+    if (anyOutput) anyOutput.value = settings.anyOutputIframeHtml || "";
+    if (bgMode) {
+      bgMode.value = settings.bgMode || "auto";
+      syncSelectUI(bgMode);
+    }
+    if (bgFit) {
+      bgFit.value = settings.bgFit || "cover";
+      syncSelectUI(bgFit);
+    }
+    cachedSettings.bgMediaId = settings.bgMediaId || "";
+    refreshMediaName(bgMediaName, settings.bgMediaId || "", "No file");
     rulesRoot.replaceChildren();
     if (settings.rules.length === 0) addRuleRow({});
     else settings.rules.forEach(addRuleRow);

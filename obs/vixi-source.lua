@@ -29,6 +29,7 @@ local MESSAGE_THEME_LABELS = {
   { "Broadcast TV", "broadcast-tv" },
   { "Liquid Glass", "liquid-glass" },
   { "Parallax Drift", "parallax-drift" },
+  { "Text Message", "text-message" },
 }
 
 local MOSAIC_THEME_LABELS = {
@@ -36,7 +37,7 @@ local MOSAIC_THEME_LABELS = {
   { "Card decks*", "decks-brand" },
   { "Spotlight", "spotlight" },
   { "Coverflow", "coverflow" },
-  { "Fan", "fan" },
+  { "Fan*", "fan-brand" },
   { "Cascade", "cascade" },
   { "Orbit", "orbit" },
   { "Reels", "reels" },

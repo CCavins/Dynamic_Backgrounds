@@ -19,7 +19,7 @@
                 <a href="extension.html">Extension</a>
                 <a href="create.html">Create</a>
             </nav>
-            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.17.16</span></a>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.17.25</span></a>
         </header>
 
         <div class="page-intro">
@@ -79,6 +79,13 @@
                     <p>Depth-stacked photos that drift in space.</p>
                 </div>
             </article>
+            <article class="theme-card" data-kind="message" data-theme="text-message">
+                <div class="theme-stage" aria-hidden="true"><div class="dyn-message-theme"></div></div>
+                <div class="meta">
+                    <h3>Text Message</h3>
+                    <p>Large photo beside an iPhone chat that stacks back-to-back messages.</p>
+                </div>
+            </article>
         </div>
 
         <h2 class="section-label">Mosaic</h2>
@@ -105,18 +112,11 @@
                     <p>A perspective carousel of captures.</p>
                 </div>
             </article>
-            <article class="theme-card" data-kind="mosaic" data-theme="fan">
-                <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
-                <div class="meta">
-                    <h3>Fan</h3>
-                    <p>One card fans open, folds back, flips to a new face, then fans again.</p>
-                </div>
-            </article>
             <article class="theme-card" data-kind="mosaic" data-theme="fan-brand">
                 <div class="theme-stage" aria-hidden="true"><div class="dyn-mosaic-theme"></div></div>
                 <div class="meta">
                     <h3>Fan*</h3>
-                    <p>Same cycle, shifted for QR and logo in landscape and portrait.</p>
+                    <p>One card fans open, folds back, flips to a new face, then fans again — with a rail for QR and logo.</p>
                 </div>
             </article>
             <article class="theme-card" data-kind="mosaic" data-theme="cascade">
@@ -189,10 +189,12 @@
         <footer>HOVER A TILE TO PREVIEW. OPEN FULL SCREEN TO TWEAK COLORS AND ASPECT. INSTALL THE EXTENSION TO RUN THEMES ON AN OUTPUT PAGE.</footer>
     </div>
     <script src="extension/rules.js"></script>
+    <script src="extension/media.js"></script>
     <script src="extension/message-themes.js"></script>
     <script src="extension/mosaic-themes.js"></script>
     <script src="extension/engines/api.js"></script>
     <script src="extension/engines/message-aurora-engine.js"></script>
+    <script src="extension/engines/message-text-message-engine.js"></script>
     <script src="extension/engines/mosaic-orbit-swap-engine.js"></script>
     <script src="site-preview.js"></script>
     <script src="site.js"></script>

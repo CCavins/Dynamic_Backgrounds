@@ -1,0 +1,27 @@
+{
+  "format": "dynamic-backgrounds-theme",
+  "version": 1,
+  "kind": "message",
+  "id": "message-text-message",
+  "label": "Text Message (pack)",
+  "engine": "message-text-message-engine",
+  "engineFile": "message-text-message-engine.js",
+  "revealMs": 900,
+  "hideMs": 280,
+  "settings": {
+    "primary": {
+      "label": "Phone",
+      "default": "#3f3f46"
+    },
+    "secondary": {
+      "label": "Accent",
+      "default": "#0a84ff"
+    },
+    "background": {
+      "label": "Stage",
+      "default": "#07090f"
+    }
+  },
+  "html": "",
+  "css": ""
+}

@@ -2,6 +2,7 @@
   "engines": [
     "xmas-snow-particles.js",
     "message-aurora-engine.js",
+    "message-text-message-engine.js",
     "mosaic-orbit-swap-engine.js",
     "mosaic-xmas-wreath-engine.js",
     "mosaic-xmas-tree-engine.js",

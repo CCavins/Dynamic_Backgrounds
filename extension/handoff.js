@@ -42,7 +42,9 @@
     "html.dyn-theme-on.dyn-kind-message:not(.dyn-show-bg) .v2-app-wrapper__bg-image," +
     "html.dyn-theme-on.dyn-kind-message:not(.dyn-show-bg) .output-wrapper > .asset-view," +
     "html.dyn-theme-on.dyn-kind-mosaic:not(.dyn-show-bg) #dyn-bg-embed," +
-    "html.dyn-theme-on.dyn-kind-message:not(.dyn-show-bg) #dyn-bg-embed{" +
+    "html.dyn-theme-on.dyn-kind-message:not(.dyn-show-bg) #dyn-bg-embed," +
+    "html.dyn-theme-on.dyn-kind-mosaic:not(.dyn-show-bg) #dyn-bg-media," +
+    "html.dyn-theme-on.dyn-kind-message:not(.dyn-show-bg) #dyn-bg-media{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
     "html.dyn-show-bg .v2-app-wrapper__bg-image," +
@@ -58,6 +60,17 @@
       "visibility:visible!important;opacity:1!important;" +
       "pointer-events:none!important;z-index:0!important;" +
       "transform:none!important;display:block!important;" +
+    "}" +
+    "html.dyn-show-bg #dyn-bg-media{" +
+      "position:absolute!important;inset:0!important;" +
+      "visibility:visible!important;opacity:1!important;" +
+      "pointer-events:none!important;z-index:0!important;" +
+      "display:block!important;" +
+    "}" +
+    "html.dyn-show-bg #dyn-bg-media > img," +
+    "html.dyn-show-bg #dyn-bg-media > video{" +
+      "visibility:visible!important;opacity:1!important;" +
+      "pointer-events:none!important;display:block!important;" +
     "}" +
     "html.dyn-theme-on.dyn-kind-message [data-dyn-chrome-kind=\"mosaic\"]," +
     "html.dyn-theme-on.dyn-kind-mosaic [data-dyn-chrome-kind=\"message\"]{" +

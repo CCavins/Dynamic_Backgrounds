@@ -78,7 +78,7 @@ Built-in mosaic looks (popup **Mosaic theme**):
 
 | Theme | Notes |
 | --- | --- |
-| Spotlight, Coverflow, Fan, Cascade, Orbit, Reels, Depth Field, Pedestals | Standard layouts |
+| Spotlight, Coverflow, Cascade, Orbit, Reels, Depth Field, Pedestals | Standard layouts |
 | Card decks*, Fan*, Polaroid wall*, 3D flip wall*, Live mosaic*, Cube field* | **Brand-aware** — when Show QR / Show logo are on, content reflows to leave room for chrome (no hard mid-screen crop). With both off, they use the full stage |
 
 `*` in the name means the theme is optimized for QR/logo placement. The popup explains this under the mosaic dropdown.
@@ -87,7 +87,13 @@ Mosaic photo updates: feed add/remove only refreshes the **pool**. On-screen car
 
 ### Message themes
 
+Built-ins include LED Scoreboard, Neon Nightclub, Ultras Tifo, Holo Card, Broadcast TV, Liquid Glass, Parallax Drift, and **Text Message** (large photo + iPhone chat that keeps prior bubbles on back-to-back captures). Text Message exposes Phone / Accent / Stage colors and an optional chat wallpaper upload.
+
 Message themes stay black until the first capture `show()` finishes, so a cold load does not flash QR/logo alone before the layout paints. Mosaic ↔ message handoffs crossfade under cover so stock Vixi layers and leftover cards do not sit on top of the other beat. Back-to-back messages stay themed; CTA, stream, live, video, and URL items stay native. Mosaic remounts when it returns so enter animations (Polaroid drop/toss/place, and the rest) play instead of showing the parked wall.
+
+### Background
+
+The popup **Background** section accepts a link/iframe **or** an uploaded image, video, or GIF, with fit modes Fill / Fit / Stretch / Center. When a theme is on, turn on that theme’s **Show background** to keep the custom background behind it.
 
 ### Custom themes
 

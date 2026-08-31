@@ -374,6 +374,78 @@ textarea {
   background: var(--v2-surface);
 }
 
+.media-row {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius);
+  background: var(--v2-surface);
+}
+
+.media-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.media-row-head > span:first-child {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--v2-light-gray);
+}
+
+.media-file-name {
+  font-size: 11px;
+  color: rgba(197, 197, 197, 0.75);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60%;
+}
+
+.media-row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.media-row-actions .v2-btn,
+.media-upload-btn {
+  margin-top: 0;
+  flex: 1 1 auto;
+}
+
+.media-status {
+  margin: 8px 0 0;
+  min-height: 1.1em;
+  font-size: 11px;
+  color: rgba(197, 197, 197, 0.8);
+}
+
+.media-status.is-error {
+  color: #ff7b7b;
+}
+
+.media-status.is-ok {
+  color: #7dffb3;
+}
+
+.bg-link-label {
+  display: block;
+  margin-top: 10px;
+}
+
+.bg-link-label > span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--v2-light-gray);
+}
+
 .rule label {
   display: block;
 }

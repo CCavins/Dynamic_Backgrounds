@@ -20,6 +20,9 @@
     mosaicShowBackground: "mosaicShowBackground",
     mosaicShowQr: "mosaicShowQr",
     mosaicShowLogo: "mosaicShowLogo",
+    bgMode: "bgMode",
+    bgMediaId: "bgMediaId",
+    bgFit: "bgFit",
   };
 
   const STAGE_ASPECT_PRESETS = [
@@ -56,9 +59,14 @@
     mosaicShowBackground: false,
     mosaicShowQr: false,
     mosaicShowLogo: false,
+    bgMode: "auto",
+    bgMediaId: "",
+    bgFit: "cover",
   };
 
   const MOTION_MODES = ["slow", "drift", "fizz"];
+  const BG_MODES = ["auto", "link", "media"];
+  const BG_FITS = ["cover", "contain", "fill", "center"];
   const MOSAIC_SCALE_MIN = 0.7;
   const MOSAIC_SCALE_MAX = 1.5;
 
@@ -109,6 +117,22 @@
       labels: { primary: "Primary", secondary: "Secondary" },
       defaults: { primary: "#ff4d8d", secondary: "#7a86ff", revealMs: 1250 },
     },
+    "text-message": {
+      label: "Text Message",
+      labels: {
+        primary: "Phone",
+        secondary: "Accent",
+        background: "Stage",
+        wallpaper: "Chat wallpaper",
+      },
+      defaults: {
+        primary: "#3f3f46",
+        secondary: "#0a84ff",
+        background: "#07090f",
+        wallpaper: "",
+        revealMs: 900,
+      },
+    },
   };
 
   const MESSAGE_THEMES = ["off", ...Object.keys(MESSAGE_THEME_META)];
@@ -118,7 +142,7 @@
     "decks-brand": { label: "Card decks*", brandAware: true },
     spotlight: { label: "Spotlight" },
     coverflow: { label: "Coverflow" },
-    fan: { label: "Fan" },
+    fan: { label: "Fan", hidden: true },
     "fan-brand": { label: "Fan*", brandAware: true },
     filmstrip: { label: "Filmstrip", hidden: true },
     scatter: { label: "Scatter", hidden: true },
@@ -365,6 +389,7 @@
 
   const MOSAIC_THEME_ALIASES = {
     decks: "decks-brand",
+    fan: "fan-brand",
     flipwall: "flipwall-brand",
     livewall: "livewall-brand",
     cubes: "cubes-brand",
@@ -403,6 +428,23 @@
     return messageThemeMetaAll()[themeId] || mosaicThemeMetaAll()[themeId] || null;
   }
 
+  function normalizeBgMode(value) {
+    const next = String(value || "auto").toLowerCase();
+    return BG_MODES.includes(next) ? next : "auto";
+  }
+
+  function normalizeBgFit(value) {
+    const next = String(value || "cover").toLowerCase();
+    return BG_FITS.includes(next) ? next : "cover";
+  }
+
+  function normalizeWallpaperId(value) {
+    const next = String(value || "").trim();
+    if (!next) return "";
+    if (!/^[a-zA-Z0-9._:-]{1,80}$/.test(next)) return "";
+    return next;
+  }
+
   function normalizeOneThemeSettings(themeId, raw) {
     const direct = themeMetaForSettings(themeId);
     const baseId = mosaicSettingsBaseId(themeId);
@@ -430,6 +472,9 @@
     }
     if (defaults.scale != null) {
       next.scale = clampMosaicScale(src.scale, defaults.scale);
+    }
+    if (Object.prototype.hasOwnProperty.call(defaults, "wallpaper")) {
+      next.wallpaper = normalizeWallpaperId(src.wallpaper);
     }
     return next;
   }
@@ -1227,6 +1272,9 @@
     return {
       enabled: next.enabled !== false,
       anyOutputIframeHtml: String(next.anyOutputIframeHtml || ""),
+      bgMode: normalizeBgMode(next.bgMode),
+      bgMediaId: normalizeWallpaperId(next.bgMediaId),
+      bgFit: normalizeBgFit(next.bgFit),
       mosaicTheme: normalizeMosaicTheme(next.mosaicTheme),
       messageTheme: normalizeMessageTheme(next.messageTheme),
       messageThemeSettings: normalizeMessageThemeSettings(next.messageThemeSettings),
@@ -1250,6 +1298,7 @@
   function resolveIframeSrc(settings, pageUrl) {
     const state = normalizeSettings(settings);
     if (!state.enabled) return "";
+    if (state.bgMode === "media") return "";
 
     for (const rule of state.rules) {
       if (!rule.outputUrl || !rule.iframeHtml) continue;
@@ -1258,10 +1307,32 @@
       if (src) return src;
     }
 
-    if (isOutputPage(pageUrl)) {
-      return parseIframeSrc(state.anyOutputIframeHtml);
+    if (state.bgMode === "auto" && state.bgMediaId) return "";
+
+    if (state.bgMode === "link" || state.bgMode === "auto") {
+      if (isOutputPage(pageUrl)) {
+        return parseIframeSrc(state.anyOutputIframeHtml);
+      }
     }
 
+    return "";
+  }
+
+  function resolveBackgroundMediaId(settings, pageUrl) {
+    const state = normalizeSettings(settings);
+    if (!state.enabled) return "";
+    if (state.bgMode === "link") return "";
+    // Per-rule iframe still wins over global media when a rule matches.
+    for (const rule of state.rules) {
+      if (!rule.outputUrl || !rule.iframeHtml) continue;
+      if (!urlsMatch(pageUrl, rule.outputUrl)) continue;
+      return "";
+    }
+    if (!isOutputPage(pageUrl)) return "";
+    if (state.bgMode === "media") return state.bgMediaId || "";
+    if (state.bgMode === "auto") {
+      if (state.bgMediaId) return state.bgMediaId;
+    }
     return "";
   }
 
@@ -1879,6 +1950,11 @@
     themeHasMosaicControls,
     normalizeSettings,
     resolveIframeSrc,
+    resolveBackgroundMediaId,
+    normalizeBgMode,
+    normalizeBgFit,
+    BG_FITS,
+    BG_MODES,
     findWrapper,
     findOverlayHost,
     hasMosaic,

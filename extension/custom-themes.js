@@ -13,6 +13,7 @@
     "broadcast-tv",
     "liquid-glass",
     "parallax-drift",
+    "text-message",
   ]);
   const MOSAIC_ENGINES = new Set([
     "decks",
@@ -39,6 +40,7 @@
   ]);
   const BUNDLED_ENGINES = new Set([
     "message-aurora-engine",
+    "message-text-message-engine",
     "mosaic-orbit-swap-engine",
     "mosaic-xmas-wreath-engine",
     "mosaic-xmas-tree-engine",
