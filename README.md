@@ -93,13 +93,11 @@ Message themes stay black until the first capture `show()` finishes, so a cold l
 
 ### Background
 
-The popup **Background** section **Source** can be:
+The popup **Background** section can use:
 
-1. **Vixi — event background** — use whatever image/video Vixi is providing; stored upload/folder media is kept but not shown  
-2. **Link / iframe** — paste a URL or iframe HTML  
-3. **Backgrounds folder** — pick a folder once on disk; add files in Finder and **Rescan** (no extension reload). Chrome remembers the folder path; each time you open the popup, click **Allow access** once before the file list can load (File System Access security).  
-4. **Upload file** / **Media** — one-off import into extension storage  
-5. **Auto** — media if set, otherwise link  
+1. **Link / iframe** — paste a URL or iframe HTML  
+2. **Backgrounds folder** — pick a folder once on disk; add files in Finder and **Rescan** (no extension reload). Chrome remembers the folder path; each time you open the popup, click **Allow access** once before the file list can load (File System Access security).  
+3. **Upload file** — one-off import into extension storage  
 
 **Size limits**
 

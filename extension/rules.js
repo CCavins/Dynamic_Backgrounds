@@ -65,7 +65,7 @@
   };
 
   const MOTION_MODES = ["slow", "drift", "fizz"];
-  const BG_MODES = ["auto", "vixi", "link", "media"];
+  const BG_MODES = ["auto", "link", "media"];
   const BG_FITS = ["cover", "contain", "fill", "center"];
   const MOSAIC_SCALE_MIN = 0.7;
   const MOSAIC_SCALE_MAX = 1.5;
@@ -1312,7 +1312,7 @@
   function resolveIframeSrc(settings, pageUrl) {
     const state = normalizeSettings(settings);
     if (!state.enabled) return "";
-    if (state.bgMode === "media" || state.bgMode === "vixi") return "";
+    if (state.bgMode === "media") return "";
 
     for (const rule of state.rules) {
       if (!rule.outputUrl || !rule.iframeHtml) continue;
@@ -1335,7 +1335,7 @@
   function resolveBackgroundMediaId(settings, pageUrl) {
     const state = normalizeSettings(settings);
     if (!state.enabled) return "";
-    if (state.bgMode === "link" || state.bgMode === "vixi") return "";
+    if (state.bgMode === "link") return "";
     // Per-rule iframe still wins over global media when a rule matches.
     for (const rule of state.rules) {
       if (!rule.outputUrl || !rule.iframeHtml) continue;

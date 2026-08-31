@@ -208,7 +208,7 @@
       folderSelectedFile = fileName;
       await folderApi.setSelectedFile(fileName);
       cachedSettings.bgMediaId = saved;
-      if (bgMode && (bgMode.value === "link" || bgMode.value === "vixi")) {
+      if (bgMode && bgMode.value === "link") {
         bgMode.value = "media";
         if (typeof syncSelectUI === "function") syncSelectUI(bgMode);
       }
@@ -1041,11 +1041,8 @@
       const saved = await handleMediaUpload(file, BG_MEDIA_ID, bgMediaName, bgMediaStatus);
       if (saved) {
         cachedSettings.bgMediaId = saved;
-        if (bgMode && (bgMode.value === "auto" || bgMode.value === "vixi" || bgMode.value === "link")) {
-          if (bgMode.value === "vixi" || bgMode.value === "link") {
-            bgMode.value = "media";
-            if (typeof syncSelectUI === "function") syncSelectUI(bgMode);
-          }
+        if (bgMode && bgMode.value === "auto") {
+          /* keep auto */
         }
         persist();
       }
