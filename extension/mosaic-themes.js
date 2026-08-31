@@ -1123,6 +1123,15 @@ html.dyn-mosaic-on .logo-tile {
 #dyn-mosaic-theme.dyn-portrait[data-theme="decks"] .dyn-pile {
   width: min(38cqw, 320px);
 }
+#dyn-mosaic-theme.dyn-portrait[data-theme="decks"] .dyn-pile[data-pile="0"] {
+  z-index: 3;
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="decks"] .dyn-pile[data-pile="1"] {
+  z-index: 1;
+}
+#dyn-mosaic-theme.dyn-portrait[data-theme="decks"] .dyn-pile[data-pile="2"] {
+  z-index: 2;
+}
 #dyn-mosaic-theme.dyn-portrait[data-theme="spotlight"] {
   padding: 6% 6% 14%;
   gap: 4%;
