@@ -1134,8 +1134,19 @@
 
   if (bgFolderRescan) {
     bgFolderRescan.addEventListener("click", async () => {
-      if (!folderHandle) return;
+      if (!folderHandle || !folderApi) return;
       try {
+        // Re-check permission in case Chrome revoked it while the popup stayed open.
+        const perm = await folderApi.ensurePermission(folderHandle);
+        if (!perm.ok) {
+          setFolderUi({
+            handle: folderHandle,
+            name: folderHandle.name || "Backgrounds",
+            needsGesture: true,
+          });
+          setMediaStatus(bgFolderStatus, "Click Allow access to use this folder again.");
+          return;
+        }
         setMediaStatus(bgFolderStatus, "Scanning…");
         const files = await refreshFolderList();
         setMediaStatus(
@@ -1156,6 +1167,16 @@
   if (bgFolderForget) {
     bgFolderForget.addEventListener("click", async () => {
       if (!folderApi) return;
+      const folderLabel =
+        (folderHandle && folderHandle.name) ||
+        (bgFolderName && bgFolderName.textContent) ||
+        "this folder";
+      const ok = window.confirm(
+        "Forget \"" +
+          folderLabel +
+          "\"?\n\nThe popup will stop listing that folder. Your current active background media is not removed."
+      );
+      if (!ok) return;
       await folderApi.forgetFolder();
       folderHandle = null;
       folderSelectedFile = "";

@@ -96,7 +96,7 @@ Message themes stay black until the first capture `show()` finishes, so a cold l
 The popup **Background** section can use:
 
 1. **Link / iframe** — paste a URL or iframe HTML  
-2. **Backgrounds folder** — pick a folder once on disk; add files in Finder and **Rescan** (no extension reload). Remembered across Chrome restarts; you may need **Allow access** once after a reboot.  
+2. **Backgrounds folder** — pick a folder once on disk; add files in Finder and **Rescan** (no extension reload). Chrome remembers the folder path; each time you open the popup, click **Allow access** once before the file list can load (File System Access security).  
 3. **Upload file** — one-off import into extension storage  
 
 **Size limits**
