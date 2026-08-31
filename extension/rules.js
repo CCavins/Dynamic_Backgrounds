@@ -1038,6 +1038,71 @@
     });
   }
 
+  function clearVixiBgMediaMarks(scope) {
+    const root = scope || document;
+    root.querySelectorAll("[data-dyn-vixi-bg-media]").forEach((el) => {
+      el.removeAttribute("data-dyn-vixi-bg-media");
+    });
+  }
+
+  /**
+   * When showing Vixi’s event background under a theme, only the primary
+   * full-bleed media should stay visible. Logo/QR are often sibling <img>s
+   * inside the same .asset-view and must stay suppressed.
+   */
+  function markVixiBackgroundMedia() {
+    clearVixiBgMediaMarks();
+    backgroundLayers().forEach((layer) => {
+      if (!layer || !layer.children) return;
+      const candidates = [...layer.children].filter((child) => {
+        if (!child || !child.tagName) return false;
+        const tag = child.tagName;
+        if (tag === "IMG" || tag === "VIDEO" || tag === "CANVAS" || tag === "PICTURE") return true;
+        if (child.matches && child.matches("img, video, canvas, picture")) return true;
+        return false;
+      });
+      let keep = null;
+      let best = -1;
+      candidates.forEach((el) => {
+        if (isBrandNode(el)) return;
+        if (el.closest && (el.closest(QR_SELECTORS) || el.closest(LOGO_SELECTORS))) return;
+        let area = 0;
+        try {
+          const r = el.getBoundingClientRect();
+          area = Math.max(0, r.width) * Math.max(0, r.height);
+        } catch {
+          area = 0;
+        }
+        if (!area) {
+          area = Math.max(Number(el.naturalWidth) || 0, Number(el.videoWidth) || 0) *
+            Math.max(Number(el.naturalHeight) || 0, Number(el.videoHeight) || 0);
+        }
+        if (area > best) {
+          best = area;
+          keep = el;
+        }
+      });
+      if (!keep && candidates[0] && !isBrandNode(candidates[0])) keep = candidates[0];
+      if (keep) keep.setAttribute("data-dyn-vixi-bg-media", "1");
+    });
+  }
+
+  function suppressStockBrandChrome() {
+    const hide = (el) => {
+      if (!el || !el.style) return;
+      el.style.setProperty("visibility", "hidden", "important");
+      el.style.setProperty("opacity", "0", "important");
+      el.style.setProperty("pointer-events", "none", "important");
+      // Don't use display:none on layers we still need to clone from when toggles turn on.
+      el.setAttribute("data-dyn-brand-suppressed", "1");
+    };
+    document.querySelectorAll(QR_SELECTORS).forEach(hide);
+    document.querySelectorAll(LOGO_SELECTORS).forEach(hide);
+    const brand = findBrandNodes(activeThemeKind());
+    if (brand.qr) hide(brand.qr);
+    if (brand.logo) hide(brand.logo);
+  }
+
   /** True when the popup Background is a custom upload/iframe (not Vixi's event art). */
   function usesCustomBackground(settings, pageUrl) {
     const href = pageUrl || (typeof location !== "undefined" ? location.href : "");
@@ -1276,6 +1341,15 @@
       else {
         logoSlot.replaceChildren();
         logoSlot.hidden = true;
+      }
+    }
+    const chromeEl = themeRoot.querySelector(":scope > .dyn-brand-chrome");
+    if (chromeEl) {
+      chromeEl.hidden = !wantQr && !wantLogo;
+      if (!wantQr && !wantLogo) {
+        chromeEl.style.setProperty("display", "none", "important");
+      } else {
+        chromeEl.style.removeProperty("display");
       }
     }
   }
@@ -1973,6 +2047,9 @@
     restoreBackgroundLayers,
     hideBackgroundLayers,
     usesCustomBackground,
+    markVixiBackgroundMedia,
+    clearVixiBgMediaMarks,
+    suppressStockBrandChrome,
     silenceReplacedMedia,
     resumeBackgroundMedia,
     findBrandNodes,
