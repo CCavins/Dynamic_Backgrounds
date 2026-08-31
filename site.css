@@ -44,6 +44,11 @@ body {
     letter-spacing: 3.2px;
 }
 
+.site-brand h1.site-brand-name {
+    letter-spacing: 0.04em;
+    text-transform: none;
+}
+
 .site-brand p {
     margin: 4px 0 0;
     font-size: 10px;
