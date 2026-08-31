@@ -1,7 +1,7 @@
 {
   "enabled": true,
   "messageTheme": "holo-card",
-  "mosaicTheme": "decks",
+  "mosaicTheme": "decks-brand",
   "messageThemeSettings": {},
   "stageAspect": "vixi",
   "messageShowBackground": false,

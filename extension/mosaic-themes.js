@@ -654,7 +654,7 @@ html.dyn-mosaic-on .logo-tile {
   width: 100%;
   aspect-ratio: 2 / 3;
   height: auto;
-  transition: top 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: top 0.8s cubic-bezier(0.22, 0.8, 0.2, 1), transform 0.8s cubic-bezier(0.22, 0.8, 0.2, 1);
 }
 #dyn-mosaic-theme[data-theme="cascade"] .dyn-card.is-from-bottom {
   transform: translateY(30%);
@@ -1812,6 +1812,62 @@ html.dyn-mosaic-on .logo-tile {
       });
   }
 
+  function cascadeOneCol(root, pool, state, api, colIndex) {
+    const col = state.cols[colIndex];
+    if (!col || state.dealing[colIndex] || state.stopped) return;
+    const usedNow = () => [...root.querySelectorAll(".dyn-card img")].map((img) => img.src);
+    const src = feedSrc(api, pool, usedNow());
+    if (!src) {
+      schedulePileDeal(state, colIndex);
+      return;
+    }
+    const incoming = makeCard(src);
+    incoming.style.top = "100%";
+    incoming.style.zIndex = "1";
+    incoming.style.transition = "none";
+    col.appendChild(incoming);
+    state.urls[colIndex].push(src);
+    const kids = [...col.children];
+    state.dealing[colIndex] = true;
+    state.nextDealAt[colIndex] = Number.POSITIVE_INFINITY;
+
+    const startSlide = () => {
+      if (state.stopped || incoming.parentElement !== col) return;
+      void incoming.offsetHeight;
+      incoming.style.transition = "";
+      if (kids[0]) {
+        kids[0].style.zIndex = "5";
+        kids[0].style.top = "-55%";
+      }
+      if (kids[1]) {
+        kids[1].style.zIndex = "4";
+        kids[1].style.top = "0%";
+      }
+      incoming.style.top = "52%";
+      later(
+        state,
+        () => {
+          if (state.stopped) return;
+          if (kids[0] && kids[0].parentElement === col) kids[0].remove();
+          state.urls[colIndex].shift();
+          [...col.children].forEach((card) => {
+            card.style.transition = "none";
+          });
+          layoutCascade(col, state.urls[colIndex]);
+          void col.offsetHeight;
+          [...col.children].forEach((card) => {
+            card.style.transition = "";
+          });
+          state.dealing[colIndex] = false;
+          schedulePileDeal(state, colIndex);
+        },
+        820
+      );
+    };
+
+    whenDecoded(incoming.querySelector("img")).then(startSlide);
+  }
+
   const themes = {
     decks: {
       interval: DECK_TICK_MS,
@@ -2082,7 +2138,7 @@ html.dyn-mosaic-on .logo-tile {
     },
 
     cascade: {
-      interval: TICK,
+      interval: DECK_TICK_MS,
       mount(root, pool) {
         const colCount = stageSize(root).portrait ? 2 : 3;
         const cols = [];
@@ -2092,6 +2148,7 @@ html.dyn-mosaic-on .logo-tile {
         for (let c = 0; c < colCount; c += 1) {
           const col = document.createElement("div");
           col.className = "dyn-col";
+          col.dataset.col = String(c);
           for (let r = 0; r < 2; r += 1) {
             const src = taken[n] || "";
             n += 1;
@@ -2102,32 +2159,28 @@ html.dyn-mosaic-on .logo-tile {
           root.appendChild(col);
           cols.push(col);
         }
-        return { cols, urls, wait: Array.from({ length: colCount }, () => 0), busy: {} };
+        const state = {
+          cols,
+          urls,
+          dealing: Array.from({ length: colCount }, () => false),
+          lastHoldMs: [],
+          nextDealAt: [],
+        };
+        scheduleFirstDeals(state, colCount);
+        return state;
       },
       tick(root, pool, state, api) {
-        const colIndex = pickFairTurn(state, state.cols.length, state.busy);
-        if (colIndex < 0) return;
-        const src = api.nextUrl(state.urls[colIndex]);
-        if (!src) return;
-        const col = state.cols[colIndex];
-        const incoming = makeCard(src);
-        incoming.style.top = "100%";
-        incoming.style.zIndex = "8";
-        col.appendChild(incoming);
-        state.urls[colIndex].push(src);
-        const kids = [...col.children];
-        state.busy[colIndex] = true;
-        requestAnimationFrame(() => {
-          if (kids[0]) kids[0].style.top = "-55%";
-          if (kids[1]) kids[1].style.top = "0%";
-          incoming.style.top = "52%";
+        if (!pool.length || !state || !state.cols) return;
+        const now = performance.now();
+        state.cols.forEach((_, colIndex) => {
+          if (state.dealing[colIndex]) return;
+          if (now < (state.nextDealAt[colIndex] || 0)) return;
+          cascadeOneCol(root, pool, state, api, colIndex);
         });
-        window.setTimeout(() => {
-          if (kids[0] && kids[0].parentElement === col) kids[0].remove();
-          state.urls[colIndex].shift();
-          layoutCascade(col, state.urls[colIndex]);
-          state.busy[colIndex] = false;
-        }, 720);
+      },
+      unmount(_root, state) {
+        if (state) state.stopped = true;
+        stopTimers(state);
       },
     },
 

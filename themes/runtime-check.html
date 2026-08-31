@@ -217,9 +217,9 @@
       log(Boolean(host && host.clientWidth >= 8 && host.clientHeight >= 8), "Aspect change keeps a sized host");
 
       log(null, "Switching theme to decks after portrait");
-      await setStorage({ mosaicTheme: "decks" });
+      await setStorage({ mosaicTheme: "decks-brand" });
       await sleep(1800);
-      log(overlayTheme() === "decks", "Second theme change remounts decks", overlayTheme() || "none");
+      log(overlayTheme() === "decks-brand", "Second theme change remounts decks", overlayTheme() || "none");
       log(overlayVisible(), "Second theme change still shows photos");
 
       log(null, "Cutting mosaic from 6 photos down to patriots_006.jpg");
@@ -239,7 +239,7 @@
       log(addedBack.length > 0, "New mosaic photos appear on decks", addedBack.length ? addedBack.join(", ") : "none");
 
       log(null, "Rapid theme switching stress (blank-stage race)");
-      const stressThemes = ["spotlight", "coverflow", "decks", "fan", "filmstrip", "scatter", "orbit", "billboard"];
+      const stressThemes = ["spotlight", "coverflow", "decks-brand", "fan", "cascade", "orbit", "reels", "polaroid-brand"];
       let blankHits = 0;
       for (let i = 0; i < 12; i += 1) {
         const next = stressThemes[i % stressThemes.length];

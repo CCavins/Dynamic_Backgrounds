@@ -114,38 +114,42 @@
   const MESSAGE_THEMES = ["off", ...Object.keys(MESSAGE_THEME_META)];
 
   const MOSAIC_THEME_META = {
-    decks: { label: "Card decks" },
+    decks: { label: "Card decks", hidden: true },
     "decks-brand": { label: "Card decks*", brandAware: true },
     spotlight: { label: "Spotlight" },
     coverflow: { label: "Coverflow" },
     fan: { label: "Fan" },
     "fan-brand": { label: "Fan*", brandAware: true },
-    filmstrip: { label: "Filmstrip" },
-    scatter: { label: "Scatter" },
+    filmstrip: { label: "Filmstrip", hidden: true },
+    scatter: { label: "Scatter", hidden: true },
     cascade: { label: "Cascade" },
     orbit: { label: "Orbit" },
-    billboard: { label: "Billboard" },
+    billboard: { label: "Billboard", hidden: true },
     reels: { label: "Reels" },
     polaroid: {
       label: "Polaroid wall",
+      hidden: true,
       labels: { scale: "Photo size", primary: "Frame" },
       defaults: { scale: 1, primary: "#ffffff" },
     },
     "polaroid-brand": { label: "Polaroid wall*", brandAware: true },
     flipwall: {
       label: "3D flip wall",
+      hidden: true,
       labels: { scale: "Photo size", primary: "Edge" },
       defaults: { scale: 1, primary: "#5a5e66" },
     },
     "flipwall-brand": { label: "3D flip wall*", brandAware: true },
     livewall: {
       label: "Live mosaic",
+      hidden: true,
       labels: { scale: "Photo size" },
       defaults: { scale: 1 },
     },
     "livewall-brand": { label: "Live mosaic*", brandAware: true },
     cubes: {
       label: "Cube field",
+      hidden: true,
       labels: { scale: "Cube size", primary: "Cube color" },
       defaults: { scale: 1, primary: "#10131c" },
     },
@@ -359,8 +363,25 @@
     }
   }
 
+  const MOSAIC_THEME_ALIASES = {
+    decks: "decks-brand",
+    flipwall: "flipwall-brand",
+    livewall: "livewall-brand",
+    cubes: "cubes-brand",
+    polaroid: "polaroid-brand",
+    filmstrip: "reels",
+    scatter: "polaroid-brand",
+    billboard: "spotlight",
+  };
+
   function normalizeMosaicTheme(value) {
-    return isKnownMosaicTheme(value) ? value : "off";
+    let next = value;
+    for (let i = 0; i < 4; i += 1) {
+      const builtin = MOSAIC_THEME_META[next];
+      if (!(builtin && builtin.hidden && MOSAIC_THEME_ALIASES[next])) break;
+      next = MOSAIC_THEME_ALIASES[next];
+    }
+    return isKnownMosaicTheme(next) ? next : "off";
   }
 
   function normalizeMessageTheme(value) {

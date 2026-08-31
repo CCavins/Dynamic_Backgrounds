@@ -33,20 +33,17 @@ local MESSAGE_THEME_LABELS = {
 
 local MOSAIC_THEME_LABELS = {
   { "Off", "off" },
-  { "Decks", "decks" },
+  { "Card decks*", "decks-brand" },
   { "Spotlight", "spotlight" },
   { "Coverflow", "coverflow" },
   { "Fan", "fan" },
-  { "Filmstrip", "filmstrip" },
-  { "Scatter", "scatter" },
   { "Cascade", "cascade" },
   { "Orbit", "orbit" },
-  { "Billboard", "billboard" },
   { "Reels", "reels" },
-  { "Polaroid", "polaroid" },
-  { "Flipwall", "flipwall" },
-  { "Livewall", "livewall" },
-  { "Cubes", "cubes" },
+  { "Polaroid wall*", "polaroid-brand" },
+  { "3D flip wall*", "flipwall-brand" },
+  { "Live mosaic*", "livewall-brand" },
+  { "Cube field*", "cubes-brand" },
   { "Pedestals", "pedestals" },
 }
 
@@ -925,7 +922,7 @@ if IS_OBS then
     obs.obs_data_set_default_int(settings, "height", 1080)
     obs.obs_data_set_default_bool(settings, "enabled", true)
     obs.obs_data_set_default_string(settings, "message_theme", "holo-card")
-    obs.obs_data_set_default_string(settings, "mosaic_theme", "decks")
+    obs.obs_data_set_default_string(settings, "mosaic_theme", "decks-brand")
     obs.obs_data_set_default_bool(settings, "override_colors", false)
     obs.obs_data_set_default_int(settings, "primary_color", 0xffff5c8b)
     obs.obs_data_set_default_int(settings, "secondary_color", 0xffffe03d)

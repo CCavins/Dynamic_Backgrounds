@@ -183,6 +183,7 @@
     const groups = { "Built-in": [], Christmas: [], Imported: [] };
     Object.keys(meta || {}).forEach((id) => {
       const entry = meta[id] || {};
+      if (entry.hidden) return;
       const label = entry.label || id;
       const group = themeSelectGroup(id, entry);
       groups[group].push({ id, label });

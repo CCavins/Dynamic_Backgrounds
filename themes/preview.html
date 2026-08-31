@@ -343,21 +343,21 @@
     </div>
   </div>
 
-<script src="../extension/rules.js?v=1.17.11"></script>
-<script src="../extension/message-themes.js?v=1.17.11"></script>
+<script src="../extension/rules.js?v=1.17.15"></script>
+<script src="../extension/message-themes.js?v=1.17.15"></script>
 <script src="../extension/vendor/three.min.js"></script>
 <script src="../extension/vendor/RoundedBoxGeometry.js"></script>
-<script src="../extension/vendor/tile-field.js?v=1.17.11"></script>
-<script src="../extension/mosaic-themes.js?v=1.17.11"></script>
+<script src="../extension/vendor/tile-field.js?v=1.17.15"></script>
+<script src="../extension/mosaic-themes.js?v=1.17.15"></script>
 <script src="../extension/engines/api.js"></script>
-<script src="../extension/engines/xmas-snow-particles.js?v=1.17.11"></script>
-<script src="../extension/engines/message-aurora-engine.js?v=1.17.11"></script>
-<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.17.11"></script>
-<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.17.11"></script>
-<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.17.11"></script>
-<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.17.11"></script>
-<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.17.11"></script>
-<script src="../extension/custom-themes.js?v=1.17.11"></script>
+<script src="../extension/engines/xmas-snow-particles.js?v=1.17.15"></script>
+<script src="../extension/engines/message-aurora-engine.js?v=1.17.15"></script>
+<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.17.15"></script>
+<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.17.15"></script>
+<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.17.15"></script>
+<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.17.15"></script>
+<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.17.15"></script>
+<script src="../extension/custom-themes.js?v=1.17.15"></script>
 <script>
 (async () => {
   const SAMPLE_DIR = "../samples/patriots/";
@@ -524,6 +524,7 @@
     });
   });
   Object.keys(rules.MOSAIC_THEME_META || {}).forEach((id) => {
+    if (rules.MOSAIC_THEME_META[id] && rules.MOSAIC_THEME_META[id].hidden) return;
     catalog.push({
       kind: "mosaic",
       id,
@@ -1074,7 +1075,11 @@
   });
 
   const params = new URLSearchParams(location.search);
-  const want = params.get("theme");
+  const wantRaw = params.get("theme");
+  const want =
+    wantRaw && rules.MOSAIC_THEME_META && rules.MOSAIC_THEME_META[wantRaw] && rules.MOSAIC_THEME_META[wantRaw].hidden
+      ? (typeof rules.normalizeMosaicTheme === "function" ? rules.normalizeMosaicTheme(wantRaw) : wantRaw)
+      : wantRaw;
   const wantAspect = params.get("aspect");
   if (wantAspect && (wantAspect === "custom" || (rules.STAGE_ASPECTS || []).includes(wantAspect))) {
     aspectSelect.value = wantAspect;

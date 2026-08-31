@@ -78,9 +78,8 @@ Built-in mosaic looks (popup **Mosaic theme**):
 
 | Theme | Notes |
 | --- | --- |
-| Card decks, Spotlight, Coverflow, Fan, Filmstrip, Scatter, Cascade, Orbit, Billboard, Reels | Standard layouts |
-| Polaroid wall, 3D flip wall, Live mosaic, Cube field, Depth Field, Pedestals | Standard layouts |
-| Card decks*, Fan*, Polaroid wall*, 3D flip wall*, Live mosaic*, Cube field* | **Brand-aware** — when Show QR / Show logo are on, content reflows to leave room for chrome (no hard mid-screen crop). With both off, they use the full stage like the originals |
+| Spotlight, Coverflow, Fan, Cascade, Orbit, Reels, Depth Field, Pedestals | Standard layouts |
+| Card decks*, Fan*, Polaroid wall*, 3D flip wall*, Live mosaic*, Cube field* | **Brand-aware** — when Show QR / Show logo are on, content reflows to leave room for chrome (no hard mid-screen crop). With both off, they use the full stage |
 
 `*` in the name means the theme is optimized for QR/logo placement. The popup explains this under the mosaic dropdown.
 

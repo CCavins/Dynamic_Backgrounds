@@ -535,6 +535,7 @@
       theme === "fan-brand" ||
       theme === "decks" ||
       theme === "decks-brand" ||
+      theme === "cascade" ||
       theme === "depthfield"
     ) {
       return true;

@@ -52,9 +52,9 @@ In Tools → Scripts (or on the hidden Vixi Themed Output source):
 - **Theming enabled**
 - **Message theme** — Off, LED Scoreboard, Neon Nightclub, Ultras Tifo,
   Holo Card, Broadcast TV, Liquid Glass, Parallax Drift
-- **Mosaic theme** — Off, Decks, Spotlight, Coverflow, Fan, Filmstrip,
-  Scatter, Cascade, Orbit, Billboard, Reels, Polaroid, Flipwall, Livewall,
-  Cubes, Pedestals
+- **Mosaic theme** — Off, Card decks*, Spotlight, Coverflow, Fan,
+  Cascade, Orbit, Reels, Polaroid wall*, 3D flip wall*, Live mosaic*,
+  Cube field*, Pedestals
 - **Override theme colors** + primary/secondary
 
 Changes apply live.
