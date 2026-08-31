@@ -93,7 +93,30 @@ Message themes stay black until the first capture `show()` finishes, so a cold l
 
 ### Background
 
-The popup **Background** section accepts a link/iframe **or** an uploaded image, video, or GIF, with fit modes Fill / Fit / Stretch / Center. When a theme is on, turn on that theme’s **Show background** to keep the custom background behind it.
+The popup **Background** section can use:
+
+1. **Link / iframe** — paste a URL or iframe HTML  
+2. **Backgrounds folder** — pick a folder once on disk; add files in Finder and **Rescan** (no extension reload). Remembered across Chrome restarts; you may need **Allow access** once after a reboot.  
+3. **Upload file** — one-off import into extension storage  
+
+**Size limits**
+
+| Source | Max file size |
+| --- | --- |
+| Backgrounds folder | About **64 MB** per file |
+| One-off upload | About **3.5 MB** (JPEG/PNG/WebP/BMP stills are compressed; GIF/video/SVG/AVIF use the raw file) |
+
+**Supported formats** (folder scan + upload)
+
+| Kind | Extensions |
+| --- | --- |
+| Still images | `.jpg` / `.jpeg`, `.png`, `.webp`, `.bmp`, `.avif`, `.svg` |
+| Animated image | `.gif` |
+| Video | `.mp4`, `.webm`, `.mov`, `.m4v`, `.ogv` / `.ogg` |
+
+Chrome must be able to decode the file in an `<img>` or `<video>` tag. Prefer **H.264 MP4** or **WebM** for video. Exotic codecs (some ProRes MOV, HEVC-only, MKV) may list in the folder but fail to play — export to MP4/WebM if that happens. HEIC/HEIF from iPhone is not supported; convert to JPEG or PNG first.
+
+When a theme is on, turn on that theme’s **Show background** to keep the custom background behind it. Fit modes: Fill / Fit / Stretch / Center.
 
 ### Custom themes
 

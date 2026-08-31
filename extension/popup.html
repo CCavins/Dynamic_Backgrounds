@@ -120,28 +120,56 @@
 
   <section>
     <h2>Background</h2>
-    <p class="help">Used on output pages that do not match a specific row below. Pick a link/iframe or upload an image, video, or GIF. When a message or mosaic theme is on, turn on Show background for that theme to keep this behind it.</p>
+    <p class="help">Used on output pages that do not match a specific row below. Link/iframe, one-off upload, or a local backgrounds folder. When a message or mosaic theme is on, turn on Show background for that theme to keep this behind it.</p>
     <label class="select-label">
       <span>Source</span>
       <select id="bg-mode">
-        <option value="auto">Auto — upload if set, otherwise link</option>
+        <option value="auto">Auto — media if set, otherwise link</option>
         <option value="link">Link / iframe</option>
-        <option value="media">Uploaded media</option>
+        <option value="media">Media (upload or folder)</option>
       </select>
     </label>
     <label class="bg-link-label">
       <span>Link or iframe</span>
       <textarea id="any-output" rows="3" placeholder="Paste iframe or background URL"></textarea>
     </label>
+    <div class="media-row" id="bg-folder-row">
+      <div class="media-row-head">
+        <span>Backgrounds folder</span>
+        <span class="media-file-name" id="bg-folder-name">No folder</span>
+      </div>
+      <p class="help folder-help">
+        Pick a folder once (outside the extension). Add files in Finder, then Rescan — no extension reload.
+        <strong>Size limit: about 64&nbsp;MB per file</strong> from the folder.
+        After Chrome restarts you may need Allow access once.
+      </p>
+      <p class="help folder-help" id="bg-format-help">
+        Formats: JPEG, PNG, WebP, GIF, BMP, AVIF, SVG · MP4, WebM, MOV, M4V, Ogg/OGV.
+      </p>
+      <div class="media-row-actions" id="bg-folder-actions">
+        <button type="button" class="v2-btn v2-btn-secondary" id="bg-folder-pick">Choose folder…</button>
+        <button type="button" class="v2-btn v2-btn-secondary" id="bg-folder-allow" hidden>Allow access</button>
+        <button type="button" class="v2-btn v2-btn-secondary" id="bg-folder-rescan" hidden>Rescan</button>
+        <button type="button" class="v2-btn v2-btn-secondary" id="bg-folder-forget" hidden>Forget</button>
+      </div>
+      <div class="folder-list-wrap" id="bg-folder-list-wrap" hidden>
+        <select id="bg-folder-list" size="6" aria-label="Files in backgrounds folder"></select>
+        <button type="button" class="v2-btn v2-btn-primary" id="bg-folder-use">Use selected</button>
+      </div>
+      <p class="media-status" id="bg-folder-status" role="status"></p>
+    </div>
     <div class="media-row" id="bg-media-row">
       <div class="media-row-head">
-        <span>Upload</span>
+        <span>Active media</span>
         <span class="media-file-name" id="bg-media-name">No file</span>
       </div>
+      <p class="help folder-help">
+        One-off upload max about <strong>3.5&nbsp;MB</strong> (stills are compressed). Prefer the folder above for larger video/GIF files (up to ~64&nbsp;MB).
+      </p>
       <div class="media-row-actions">
         <label class="v2-btn v2-btn-secondary media-upload-btn">
-          Choose file…
-          <input type="file" id="bg-media-file" accept="image/*,video/*,.gif" hidden>
+          Upload file…
+          <input type="file" id="bg-media-file" accept="image/*,video/*,.gif,.bmp,.avif,.svg,.mp4,.webm,.mov,.m4v,.ogv,.ogg" hidden>
         </label>
         <button type="button" class="v2-btn v2-btn-secondary" id="bg-media-clear">Clear</button>
       </div>
@@ -203,6 +231,7 @@
 
   <script src="rules.js"></script>
   <script src="media.js"></script>
+  <script src="bg-folder.js"></script>
   <script src="engines/api.js"></script>
   <script src="engines/message-aurora-engine.js"></script>
   <script src="engines/message-text-message-engine.js"></script>

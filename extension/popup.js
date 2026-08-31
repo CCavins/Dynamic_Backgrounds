@@ -26,6 +26,15 @@
   const bgMediaClear = document.getElementById("bg-media-clear");
   const bgMediaName = document.getElementById("bg-media-name");
   const bgMediaStatus = document.getElementById("bg-media-status");
+  const bgFolderName = document.getElementById("bg-folder-name");
+  const bgFolderStatus = document.getElementById("bg-folder-status");
+  const bgFolderPick = document.getElementById("bg-folder-pick");
+  const bgFolderAllow = document.getElementById("bg-folder-allow");
+  const bgFolderRescan = document.getElementById("bg-folder-rescan");
+  const bgFolderForget = document.getElementById("bg-folder-forget");
+  const bgFolderListWrap = document.getElementById("bg-folder-list-wrap");
+  const bgFolderList = document.getElementById("bg-folder-list");
+  const bgFolderUse = document.getElementById("bg-folder-use");
   const rulesRoot = document.getElementById("rules");
   const addRule = document.getElementById("add-rule");
   const template = document.getElementById("rule-template");
@@ -34,6 +43,7 @@
   const importInput = document.getElementById("import-theme");
   const importStatus = document.getElementById("import-status");
   const mediaApi = globalThis.BGMediaStore;
+  const folderApi = globalThis.BGFolder;
   const BG_MEDIA_ID = "bg-any-output";
   const WALLPAPER_PREFIX = "theme-wallpaper:";
 
@@ -41,6 +51,8 @@
   let cachedSettings = null;
   let lastMessageTheme = "off";
   let lastMosaicTheme = "off";
+  let folderHandle = null;
+  let folderSelectedFile = "";
 
   function isChristmasPack(id, label) {
     return /xmas|christmas/i.test(String(id || "") + " " + String(label || ""));
@@ -74,22 +86,140 @@
     nameEl.textContent = asset && asset.name ? asset.name : emptyLabel || "No file";
   }
 
-  async function handleMediaUpload(file, mediaId, nameEl, statusEl) {
+  async function handleMediaUpload(file, mediaId, nameEl, statusEl, opts) {
     if (!mediaApi) {
       setMediaStatus(statusEl, "Media uploads are unavailable.", "is-error");
       return null;
     }
     try {
       setMediaStatus(statusEl, "Importing…");
-      const asset = await mediaApi.ingestFile(file);
+      const asset = await mediaApi.ingestFile(file, opts);
       const ok = await mediaApi.putMedia(mediaId, asset);
-      if (!ok) throw new Error("Could not save that file.");
+      if (!ok) throw new Error("Could not save that file. Try a smaller one.");
       await refreshMediaName(nameEl, mediaId, "No file");
       setMediaStatus(statusEl, "Saved.", "is-ok");
       return mediaId;
     } catch (err) {
       setMediaStatus(statusEl, err && err.message ? err.message : "Import failed.", "is-error");
       return null;
+    }
+  }
+
+  function setFolderUi(state) {
+    const hasFolder = Boolean(state && state.handle);
+    const needsGesture = Boolean(state && state.needsGesture);
+    if (bgFolderName) {
+      bgFolderName.textContent = hasFolder
+        ? state.name || "Backgrounds"
+        : folderApi && folderApi.supported && !folderApi.supported()
+          ? "Not supported"
+          : "No folder";
+    }
+    if (bgFolderPick) {
+      bgFolderPick.textContent = hasFolder ? "Change folder…" : "Choose folder…";
+    }
+    if (bgFolderAllow) bgFolderAllow.hidden = !(hasFolder && needsGesture);
+    if (bgFolderRescan) bgFolderRescan.hidden = !(hasFolder && !needsGesture);
+    if (bgFolderForget) bgFolderForget.hidden = !hasFolder;
+    if (bgFolderListWrap) bgFolderListWrap.hidden = !(hasFolder && !needsGesture);
+  }
+
+  function fillFolderList(files, selectedName) {
+    if (!bgFolderList) return;
+    bgFolderList.replaceChildren();
+    (files || []).forEach((item) => {
+      const opt = document.createElement("option");
+      opt.value = item.name;
+      opt.textContent = item.name + (item.sizeLabel ? "  ·  " + item.sizeLabel : "");
+      if (selectedName && item.name === selectedName) opt.selected = true;
+      bgFolderList.appendChild(opt);
+    });
+    if (!bgFolderList.value && bgFolderList.options.length) {
+      bgFolderList.selectedIndex = 0;
+    }
+  }
+
+  async function refreshFolderList() {
+    if (!folderApi || !folderHandle) {
+      fillFolderList([]);
+      return [];
+    }
+    const files = await folderApi.listMediaFiles(folderHandle);
+    fillFolderList(files, folderSelectedFile);
+    if (bgFolderListWrap) bgFolderListWrap.hidden = false;
+    return files;
+  }
+
+  async function initBackgroundFolder() {
+    if (!folderApi) {
+      setFolderUi(null);
+      setMediaStatus(bgFolderStatus, "Folder helper unavailable.", "is-error");
+      return;
+    }
+    if (!folderApi.supported()) {
+      setFolderUi(null);
+      setMediaStatus(
+        bgFolderStatus,
+        "Folder picking needs a recent Chrome build.",
+        "is-error"
+      );
+      if (bgFolderPick) bgFolderPick.disabled = true;
+      return;
+    }
+    try {
+      const restored = await folderApi.restoreFolder();
+      folderHandle = restored.handle || null;
+      folderSelectedFile = restored.selectedFile || "";
+      setFolderUi(restored);
+      if (folderHandle && !restored.needsGesture) {
+        const files = await refreshFolderList();
+        setMediaStatus(
+          bgFolderStatus,
+          files.length ? files.length + " media file(s)." : "Folder is empty — add images or videos, then Rescan."
+        );
+      } else if (folderHandle && restored.needsGesture) {
+        setMediaStatus(bgFolderStatus, "Click Allow access to use this folder again.");
+      } else {
+        setMediaStatus(bgFolderStatus, "");
+      }
+    } catch (err) {
+      setFolderUi(null);
+      setMediaStatus(
+        bgFolderStatus,
+        err && err.message ? err.message : "Could not restore folder.",
+        "is-error"
+      );
+    }
+  }
+
+  async function useFolderFile(fileName) {
+    if (!folderApi || !folderHandle || !fileName) return;
+    try {
+      setMediaStatus(bgFolderStatus, "Loading " + fileName + "…");
+      const file = await folderApi.readFile(folderHandle, fileName);
+      if (!cachedSettings) cachedSettings = {};
+      const saved = await handleMediaUpload(file, BG_MEDIA_ID, bgMediaName, bgMediaStatus, {
+        fromFolder: true,
+      });
+      if (!saved) {
+        setMediaStatus(bgFolderStatus, "Could not apply that file.", "is-error");
+        return;
+      }
+      folderSelectedFile = fileName;
+      await folderApi.setSelectedFile(fileName);
+      cachedSettings.bgMediaId = saved;
+      if (bgMode && bgMode.value === "link") {
+        bgMode.value = "media";
+        if (typeof syncSelectUI === "function") syncSelectUI(bgMode);
+      }
+      setMediaStatus(bgFolderStatus, "Using " + fileName + ".", "is-ok");
+      persist();
+    } catch (err) {
+      setMediaStatus(
+        bgFolderStatus,
+        err && err.message ? err.message : "Could not read that file.",
+        "is-error"
+      );
     }
   }
 
@@ -903,9 +1033,133 @@
       cachedSettings.bgMediaId = "";
       if (bgMediaName) bgMediaName.textContent = "No file";
       setMediaStatus(bgMediaStatus, "Cleared.");
+      folderSelectedFile = "";
+      if (folderApi) await folderApi.setSelectedFile("");
+      if (folderHandle) {
+        try {
+          await refreshFolderList();
+        } catch {
+          /* ignore */
+        }
+      }
       persist();
     });
   }
+
+  if (bgFolderPick) {
+    bgFolderPick.addEventListener("click", async () => {
+      if (!folderApi) return;
+      try {
+        setMediaStatus(bgFolderStatus, "Pick a folder…");
+        const picked = await folderApi.pickFolder();
+        folderHandle = picked.handle;
+        setFolderUi({
+          handle: folderHandle,
+          name: picked.name,
+          needsGesture: false,
+        });
+        const files = await refreshFolderList();
+        setMediaStatus(
+          bgFolderStatus,
+          files.length
+            ? files.length + " media file(s). Select one and Use selected."
+            : "Folder linked. Add images or videos, then Rescan.",
+          "is-ok"
+        );
+      } catch (err) {
+        if (err && err.name === "AbortError") {
+          setMediaStatus(bgFolderStatus, "Folder pick canceled.");
+          return;
+        }
+        setMediaStatus(
+          bgFolderStatus,
+          err && err.message ? err.message : "Could not open that folder.",
+          "is-error"
+        );
+      }
+    });
+  }
+
+  if (bgFolderAllow) {
+    bgFolderAllow.addEventListener("click", async () => {
+      if (!folderApi || !folderHandle) return;
+      try {
+        const perm = await folderApi.ensurePermission(folderHandle);
+        if (!perm.ok) {
+          setMediaStatus(bgFolderStatus, "Permission denied for that folder.", "is-error");
+          return;
+        }
+        setFolderUi({
+          handle: folderHandle,
+          name: folderHandle.name || "Backgrounds",
+          needsGesture: false,
+        });
+        const files = await refreshFolderList();
+        setMediaStatus(
+          bgFolderStatus,
+          files.length ? files.length + " media file(s)." : "Folder is empty.",
+          "is-ok"
+        );
+      } catch (err) {
+        setMediaStatus(
+          bgFolderStatus,
+          err && err.message ? err.message : "Could not get access.",
+          "is-error"
+        );
+      }
+    });
+  }
+
+  if (bgFolderRescan) {
+    bgFolderRescan.addEventListener("click", async () => {
+      if (!folderHandle) return;
+      try {
+        setMediaStatus(bgFolderStatus, "Scanning…");
+        const files = await refreshFolderList();
+        setMediaStatus(
+          bgFolderStatus,
+          files.length ? files.length + " media file(s)." : "No media files found.",
+          "is-ok"
+        );
+      } catch (err) {
+        setMediaStatus(
+          bgFolderStatus,
+          err && err.message ? err.message : "Rescan failed.",
+          "is-error"
+        );
+      }
+    });
+  }
+
+  if (bgFolderForget) {
+    bgFolderForget.addEventListener("click", async () => {
+      if (!folderApi) return;
+      await folderApi.forgetFolder();
+      folderHandle = null;
+      folderSelectedFile = "";
+      fillFolderList([]);
+      setFolderUi(null);
+      setMediaStatus(bgFolderStatus, "Folder forgotten. Active media is unchanged.");
+    });
+  }
+
+  if (bgFolderUse) {
+    bgFolderUse.addEventListener("click", async () => {
+      const name = bgFolderList && bgFolderList.value;
+      if (!name) {
+        setMediaStatus(bgFolderStatus, "Select a file first.", "is-error");
+        return;
+      }
+      await useFolderFile(name);
+    });
+  }
+
+  if (bgFolderList) {
+    bgFolderList.addEventListener("dblclick", async () => {
+      if (bgFolderList.value) await useFolderFile(bgFolderList.value);
+    });
+  }
+
   addRule.addEventListener("click", () => {
     addRuleRow({});
   });
@@ -1135,6 +1389,7 @@
     }
     cachedSettings.bgMediaId = settings.bgMediaId || "";
     refreshMediaName(bgMediaName, settings.bgMediaId || "", "No file");
+    initBackgroundFolder();
     rulesRoot.replaceChildren();
     if (settings.rules.length === 0) addRuleRow({});
     else settings.rules.forEach(addRuleRow);

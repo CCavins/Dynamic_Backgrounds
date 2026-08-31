@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dynamic Backgrounds",
-  "version": "1.17.25",
+  "version": "1.17.27",
   "description": "Apply a Dynamic Backgrounds iframe, mosaic themes, and message themes to matching output URLs.",
   "action": {
     "default_popup": "popup.html",
@@ -13,7 +13,8 @@
     }
   },
   "permissions": [
-    "storage"
+    "storage",
+    "unlimitedStorage"
   ],
   "host_permissions": [
     "*://*.thefamousgroup.com/*"

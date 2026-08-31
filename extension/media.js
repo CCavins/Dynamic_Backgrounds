@@ -5,9 +5,33 @@
 (function (root) {
   const STORE_KEY = "dynMediaAssets";
   const MAX_BYTES = 3.5 * 1024 * 1024;
+  const MAX_FOLDER_BYTES = 64 * 1024 * 1024;
   const MAX_IMAGE_EDGE = 1600;
   const IMAGE_QUALITY = 0.84;
   const BG_FITS = ["cover", "contain", "fill", "center"];
+
+  // Stable formats Chromium can usually paint in <img> / <video>.
+  // Folder scanning also uses MEDIA_EXTENSIONS below.
+  const MEDIA_EXTENSIONS = [
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".gif",
+    ".bmp",
+    ".avif",
+    ".svg",
+    ".mp4",
+    ".webm",
+    ".mov",
+    ".m4v",
+    ".ogv",
+    ".ogg",
+  ];
+
+  const FORMAT_HELP =
+    "Images: JPEG, PNG, WebP, GIF, BMP, AVIF, SVG. " +
+    "Video: MP4, WebM, MOV, M4V, Ogg/OGV.";
 
   function extensionAlive() {
     try {
@@ -56,16 +80,43 @@
     return Math.floor((b64.length * 3) / 4);
   }
 
-  function isAllowedMime(mime) {
-    const m = String(mime || "").toLowerCase();
+  function guessMimeFromName(name) {
+    const lower = String(name || "").toLowerCase();
+    if (/\.png$/i.test(lower)) return "image/png";
+    if (/\.webp$/i.test(lower)) return "image/webp";
+    if (/\.gif$/i.test(lower)) return "image/gif";
+    if (/\.jpe?g$/i.test(lower)) return "image/jpeg";
+    if (/\.bmp$/i.test(lower)) return "image/bmp";
+    if (/\.avif$/i.test(lower)) return "image/avif";
+    if (/\.svg$/i.test(lower)) return "image/svg+xml";
+    if (/\.mp4$/i.test(lower)) return "video/mp4";
+    if (/\.webm$/i.test(lower)) return "video/webm";
+    if (/\.mov$/i.test(lower)) return "video/quicktime";
+    if (/\.m4v$/i.test(lower)) return "video/x-m4v";
+    if (/\.ogv$/i.test(lower)) return "video/ogg";
+    if (/\.ogg$/i.test(lower)) return "video/ogg";
+    return "";
+  }
+
+  function isAllowedMime(mime, fileName) {
+    const m = String(mime || "").toLowerCase() || guessMimeFromName(fileName);
+    if (!m) return false;
+    if (m.startsWith("video/")) return true;
     return (
       m === "image/jpeg" ||
+      m === "image/jpg" ||
       m === "image/png" ||
       m === "image/webp" ||
       m === "image/gif" ||
-      m === "image/jpg" ||
-      m.startsWith("video/")
+      m === "image/bmp" ||
+      m === "image/avif" ||
+      m === "image/svg+xml"
     );
+  }
+
+  function isPassthroughImage(mime) {
+    const m = String(mime || "").toLowerCase();
+    return m === "image/gif" || m === "image/svg+xml" || m === "image/avif";
   }
 
   function normalizeFit(value) {
@@ -99,49 +150,6 @@
     });
   }
 
-  async function ingestFile(file, opts) {
-    if (!file) throw new Error("No file selected.");
-    const options = opts && typeof opts === "object" ? opts : {};
-    const fromFolder = Boolean(options.fromFolder);
-    // Folder picks skip the small chrome.storage comfort cap; still keep a
-    // hard ceiling so a multi‑GB video does not freeze the popup.
-    const maxBytes = fromFolder
-      ? Number(options.maxBytes) > 0
-        ? Number(options.maxBytes)
-        : 64 * 1024 * 1024
-      : MAX_BYTES;
-    const mime = String(file.type || "").toLowerCase() || "application/octet-stream";
-    if (!isAllowedMime(mime)) {
-      throw new Error("Use an image, GIF, or video file.");
-    }
-    if (mime === "image/gif" || mime.startsWith("video/")) {
-      if (file.size > maxBytes) {
-        throw new Error(
-          fromFolder
-            ? "That file is too large (max about 64 MB from the folder)."
-            : "That file is too large (max about 3.5 MB)."
-        );
-      }
-      const dataUrl = await readFileAsDataUrl(file);
-      return {
-        mime,
-        dataUrl,
-        name: String(file.name || "media").slice(0, 80),
-        bytes: estimateDataUrlBytes(dataUrl),
-        source: fromFolder ? "folder" : "upload",
-      };
-    }
-    if (mime.startsWith("image/")) {
-      if (file.size > (fromFolder ? maxBytes : MAX_BYTES * 4)) {
-        throw new Error("That image is too large to import.");
-      }
-      const asset = await compressRasterImage(file, { fromFolder, maxBytes });
-      asset.source = fromFolder ? "folder" : "upload";
-      return asset;
-    }
-    throw new Error("Unsupported media type.");
-  }
-
   async function compressRasterImage(file, opts) {
     const options = opts && typeof opts === "object" ? opts : {};
     const fromFolder = Boolean(options.fromFolder);
@@ -163,7 +171,7 @@
       throw new Error("Image is still too large after compression. Try a smaller file.");
     }
     if (fromFolder && estimateDataUrlBytes(out) > maxBytes) {
-      throw new Error("Image is still too large after compression.");
+      throw new Error("Image is still too large after compression (max about 64 MB).");
     }
     return {
       mime: outMime,
@@ -171,6 +179,52 @@
       name: String(file.name || "image").slice(0, 80),
       bytes: estimateDataUrlBytes(out),
     };
+  }
+
+  async function ingestFile(file, opts) {
+    if (!file) throw new Error("No file selected.");
+    const options = opts && typeof opts === "object" ? opts : {};
+    const fromFolder = Boolean(options.fromFolder);
+    const maxBytes = fromFolder
+      ? Number(options.maxBytes) > 0
+        ? Number(options.maxBytes)
+        : MAX_FOLDER_BYTES
+      : MAX_BYTES;
+    let mime = String(file.type || "").toLowerCase();
+    if (!mime) mime = guessMimeFromName(file.name) || "application/octet-stream";
+    if (!isAllowedMime(mime, file.name)) {
+      throw new Error("Unsupported type. " + FORMAT_HELP);
+    }
+    if (isPassthroughImage(mime) || mime.startsWith("video/")) {
+      if (file.size > maxBytes) {
+        throw new Error(
+          fromFolder
+            ? "That file is too large (folder max about 64 MB)."
+            : "That file is too large (upload max about 3.5 MB)."
+        );
+      }
+      const dataUrl = await readFileAsDataUrl(file);
+      return {
+        mime,
+        dataUrl,
+        name: String(file.name || "media").slice(0, 80),
+        bytes: estimateDataUrlBytes(dataUrl),
+        source: fromFolder ? "folder" : "upload",
+      };
+    }
+    if (mime.startsWith("image/")) {
+      if (file.size > (fromFolder ? maxBytes : MAX_BYTES * 4)) {
+        throw new Error(
+          fromFolder
+            ? "That image is too large (folder max about 64 MB)."
+            : "That image is too large to import."
+        );
+      }
+      const asset = await compressRasterImage(file, { fromFolder, maxBytes });
+      asset.source = fromFolder ? "folder" : "upload";
+      return asset;
+    }
+    throw new Error("Unsupported type. " + FORMAT_HELP);
   }
 
   const memoryStore = Object.create(null);
@@ -235,6 +289,9 @@
   root.BGMediaStore = {
     STORE_KEY,
     MAX_BYTES,
+    MAX_FOLDER_BYTES,
+    MEDIA_EXTENSIONS,
+    FORMAT_HELP,
     BG_FITS,
     normalizeFit,
     fitCss,
@@ -245,6 +302,8 @@
     loadAll,
     isVideoMime,
     isGifMime,
+    isAllowedMime,
+    guessMimeFromName,
     estimateDataUrlBytes,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

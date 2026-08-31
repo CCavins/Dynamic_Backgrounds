@@ -433,6 +433,40 @@ textarea {
   color: #7dffb3;
 }
 
+.folder-help {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(197, 197, 197, 0.75);
+}
+
+.folder-list-wrap {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.folder-list-wrap select {
+  width: 100%;
+  min-height: 108px;
+  max-height: 160px;
+  padding: 6px;
+  border: 1px solid var(--v2-border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--v2-text, #f2f2f2);
+  font: 500 12px Inter, system-ui, sans-serif;
+}
+
+.folder-list-wrap select option {
+  padding: 4px 6px;
+}
+
+.folder-list-wrap .v2-btn {
+  margin-top: 0;
+}
+
 .bg-link-label {
   display: block;
   margin-top: 10px;
