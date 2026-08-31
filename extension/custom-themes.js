@@ -193,6 +193,11 @@
       fonts: /^https:\/\/fonts\.googleapis\.com\//.test(String(data.fonts || ""))
         ? String(data.fonts)
         : "",
+      fontFile: normalizeFontFileName(data.fontFile),
+      fontFamily: String(data.fontFamily || "")
+        .trim()
+        .slice(0, 80),
+      fontId: "",
       settings,
       revealMs: Math.max(200, Math.min(4000, revealFallback || 1000)),
       hideMs: Math.max(120, Math.min(2000, Number(data.hideMs) || 320)),
@@ -206,6 +211,82 @@
           : 0,
       fit,
     };
+  }
+
+  function normalizeFontFileName(value) {
+    const name = String(value || "")
+      .trim()
+      .replace(/^.*[/\\]/, "");
+    if (!/^[a-zA-Z0-9._-]{1,80}\.(woff2|woff|ttf|otf)$/i.test(name)) return "";
+    return name;
+  }
+
+  function fontIdFromFileName(name) {
+    const base = normalizeFontFileName(name);
+    if (!base) return "";
+    return base.toLowerCase();
+  }
+
+  function familyFromFileName(name) {
+    const base = normalizeFontFileName(name) || String(name || "");
+    const stem = base.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim();
+    return stem.slice(0, 80) || "Custom Font";
+  }
+
+  function fontFormatForMime(mime, fileName) {
+    const m = String(mime || "").toLowerCase();
+    const n = String(fileName || "").toLowerCase();
+    if (m.includes("woff2") || /\.woff2$/i.test(n)) return "woff2";
+    if (m.includes("woff") || /\.woff$/i.test(n)) return "woff";
+    if (m.includes("opentype") || /\.otf$/i.test(n)) return "opentype";
+    return "truetype";
+  }
+
+  function mimeForFontFile(fileName, fileType) {
+    const t = String(fileType || "").toLowerCase();
+    if (t) return t;
+    const n = String(fileName || "").toLowerCase();
+    if (/\.woff2$/i.test(n)) return "font/woff2";
+    if (/\.woff$/i.test(n)) return "font/woff";
+    if (/\.otf$/i.test(n)) return "font/otf";
+    return "font/ttf";
+  }
+
+  const MAX_FONT_BYTES = 2 * 1024 * 1024;
+
+  function readBlobAsDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Could not read font file."));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function ingestFontFile(file) {
+    if (!file) throw new Error("No font selected.");
+    const name = normalizeFontFileName(file.name || fileBaseNameFallback(file));
+    if (!name) throw new Error("Use a .woff2, .woff, .ttf, or .otf font file.");
+    if (file.size > MAX_FONT_BYTES) {
+      throw new Error("Font is too large (max about 2 MB). Prefer .woff2.");
+    }
+    const id = fontIdFromFileName(name);
+    const mime = mimeForFontFile(name, file.type);
+    const dataUrl = await readBlobAsDataUrl(file);
+    return {
+      id,
+      name,
+      mime,
+      dataUrl,
+      bytes: Number(file.size) || 0,
+      family: familyFromFileName(name),
+      format: fontFormatForMime(mime, name),
+      updatedAt: Date.now(),
+    };
+  }
+
+  function fileBaseNameFallback(file) {
+    return String(file && file.name ? file.name : "").replace(/^.*[/\\]/, "");
   }
 
   function engineMessageDefaults(engine) {
@@ -458,18 +539,71 @@
         .join("\n\n");
   }
 
-  function injectFonts(packs) {
+  function injectFonts(packs, fontsMap) {
     document.querySelectorAll("link[data-dyn-custom-font]").forEach((node) => node.remove());
-    const seen = new Set();
+    let faceStyle = document.getElementById("dyn-custom-font-faces");
+    if (!faceStyle) {
+      faceStyle = document.createElement("style");
+      faceStyle.id = "dyn-custom-font-faces";
+      document.documentElement.appendChild(faceStyle);
+    }
+    const faces = [];
+    const seenFace = new Set();
+    const seenLink = new Set();
+    const map = fontsMap && typeof fontsMap === "object" ? fontsMap : {};
     (packs || []).forEach((pack) => {
-      if (!pack.fonts || seen.has(pack.fonts)) return;
-      seen.add(pack.fonts);
+      if (pack.fontId && map[pack.fontId] && map[pack.fontId].dataUrl) {
+        const asset = map[pack.fontId];
+        const family = String(pack.fontFamily || asset.family || "Custom Font").slice(0, 80);
+        const key = pack.fontId + "::" + family;
+        if (!seenFace.has(key)) {
+          seenFace.add(key);
+          const fmt = asset.format || fontFormatForMime(asset.mime, asset.name);
+          faces.push(
+            "@font-face{font-family:" +
+              JSON.stringify(family) +
+              ";src:url(" +
+              JSON.stringify(asset.dataUrl) +
+              ") format(" +
+              JSON.stringify(fmt) +
+              ");font-display:swap;}"
+          );
+        }
+      }
+      if (!pack.fonts || seenLink.has(pack.fonts)) return;
+      seenLink.add(pack.fonts);
       const link = document.createElement("link");
       link.rel = "stylesheet";
       link.href = pack.fonts;
       link.dataset.dynCustomFont = pack.id;
       document.head.appendChild(link);
     });
+    faceStyle.textContent = faces.join("\n");
+  }
+
+  async function loadFontsMap() {
+    const rules = root.BGExtensionRules;
+    if (rules && typeof rules.loadCustomFonts === "function") {
+      return rules.loadCustomFonts();
+    }
+    return {};
+  }
+
+  async function pruneUnusedFonts(packs) {
+    const rules = root.BGExtensionRules;
+    if (!rules || typeof rules.loadCustomFonts !== "function") return;
+    const used = new Set(
+      (packs || []).map((pack) => pack && pack.fontId).filter(Boolean)
+    );
+    const fonts = await rules.loadCustomFonts();
+    let changed = false;
+    Object.keys(fonts || {}).forEach((id) => {
+      if (!used.has(id)) {
+        delete fonts[id];
+        changed = true;
+      }
+    });
+    if (changed && rules.saveCustomFonts) await rules.saveCustomFonts(fonts);
   }
 
   function unregister() {
@@ -750,7 +884,7 @@
     };
   }
 
-  function registerPacks(packs) {
+  function registerPacks(packs, fontsMap) {
     unregister();
     const messageApi = root.BGMessageThemes;
     const mosaicApi = root.BGMosaicThemes;
@@ -769,7 +903,13 @@
       }
     });
     injectStyle(packs);
-    injectFonts(packs);
+    if (fontsMap) {
+      injectFonts(packs, fontsMap);
+    } else {
+      loadFontsMap()
+        .then((map) => injectFonts(packs, map))
+        .catch(() => injectFonts(packs, {}));
+    }
     notifyChange();
   }
 
@@ -780,16 +920,21 @@
       const enginesReady = rules.loadCustomEngines
         ? rules.loadCustomEngines()
         : Promise.resolve({});
-      const [engines, packs] = await Promise.all([enginesReady, rules.loadCustomThemes()]);
+      const fontsReady = rules.loadCustomFonts ? rules.loadCustomFonts() : Promise.resolve({});
+      const [engines, packs, fontsMap] = await Promise.all([
+        enginesReady,
+        rules.loadCustomThemes(),
+        fontsReady,
+      ]);
       registerSideloadEngines(engines);
-      registerPacks(packs);
+      registerPacks(packs, fontsMap);
       return packs;
     } finally {
       markReady();
     }
   }
 
-  async function importPack(raw, engineSource) {
+  async function importPack(raw, engineSource, fontAsset) {
     let meta = null;
     if (engineSource) {
       meta = peekEngineMeta(engineSource);
@@ -832,14 +977,55 @@
         }
       }
     }
-    const now = new Date().toISOString();
+
     const previous = current.find((item) => item.id === pack.id);
+    if (fontAsset && fontAsset.id && rules && rules.saveCustomFonts) {
+      const fonts = await rules.loadCustomFonts();
+      fonts[fontAsset.id] = {
+        id: fontAsset.id,
+        name: fontAsset.name,
+        mime: fontAsset.mime,
+        dataUrl: fontAsset.dataUrl,
+        bytes: fontAsset.bytes,
+        family: fontAsset.family,
+        format: fontAsset.format,
+        updatedAt: Date.now(),
+      };
+      await rules.saveCustomFonts(fonts);
+      pack.fontId = fontAsset.id;
+      pack.fontFile = fontAsset.name;
+      if (!pack.fontFamily) pack.fontFamily = fontAsset.family;
+    } else if (pack.fontFile) {
+      if (
+        previous &&
+        previous.fontId &&
+        String(previous.fontFile || "").toLowerCase() === String(pack.fontFile).toLowerCase()
+      ) {
+        pack.fontId = previous.fontId;
+        if (!pack.fontFamily) pack.fontFamily = previous.fontFamily || "";
+      } else if (rules && rules.loadCustomFonts) {
+        const fonts = await rules.loadCustomFonts();
+        const id = fontIdFromFileName(pack.fontFile);
+        if (fonts[id] && fonts[id].dataUrl) {
+          pack.fontId = id;
+          if (!pack.fontFamily) {
+            pack.fontFamily = fonts[id].family || familyFromFileName(pack.fontFile);
+          }
+        }
+      }
+    } else {
+      pack.fontId = "";
+      pack.fontFile = "";
+    }
+
+    const now = new Date().toISOString();
     pack.importedAt = (previous && previous.importedAt) || now;
     pack.updatedAt = now;
     const next = current.filter((item) => item.id !== pack.id);
     next.push(pack);
     if (rules) await rules.saveCustomThemes(next);
-    registerPacks(next);
+    await pruneUnusedFonts(next);
+    await loadAndRegister();
     return pack;
   }
 
@@ -867,14 +1053,15 @@
         }
       }
     }
-    registerPacks(next);
+    await pruneUnusedFonts(next);
+    await loadAndRegister();
     return next;
   }
 
   try {
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== "local") return;
-      if (changes.customEngines || changes.customThemes) {
+      if (changes.customEngines || changes.customThemes || changes.customFonts) {
         loadAndRegister().catch(() => {});
       }
     });
@@ -893,8 +1080,12 @@
     MAX_CSS,
     MAX_HTML,
     MAX_ENGINE_JS,
+    MAX_FONT_BYTES,
     parsePack,
     peekEngineMeta,
+    ingestFontFile,
+    normalizeFontFileName,
+    fontIdFromFileName,
     compileSideloadSource,
     registerSideloadEngines,
     registerPacks,

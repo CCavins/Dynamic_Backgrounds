@@ -202,13 +202,13 @@
     </div>
     <div class="import-panel">
       <ol class="import-steps">
-        <li>Select one or many theme <code>.json</code> files (and their <code>*-engine.js</code> files if needed).</li>
-        <li>Matching is automatic by <code>engine</code> / filename (e.g. <code>mosaic-xmas-tree.json</code> ↔ <code>mosaic-xmas-tree-engine.js</code>).</li>
-        <li>Standalone JSON packs import without an engine. Same <code>id</code> replaces.</li>
+        <li>Select theme <code>.json</code> files, optional <code>*-engine.js</code> files, and optional font files (<code>.woff2</code> / <code>.woff</code> / <code>.ttf</code> / <code>.otf</code>) from your themes folder.</li>
+        <li>Matching is automatic: engines by <code>engine</code> / filename; fonts by JSON <code>fontFile</code> basename. Shared fonts are stored once.</li>
+        <li>Same theme <code>id</code> (or same font / engine id) replaces the previous import.</li>
       </ol>
       <label class="v2-btn v2-btn-secondary import-btn">
         Import packs…
-        <input type="file" id="import-theme" accept=".json,.js,application/json,text/javascript" multiple hidden>
+        <input type="file" id="import-theme" accept=".json,.js,.woff,.woff2,.ttf,.otf,application/json,text/javascript,font/woff,font/woff2" multiple hidden>
       </label>
       <p class="import-status" id="import-status" role="status"></p>
     </div>

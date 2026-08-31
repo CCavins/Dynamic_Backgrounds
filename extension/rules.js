@@ -1886,6 +1886,43 @@
     });
   }
 
+  let lastGoodCustomFonts = {};
+
+  function loadCustomFonts() {
+    return new Promise((resolve) => {
+      if (!extensionAlive()) {
+        resolve({ ...lastGoodCustomFonts });
+        return;
+      }
+      try {
+        chrome.storage.local.get({ customFonts: {} }, (stored) => {
+          const raw =
+            stored.customFonts && typeof stored.customFonts === "object" ? stored.customFonts : {};
+          lastGoodCustomFonts = raw;
+          resolve(raw);
+        });
+      } catch {
+        resolve({ ...lastGoodCustomFonts });
+      }
+    });
+  }
+
+  function saveCustomFonts(fonts) {
+    const next = fonts && typeof fonts === "object" ? fonts : {};
+    lastGoodCustomFonts = next;
+    return new Promise((resolve) => {
+      if (!extensionAlive()) {
+        resolve();
+        return;
+      }
+      try {
+        chrome.storage.local.set({ customFonts: next }, () => resolve());
+      } catch {
+        resolve();
+      }
+    });
+  }
+
   root.BGExtensionRules = {
     STORAGE_KEYS,
     DEFAULTS,
@@ -1931,6 +1968,8 @@
     saveCustomThemes,
     loadCustomEngines,
     saveCustomEngines,
+    loadCustomFonts,
+    saveCustomFonts,
     loadCustomEngineWarningSeen,
     saveCustomEngineWarningSeen,
     envKey,

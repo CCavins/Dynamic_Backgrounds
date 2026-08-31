@@ -433,6 +433,14 @@
       badges.appendChild(eng);
     }
 
+    if (pack.fontId || pack.fontFile) {
+      const font = document.createElement("span");
+      font.className = "theme-badge theme-badge-font";
+      font.textContent = pack.fontFamily ? "Font · " + pack.fontFamily : "Font";
+      font.title = pack.fontFile || pack.fontId || "";
+      badges.appendChild(font);
+    }
+
     const idLine = document.createElement("code");
     idLine.className = "custom-theme-id";
     idLine.textContent = pack.id;
@@ -1189,6 +1197,7 @@
   async function planThemeImports(files) {
     const jsonFiles = files.filter((file) => /\.json$/i.test(file.name));
     const jsFiles = files.filter((file) => /\.js$/i.test(file.name));
+    const fontFiles = files.filter((file) => /\.(woff2|woff|ttf|otf)$/i.test(file.name));
     if (!jsonFiles.length) {
       throw new Error("Select at least one theme .json file.");
     }
@@ -1212,7 +1221,30 @@
       }
     }
 
-    const used = new Set();
+    const fonts = [];
+    for (const file of fontFiles) {
+      try {
+        const asset = await customApi.ingestFontFile(file);
+        fonts.push({ file, asset, name: asset.name });
+      } catch (err) {
+        notes.push(
+          "Skipped " +
+            fileBaseName(file) +
+            " (" +
+            ((err && err.message) || "not a usable font") +
+            ")."
+        );
+      }
+    }
+
+    function findFontForPack(pack) {
+      const want = String(pack.fontFile || "").toLowerCase();
+      if (!want) return null;
+      return fonts.find((item) => item.name.toLowerCase() === want) || null;
+    }
+
+    const usedEngines = new Set();
+    const usedFonts = new Set();
     const jobs = [];
     const errors = [];
     for (const file of jsonFiles) {
@@ -1227,19 +1259,35 @@
         continue;
       }
       const match = findEngineForPack(pack, engines);
-      if (match) used.add(match.name);
+      if (match) usedEngines.add(match.name);
+      const fontMatch = findFontForPack(pack);
+      if (fontMatch) usedFonts.add(fontMatch.name);
+      else if (pack.fontFile) {
+        notes.push(
+          name +
+            ": fontFile \"" +
+            pack.fontFile +
+            "\" not in this selection (will reuse a stored copy if one exists)."
+        );
+      }
       jobs.push({
         raw,
         pack,
         jsonName: name,
         engineSource: match ? match.text : "",
         engineName: match ? match.name : "",
+        fontAsset: fontMatch ? fontMatch.asset : null,
       });
     }
 
     engines.forEach((item) => {
-      if (!used.has(item.name)) {
+      if (!usedEngines.has(item.name)) {
         notes.push("Unused engine " + item.name + " (no matching theme .json in this selection).");
+      }
+    });
+    fonts.forEach((item) => {
+      if (!usedFonts.has(item.name)) {
+        notes.push("Unused font " + item.name + " (no theme fontFile matched it).");
       }
     });
 
@@ -1293,7 +1341,7 @@
 
         for (const job of plan.jobs) {
           try {
-            const pack = await customApi.importPack(job.raw, job.engineSource);
+            const pack = await customApi.importPack(job.raw, job.engineSource, job.fontAsset);
             if (existingIds.has(pack.id)) replaced.push(pack);
             else imported.push(pack);
             existingIds.add(pack.id);

@@ -77,6 +77,8 @@ Every field the parser keeps. Extra fields are ignored. Do not invent settings k
   "css": "",
   "html": "",
   "fonts": "",
+  "fontFile": "",
+  "fontFamily": "",
   "settings": {},
   "revealMs": 1000,
   "hideMs": 320,
@@ -100,7 +102,9 @@ Every field the parser keeps. Extra fields are ignored. Do not invent settings k
 | `engineFile` | no | string | Basename ending in `.js`, max 80 chars. Hint only |
 | `css` | no | string | Max 100 KB. Scoped selectors required |
 | `html` | message unless `engine` | string | Max 50 KB. Message themes need `html` or `engine` |
-| `fonts` | no | string | Must start with `https://fonts.googleapis.com/`. Anything else is dropped |
+| `fonts` | no | string | Google Fonts only: must start with `https://fonts.googleapis.com/`. Anything else is dropped |
+| `fontFile` | no | string | Basename of a custom font to import with the pack (`.woff2`, `.woff`, `.ttf`, `.otf`). Matched when that file is selected in the same Import packs… batch. Shared across packs that name the same file |
+| `fontFamily` | no | string | CSS `font-family` name for `fontFile` (max 80). Defaults from the filename stem if omitted |
 | `settings` | no | object | Keys only: `primary`, `secondary`, `background`, `motion`, `scale` |
 | `revealMs` | no | number | Message enter. Clamped 200–4000. Default 1000 |
 | `hideMs` | no | number | Message leave. Clamped 120–2000. Default 320 |
