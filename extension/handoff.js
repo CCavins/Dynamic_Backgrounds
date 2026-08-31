@@ -48,47 +48,18 @@
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
     "html.dyn-show-bg:not(.dyn-custom-bg) .v2-app-wrapper__bg-image," +
-    "html.dyn-show-bg:not(.dyn-custom-bg) .output-wrapper > .asset-view{" +
+    "html.dyn-show-bg:not(.dyn-custom-bg) .output-wrapper > .asset-view," +
+    "html.dyn-show-bg:not(.dyn-custom-bg) .output-wrapper > .asset-view img," +
+    "html.dyn-show-bg:not(.dyn-custom-bg) .output-wrapper > .asset-view video," +
+    "html.dyn-show-bg #dyn-bg-embed{" +
       "position:absolute!important;inset:0!important;" +
       "left:0!important;top:0!important;right:0!important;bottom:0!important;" +
       "width:100%!important;height:100%!important;" +
       "max-width:none!important;max-height:none!important;" +
-      "visibility:visible!important;opacity:1!important;" +
-      "pointer-events:none!important;z-index:0!important;" +
-      "transform:none!important;display:block!important;" +
-    "}" +
-    /* Only the direct background media — never QR/logo imgs nested in the layer. */
-    "html.dyn-show-bg:not(.dyn-custom-bg) .v2-app-wrapper__bg-image > img," +
-    "html.dyn-show-bg:not(.dyn-custom-bg) .v2-app-wrapper__bg-image > video," +
-    "html.dyn-show-bg:not(.dyn-custom-bg) .output-wrapper > .asset-view > img," +
-    "html.dyn-show-bg:not(.dyn-custom-bg) .output-wrapper > .asset-view > video," +
-    "html.dyn-show-bg #dyn-bg-embed{" +
-      "position:absolute!important;inset:0!important;" +
-      "width:100%!important;height:100%!important;" +
       "object-fit:cover!important;object-position:center!important;" +
       "visibility:visible!important;opacity:1!important;" +
       "pointer-events:none!important;z-index:0!important;" +
       "transform:none!important;display:block!important;" +
-    "}" +
-    /* Stock Vixi QR/logo stay hidden while a theme is on, even with Show background /
-       Source = Vixi (visibility:visible on a child can pierce a hidden ancestor). */
-    "html.dyn-theme-on .v2-qr-tile," +
-    "html.dyn-theme-on .qr-tile," +
-    "html.dyn-theme-on .v2-logo," +
-    "html.dyn-theme-on .v2-logo-tile," +
-    "html.dyn-theme-on .event-logo," +
-    "html.dyn-theme-on .logo-tile," +
-    "html.dyn-theme-on .v2-qr-tile img," +
-    "html.dyn-theme-on .qr-tile img," +
-    "html.dyn-theme-on .v2-logo img," +
-    "html.dyn-theme-on .v2-logo-tile img," +
-    "html.dyn-theme-on .event-logo img," +
-    "html.dyn-theme-on .logo-tile img," +
-    "html.dyn-theme-on .v2-qr-tile video," +
-    "html.dyn-theme-on .qr-tile video," +
-    "html.dyn-theme-on .v2-logo video," +
-    "html.dyn-theme-on .v2-logo-tile video{" +
-      "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
     /* Custom upload/iframe replaces Vixi’s event background — never flash it. */
     "html.dyn-custom-bg .v2-app-wrapper__bg-image," +
