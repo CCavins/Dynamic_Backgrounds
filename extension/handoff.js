@@ -57,14 +57,11 @@
       "pointer-events:none!important;z-index:0!important;" +
       "transform:none!important;display:block!important;" +
     "}" +
-    /* Hide every child of the Vixi bg layer, then re-show only the marked
-       full-bleed media (logo/QR are often sibling imgs in the same layer). */
-    "html.dyn-theme-on.dyn-show-bg:not(.dyn-custom-bg) .v2-app-wrapper__bg-image > *," +
-    "html.dyn-theme-on.dyn-show-bg:not(.dyn-custom-bg) .output-wrapper > .asset-view > *{" +
-      "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
-    "}" +
-    "html.dyn-theme-on.dyn-show-bg:not(.dyn-custom-bg) .v2-app-wrapper__bg-image > [data-dyn-vixi-bg-media]," +
-    "html.dyn-theme-on.dyn-show-bg:not(.dyn-custom-bg) .output-wrapper > .asset-view > [data-dyn-vixi-bg-media]," +
+    /* Only the direct background media — never QR/logo imgs nested in the layer. */
+    "html.dyn-show-bg:not(.dyn-custom-bg) .v2-app-wrapper__bg-image > img," +
+    "html.dyn-show-bg:not(.dyn-custom-bg) .v2-app-wrapper__bg-image > video," +
+    "html.dyn-show-bg:not(.dyn-custom-bg) .output-wrapper > .asset-view > img," +
+    "html.dyn-show-bg:not(.dyn-custom-bg) .output-wrapper > .asset-view > video," +
     "html.dyn-show-bg #dyn-bg-embed{" +
       "position:absolute!important;inset:0!important;" +
       "width:100%!important;height:100%!important;" +
@@ -73,18 +70,14 @@
       "pointer-events:none!important;z-index:0!important;" +
       "transform:none!important;display:block!important;" +
     "}" +
-    /* Stock Vixi QR/logo stay hidden while a theme is on (all known selectors). */
+    /* Stock Vixi QR/logo stay hidden while a theme is on, even with Show background /
+       Source = Vixi (visibility:visible on a child can pierce a hidden ancestor). */
     "html.dyn-theme-on .v2-qr-tile," +
     "html.dyn-theme-on .qr-tile," +
     "html.dyn-theme-on .v2-logo," +
     "html.dyn-theme-on .v2-logo-tile," +
     "html.dyn-theme-on .event-logo," +
     "html.dyn-theme-on .logo-tile," +
-    "html.dyn-theme-on .output-logo," +
-    "html.dyn-theme-on .brand-logo," +
-    "html.dyn-theme-on .v2-app-wrapper__logo," +
-    "html.dyn-theme-on img[alt='logo' i]," +
-    "html.dyn-theme-on img[alt*='logo' i]," +
     "html.dyn-theme-on .v2-qr-tile img," +
     "html.dyn-theme-on .qr-tile img," +
     "html.dyn-theme-on .v2-logo img," +
@@ -94,16 +87,8 @@
     "html.dyn-theme-on .v2-qr-tile video," +
     "html.dyn-theme-on .qr-tile video," +
     "html.dyn-theme-on .v2-logo video," +
-    "html.dyn-theme-on .v2-logo-tile video," +
-    "html.dyn-theme-on [data-dyn-brand-suppressed]{" +
+    "html.dyn-theme-on .v2-logo-tile video{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
-    "}" +
-    "html.dyn-theme-on:not(.dyn-show-qr) .dyn-brand-chrome [data-qr]," +
-    "html.dyn-theme-on:not(.dyn-show-logo) .dyn-brand-chrome [data-logo]," +
-    "html.dyn-theme-on:not(.dyn-show-qr):not(.dyn-show-logo) > .dyn-brand-chrome," +
-    "#dyn-message-theme:not(.dyn-show-qr):not(.dyn-show-logo) > .dyn-brand-chrome," +
-    "#dyn-mosaic-theme:not(.dyn-show-qr):not(.dyn-show-logo) > .dyn-brand-chrome{" +
-      "display:none!important;visibility:hidden!important;opacity:0!important;" +
     "}" +
     /* Custom upload/iframe replaces Vixi’s event background — never flash it. */
     "html.dyn-custom-bg .v2-app-wrapper__bg-image," +
@@ -288,8 +273,6 @@
         "dyn-kind-mosaic",
         "dyn-kind-native",
         "dyn-show-bg",
-        "dyn-show-qr",
-        "dyn-show-logo",
         "dyn-hold",
         "dyn-handoff",
         "dyn-handoff-to-message",
@@ -330,8 +313,6 @@
     html.classList.toggle("dyn-kind-mosaic", shownKind === "mosaic");
     html.classList.toggle("dyn-kind-native", nativeBeat);
     html.classList.toggle("dyn-show-bg", liveOn && Boolean(chrome.showBackground));
-    html.classList.toggle("dyn-show-qr", liveOn && Boolean(chrome.showQr));
-    html.classList.toggle("dyn-show-logo", liveOn && Boolean(chrome.showLogo));
     if (!msgThemeOn) html.classList.remove("dyn-message-on");
     if (!mosThemeOn) html.classList.remove("dyn-mosaic-on");
     if (!liveOn) html.classList.remove("dyn-hold");
@@ -357,31 +338,14 @@
         if (rules.hideBackgroundLayers) rules.hideBackgroundLayers();
         if (rules.silenceReplacedMedia) rules.silenceReplacedMedia();
         html.classList.add("dyn-custom-bg");
-        if (rules.clearVixiBgMediaMarks) rules.clearVixiBgMediaMarks();
       } else {
         if (rules.restoreBackgroundLayers) rules.restoreBackgroundLayers();
         if (rules.resumeBackgroundMedia) rules.resumeBackgroundMedia();
         html.classList.remove("dyn-custom-bg");
-        if (rules.markVixiBackgroundMedia) rules.markVixiBackgroundMedia();
-        if (rules.suppressStockBrandChrome) rules.suppressStockBrandChrome();
       }
     } else if (rules.silenceReplacedMedia) {
       rules.silenceReplacedMedia();
       if (rules.hideBackgroundLayers) rules.hideBackgroundLayers();
-      if (rules.clearVixiBgMediaMarks) rules.clearVixiBgMediaMarks();
-    }
-    // Keep stock QR/logo suppressed whenever a theme is live, regardless of bg source.
-    if (liveOn && rules.suppressStockBrandChrome) {
-      rules.suppressStockBrandChrome();
-    }
-    const themeRoot =
-      shownKind === "message"
-        ? document.getElementById("dyn-message-theme")
-        : shownKind === "mosaic"
-          ? document.getElementById("dyn-mosaic-theme")
-          : null;
-    if (themeRoot && rules.ensureBrandChrome) {
-      rules.ensureBrandChrome(themeRoot, shownKind);
     }
     const bgApi = root.BGCustomBackground;
     if (bgApi && typeof bgApi.scheduleApply === "function") {
