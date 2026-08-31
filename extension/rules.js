@@ -23,7 +23,8 @@
   };
 
   const STAGE_ASPECT_PRESETS = [
-    { value: "auto", label: "Auto — match the window" },
+    { value: "vixi", label: "Match Vixi" },
+    { value: "auto", label: "Match the window" },
     { value: "16:9", label: "16:9 landscape" },
     { value: "9:16", label: "9:16 portrait" },
     { value: "4:3", label: "4:3 landscape" },
@@ -48,7 +49,7 @@
     messageTheme: "off",
     messageThemeSettings: {},
     mosaicThemeSettings: {},
-    stageAspect: "auto",
+    stageAspect: "vixi",
     messageShowBackground: false,
     messageShowQr: false,
     messageShowLogo: false,
@@ -473,10 +474,15 @@
     return { aw: w, ah: h };
   }
 
+  function isNamedAspect(mode) {
+    return mode === "vixi" || mode === "auto";
+  }
+
   function parseStageAspect(value) {
     if (value == null) return null;
     const raw = String(value).trim();
-    if (!raw || /^auto$/i.test(raw)) return { mode: "auto" };
+    if (!raw || /^vixi$/i.test(raw)) return { mode: "vixi" };
+    if (/^auto$/i.test(raw)) return { mode: "auto" };
     const match = raw.match(/^(\d+(?:\.\d+)?)\s*[:x×/]\s*(\d+(?:\.\d+)?)$/i);
     if (!match) return null;
     const aw0 = Number(match[1]);
@@ -494,17 +500,17 @@
 
   function normalizeStageAspect(value) {
     const parsed = parseStageAspect(value);
-    return parsed ? parsed.mode : "auto";
+    return parsed ? parsed.mode : "vixi";
   }
 
   function presetForAspect(value) {
     const parsed = parseStageAspect(value);
-    if (!parsed || parsed.mode === "auto") return "auto";
+    if (!parsed || isNamedAspect(parsed.mode)) return parsed ? parsed.mode : "vixi";
     for (let i = 0; i < STAGE_ASPECT_PRESETS.length; i += 1) {
       const preset = STAGE_ASPECT_PRESETS[i];
-      if (preset.value === "auto") continue;
+      if (isNamedAspect(preset.value)) continue;
       const other = parseStageAspect(preset.value);
-      if (other && Math.abs(parsed.aw * other.ah - other.aw * parsed.ah) < 1e-4) {
+      if (other && other.aw && Math.abs(parsed.aw * other.ah - other.aw * parsed.ah) < 1e-4) {
         return preset.value;
       }
     }
@@ -513,12 +519,12 @@
 
   function stageAspectToken(sizeOrMode) {
     if (sizeOrMode && typeof sizeOrMode === "object") {
-      const mode = sizeOrMode.mode || "auto";
-      if (mode === "auto") return sizeOrMode.portrait ? "9-16" : "16-9";
+      const mode = sizeOrMode.mode || "vixi";
+      if (isNamedAspect(mode)) return mode;
       return String(mode).replace(/:/g, "-");
     }
     const mode = normalizeStageAspect(sizeOrMode);
-    if (mode === "auto") return "auto";
+    if (isNamedAspect(mode)) return mode;
     return mode.replace(/:/g, "-");
   }
 
@@ -561,16 +567,119 @@
     return normalizeStageAspect(lastGoodSettings && lastGoodSettings.stageAspect);
   }
 
+  let lastVixiRatio = { aw: 16, ah: 9 };
+
+  function cssAspectParts(raw) {
+    if (!raw || raw === "auto" || raw === "none") return null;
+    const match = String(raw).match(/([\d.]+)\s*\/\s*([\d.]+)/);
+    if (!match) return null;
+    const aw = Number(match[1]);
+    const ah = Number(match[2]);
+    if (!(aw > 0 && ah > 0)) return null;
+    return clampAspectParts(aw, ah);
+  }
+
+  function namedRatioFromValue(value) {
+    const parsed = parseStageAspect(value);
+    if (!parsed || isNamedAspect(parsed.mode) || !parsed.aw) return null;
+    return { aw: parsed.aw, ah: parsed.ah };
+  }
+
+  function snapVixiRatio(parts) {
+    if (!parts || !(parts.aw > 0 && parts.ah > 0)) return lastVixiRatio;
+    const ratio = parts.aw / parts.ah;
+    for (let i = 0; i < STAGE_ASPECT_PRESETS.length; i += 1) {
+      const preset = STAGE_ASPECT_PRESETS[i];
+      if (isNamedAspect(preset.value)) continue;
+      const other = parseStageAspect(preset.value);
+      if (!other || !other.aw) continue;
+      if (Math.abs(ratio - other.aw / other.ah) < 0.02) {
+        return { aw: other.aw, ah: other.ah };
+      }
+    }
+    return parts;
+  }
+
+  function wrapperLooksNative() {
+    const html = document.documentElement;
+    return html.dataset.stageAspect !== "auto" || !html.classList.contains("dyn-stage-forced");
+  }
+
+  function captureNativeVixiAspect() {
+    if (!wrapperLooksNative()) return lastVixiRatio;
+    const outer = findWrapper();
+    const rw = outer && (outer.clientWidth || outer.width);
+    const rh = outer && (outer.clientHeight || outer.height);
+    if (rw >= 8 && rh >= 8) lastVixiRatio = snapVixiRatio(clampAspectParts(rw, rh));
+    return lastVixiRatio;
+  }
+
+  function readVixiAspect(box) {
+    try {
+      const params = new URLSearchParams(location.search || "");
+      const keys = ["aspect", "ratio", "aspectRatio", "outputAspect", "canvas"];
+      for (let i = 0; i < keys.length; i += 1) {
+        const fromUrl = namedRatioFromValue(params.get(keys[i]));
+        if (fromUrl) {
+          lastVixiRatio = snapVixiRatio(fromUrl);
+          return lastVixiRatio;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+
+    const nodes = [box && box.nodeType === 1 ? box : null, findWrapper()].filter(Boolean);
+    for (let i = 0; i < nodes.length; i += 1) {
+      const el = nodes[i];
+      const ds = el.dataset || {};
+      const fromData = namedRatioFromValue(
+        ds.ratio || ds.aspectRatio || ds.outputAspect
+      );
+      if (fromData) {
+        lastVixiRatio = snapVixiRatio(fromData);
+        return lastVixiRatio;
+      }
+      try {
+        const fromCss = cssAspectParts(getComputedStyle(el).aspectRatio);
+        if (fromCss) {
+          lastVixiRatio = snapVixiRatio(fromCss);
+          return lastVixiRatio;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    if (wrapperLooksNative()) {
+      const measure = (box && box.clientWidth >= 8 ? box : null) || findWrapper();
+      const rw = measure && (measure.clientWidth || measure.width);
+      const rh = measure && (measure.clientHeight || measure.height);
+      if (rw >= 8 && rh >= 8) lastVixiRatio = snapVixiRatio(clampAspectParts(rw, rh));
+    }
+    return lastVixiRatio;
+  }
+
   function resolveStageSize(box, aspect) {
     const mode = normalizeStageAspect(aspect != null ? aspect : currentStageAspect());
     const rw = (box && (box.clientWidth || box.width)) || window.innerWidth || 1920;
     const rh = (box && (box.clientHeight || box.height)) || window.innerHeight || 1080;
     if (mode === "auto") {
-      const portrait = rh > rw;
+      const size = designSizeFromRatio(rw, rh);
       return {
-        dw: portrait ? 1080 : 1920,
-        dh: portrait ? 1920 : 1080,
-        portrait,
+        dw: size.dw,
+        dh: size.dh,
+        portrait: rh > rw,
+        mode,
+      };
+    }
+    if (mode === "vixi") {
+      const detected = readVixiAspect(box);
+      const size = designSizeFromRatio(detected.aw, detected.ah);
+      return {
+        dw: size.dw,
+        dh: size.dh,
+        portrait: detected.ah > detected.aw,
         mode,
       };
     }
@@ -650,6 +759,13 @@
       "transform:none!important;" +
       "flex:none!important;" +
       "box-sizing:border-box!important;" +
+    "}" +
+    "html.dyn-stage-forced[data-stage-aspect=\"auto\"] [data-dyn-canvas-outer]," +
+    "html.dyn-stage-forced[data-stage-aspect=\"auto\"] .dyn-stage-letterbox{" +
+      "width:100vw!important;" +
+      "height:100vh!important;" +
+      "left:0!important;top:0!important;right:0!important;bottom:0!important;" +
+      "margin:0!important;" +
     "}" +
     "html.dyn-stage-forced [data-dyn-canvas-outer] .v2-app-wrapper," +
     "html.dyn-stage-forced [data-dyn-canvas-outer] .v2-scene-transition," +
@@ -751,7 +867,6 @@
           resetOutputCanvas();
           return;
         }
-        if (currentStageAspect() === "auto") return;
         applyOutputCanvas();
       });
     };
@@ -769,14 +884,32 @@
     const mode = normalizeStageAspect(aspect != null ? aspect : currentStageAspect());
     const html = document.documentElement;
     bindCanvasResize();
+    captureNativeVixiAspect();
+
+    if (mode === "vixi") {
+      const detected = readVixiAspect(findOuterCanvas());
+      html.classList.add("dyn-stage-forced");
+      html.dataset.stageAspect = "vixi";
+      html.style.setProperty("--dyn-aw", String(detected.aw));
+      html.style.setProperty("--dyn-ah", String(detected.ah));
+      const outer = findOuterCanvas();
+      if (outer) markCanvasOuter(outer);
+      const { vw, vh } = viewportSize();
+      const fit = containFit(vw, vh, detected.aw, detected.ah);
+      return resolveStageSize({ clientWidth: fit.w, clientHeight: fit.h }, mode);
+    }
 
     if (mode === "auto") {
-      // Keep auto sizing (no forced letterbox), but leave a black page behind
-      // so transparent theme areas do not show the browser chrome gray.
-      resetOutputCanvas();
+      // Stretch Vixi's canvas to the window. Design space then matches that
+      // ratio (see resolveStageSize), so mosaics and messages fill instead of
+      // sitting in a leftover 16:9 box.
+      html.classList.add("dyn-stage-forced");
       html.dataset.stageAspect = "auto";
-      ensureStageCanvasStyle();
-      return resolveStageSize(findWrapper(), mode);
+      html.style.removeProperty("--dyn-aw");
+      html.style.removeProperty("--dyn-ah");
+      const outer = findOuterCanvas();
+      if (outer) markCanvasOuter(outer);
+      return resolveStageSize(outer || findWrapper(), mode);
     }
 
     const parsed = parseStageAspect(mode);
@@ -1677,8 +1810,10 @@
     presetForAspect,
     stageAspectToken,
     normalizeStageAspect,
+    isNamedAspect,
     currentStageAspect,
     resolveStageSize,
+    readVixiAspect,
     containFit,
     applyStageFrame,
     applyOutputCanvas,

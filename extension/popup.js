@@ -657,21 +657,22 @@
     persist();
   });
   function readStageAspect() {
-    if (!stageAspect || stageAspect.value === "auto") return "auto";
+    if (!stageAspect) return "vixi";
+    if (stageAspect.value === "auto" || stageAspect.value === "vixi") return stageAspect.value;
     if (stageAspect.value !== "custom") return stageAspect.value;
     const raw =
       String((stageRatioW && stageRatioW.value) || "").trim() +
       ":" +
       String((stageRatioH && stageRatioH.value) || "").trim();
     const next = rulesApi.normalizeStageAspect(raw);
-    if (next !== "auto") return next;
+    if (next !== "vixi" && next !== "auto") return next;
     return (cachedSettings && cachedSettings.stageAspect) || "16:9";
   }
 
   function fillRatioFields(mode) {
     if (!stageRatioW || !stageRatioH) return;
     const parsed = rulesApi.parseStageAspect ? rulesApi.parseStageAspect(mode) : null;
-    if (!parsed || parsed.mode === "auto") {
+    if (!parsed || parsed.mode === "auto" || parsed.mode === "vixi") {
       stageRatioW.value = "16";
       stageRatioH.value = "9";
       return;
@@ -687,13 +688,20 @@
   function syncStageAspectUI(mode) {
     if (!stageAspect) return;
     const next = rulesApi.normalizeStageAspect(mode);
+    if (next === "vixi" || next === "auto") {
+      stageAspect.value = next;
+      fillRatioFields("16:9");
+      showCustomRatioFields(false);
+      syncSelectUI(stageAspect);
+      return;
+    }
     const preset = rulesApi.presetForAspect ? rulesApi.presetForAspect(next) : next;
-    stageAspect.value = preset === "auto" ? "auto" : preset;
+    stageAspect.value = preset;
     if (![...stageAspect.options].some((opt) => opt.value === stageAspect.value)) {
       stageAspect.value = "custom";
     }
     const custom = stageAspect.value === "custom";
-    fillRatioFields(next === "auto" ? "16:9" : next);
+    fillRatioFields(next);
     showCustomRatioFields(custom);
     syncSelectUI(stageAspect);
   }
@@ -704,7 +712,10 @@
       const custom = stageAspect.value === "custom";
       if (custom) {
         const seed =
-          cachedSettings && cachedSettings.stageAspect && cachedSettings.stageAspect !== "auto"
+          cachedSettings &&
+          cachedSettings.stageAspect &&
+          cachedSettings.stageAspect !== "auto" &&
+          cachedSettings.stageAspect !== "vixi"
             ? cachedSettings.stageAspect
             : "16:9";
         fillRatioFields(seed);
@@ -940,7 +951,7 @@
     messageTheme.value = settings.messageTheme;
     if (stageAspect) {
       enhanceSelect(stageAspect);
-      syncStageAspectUI(settings.stageAspect || "auto");
+      syncStageAspectUI(settings.stageAspect || "vixi");
     }
     if (mosaicShowBackground) mosaicShowBackground.checked = Boolean(settings.mosaicShowBackground);
     if (mosaicShowQr) mosaicShowQr.checked = Boolean(settings.mosaicShowQr);

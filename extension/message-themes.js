@@ -3,13 +3,13 @@
   // Each theme keeps the original DOM structure, CSS, fonts, reveal/idle/exit
   // animations and fitText caps.
   //
-  // Scaling model: every theme renders inside a fixed design-space stage —
-  // 1920x1080 (or 1080x1920 for portrait canvases) — that is uniformly
-  // transform-scaled to fit the window. Viewport units in the original CSS are
-  // converted to container units (cqh/cqw) against that stage, and text is
-  // fitted once in design pixels. Text, photo and chrome all scale together,
-  // and words are never broken mid-word: the fitter shrinks the font until the
-  // longest word fits instead.
+  // Scaling model: every theme renders inside a design-space stage whose
+  // long edge is 1920. Auto matches the window; forced ratios use that ratio.
+  // The stage is uniformly transform-scaled to fill the canvas. Viewport units
+  // in the original CSS are converted to container units (cqh/cqw) against that
+  // stage, and text is fitted once in design pixels. Text, photo and chrome all
+  // scale together, and words are never broken mid-word: the fitter shrinks the
+  // font until the longest word fits instead.
   const RAW_STYLE = `
 html.dyn-message-on .capture-content-layer,
 html.dyn-message-on .message-layer {
@@ -2201,10 +2201,10 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   }
 
   // ---------------- Design-space stage ----------------
-  // The Vixi canvas uses a design space on the long edge (1920 for 16:9,
-  // 1080x1920 for 9:16, or the same long edge at any custom ratio).
-  // Everything renders at that size and the stage is scale()-transformed
-  // to fill the canvas, so text, photo and chrome shrink or grow together.
+  // The Vixi canvas uses a design space on the long edge (1920). Auto uses
+  // the window ratio; presets and custom ratios use that ratio. Everything
+  // renders at that size and the stage is scale()-transformed to fill the
+  // canvas, so text, photo and chrome shrink or grow together.
 
   let stageScale = 1;
   let currentThemeRoot = null;
@@ -2220,23 +2220,25 @@ html.dyn-message-on .mosaic-layout > .asset-view {
       rules && typeof rules.resolveStageSize === "function"
         ? rules.resolveStageSize({ clientWidth: rw, clientHeight: rh })
         : {
-            dw: rw >= rh ? 1920 : 1080,
-            dh: rw >= rh ? 1080 : 1920,
+            dw: rw >= rh ? 1920 : Math.max(1, Math.round(1920 * (rw / rh))),
+            dh: rw >= rh ? Math.max(1, Math.round(1920 * (rh / rw))) : 1920,
             portrait: rh > rw,
+            mode: "auto",
           };
     const dw = size.dw;
     const dh = size.dh;
-    const flipped = stage.dataset.dw && stage.dataset.dw !== String(dw);
+    const flipped =
+      (stage.dataset.dw && stage.dataset.dw !== String(dw)) ||
+      (stage.dataset.dh && stage.dataset.dh !== String(dh));
     stage.dataset.dw = String(dw);
+    stage.dataset.dh = String(dh);
     stage.style.width = dw + "px";
     stage.style.height = dh + "px";
     themeRoot.classList.toggle("dyn-portrait", Boolean(size.portrait));
     themeRoot.dataset.aspect =
       rules && typeof rules.stageAspectToken === "function"
         ? rules.stageAspectToken(size)
-        : size.portrait
-          ? "9-16"
-          : "16-9";
+        : "auto";
     const s = Math.min(rw / dw, rh / dh);
     stageScale = s;
     stage.style.left = ((rw - dw * s) / 2).toFixed(2) + "px";
@@ -2335,8 +2337,8 @@ html.dyn-message-on .mosaic-layout > .asset-view {
   }
 
   // On resize the stage transform is updated immediately (cheap, uniform
-  // scaling). A refit only runs when the canvas flips between landscape and
-  // portrait, because that changes the design space itself.
+  // scaling). A refit remounts when the design size itself changed (window
+  // ratio in auto, or a landscape/portrait flip).
   let activeRefit = null;
   let resizeTimer = 0;
   window.addEventListener("resize", () => {

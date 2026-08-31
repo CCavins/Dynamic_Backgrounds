@@ -314,11 +314,14 @@
   function flipLayoutFor(root, settings) {
     const scale = clampThemeScale(settings);
     const size = stageSize(root);
-    const tileW = Math.round(264 * scale);
-    const tileH = Math.round(261 * scale);
     const gap = 12;
-    const cols = Math.max(1, Math.round((size.dw + gap) / (tileW + gap)));
-    const rows = Math.max(1, Math.round((size.dh + gap) / (tileH + gap)));
+    const dw = Math.max(1, size.dw);
+    const dh = Math.max(1, size.dh);
+    const base = 264 * scale;
+    const cols = Math.max(1, Math.round((dw + gap) / (base + gap)));
+    const tileW = (dw - gap * Math.max(0, cols - 1)) / cols;
+    const rows = Math.max(1, Math.round((dh + gap) / (tileW + gap)));
+    const tileH = (dh - gap * Math.max(0, rows - 1)) / rows;
     const depth = Math.round(56 * scale);
     return { cols, rows, tileW, tileH, depth, scale };
   }
@@ -824,26 +827,26 @@ html.dyn-mosaic-on .logo-tile {
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-flip-stage {
   position: absolute;
   transform-origin: top left;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-flip-grid {
   display: grid;
-  grid-template-columns: repeat(var(--flip-cols, 7), var(--flip-w, 264px));
-  grid-template-rows: repeat(var(--flip-rows, 4), var(--flip-h, 261px));
+  width: 100%;
+  height: 100%;
+  grid-template-columns: repeat(var(--flip-cols, 7), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--flip-rows, 4), minmax(0, 1fr));
   gap: 12px;
-  place-content: center;
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-tile-scene {
-  width: var(--flip-w, 264px);
-  height: var(--flip-h, 261px);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   perspective: 1100px;
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-tile {
   position: relative;
-  width: var(--flip-w, 264px);
-  height: var(--flip-h, 261px);
+  width: 100%;
+  height: 100%;
   transform-style: preserve-3d;
   transition: transform 800ms cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -855,8 +858,9 @@ html.dyn-mosaic-on .logo-tile {
   overflow: hidden;
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-tile-face {
-  width: var(--flip-w, 264px);
-  height: var(--flip-h, 261px);
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-flip-front {
   transform: translateZ(calc(var(--flip-depth, 56px) / 2));
@@ -885,22 +889,22 @@ html.dyn-mosaic-on .logo-tile {
   );
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-edge-left {
-  width: var(--flip-depth, 56px); height: var(--flip-h, 261px); top: 0; left: 0;
+  width: var(--flip-depth, 56px); height: 100%; top: 0; left: 0;
   transform-origin: left center;
   transform: rotateY(-90deg) translateX(calc(var(--flip-depth, 56px) / -2));
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-edge-right {
-  width: var(--flip-depth, 56px); height: var(--flip-h, 261px); top: 0; right: 0;
+  width: var(--flip-depth, 56px); height: 100%; top: 0; right: 0;
   transform-origin: right center;
   transform: rotateY(90deg) translateX(calc(var(--flip-depth, 56px) / 2));
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-edge-top {
-  width: var(--flip-w, 264px); height: var(--flip-depth, 56px); top: 0; left: 0;
+  width: 100%; height: var(--flip-depth, 56px); top: 0; left: 0;
   transform-origin: center top;
   transform: rotateX(90deg) translateY(calc(var(--flip-depth, 56px) / -2));
 }
 #dyn-mosaic-theme[data-theme="flipwall"] .dyn-edge-bottom {
-  width: var(--flip-w, 264px); height: var(--flip-depth, 56px); bottom: 0; left: 0;
+  width: 100%; height: var(--flip-depth, 56px); bottom: 0; left: 0;
   transform-origin: center bottom;
   transform: rotateX(-90deg) translateY(calc(var(--flip-depth, 56px) / 2));
 }
@@ -1232,8 +1236,8 @@ html.dyn-mosaic-on .logo-tile {
   width: min(58cqw, 340px);
 }
 #dyn-mosaic-theme.dyn-portrait[data-theme="flipwall"] .dyn-flip-grid {
-  grid-template-columns: repeat(var(--flip-cols, 4), var(--flip-w, 264px));
-  grid-template-rows: repeat(var(--flip-rows, 7), var(--flip-h, 261px));
+  grid-template-columns: repeat(var(--flip-cols, 4), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--flip-rows, 7), minmax(0, 1fr));
 }
 
 /* Brand-aware variants (*): content lives in .dyn-brand-frame; chrome sits in the rail. */
@@ -1311,10 +1315,12 @@ html.dyn-mosaic-on .logo-tile {
     const rw = (parent && parent.clientWidth) || window.innerWidth || 1920;
     const rh = (parent && parent.clientHeight) || window.innerHeight || 1080;
     const portrait = rh > rw;
+    const long = 1920;
     return {
-      dw: portrait ? 1080 : 1920,
-      dh: portrait ? 1920 : 1080,
+      dw: portrait ? Math.max(1, Math.round(long * (rw / rh))) : long,
+      dh: portrait ? long : Math.max(1, Math.round(long * (rh / rw))),
       portrait,
+      mode: "auto",
     };
   }
 
@@ -2184,11 +2190,10 @@ html.dyn-mosaic-on .logo-tile {
       mount(root, pool, _api, settings) {
         const scale = clampThemeScale(settings);
         applyPolaroidSettings(root, settings);
-        const vw = root.clientWidth || 1280;
-        const vh = root.clientHeight || 720;
-        const shortSide = 1080;
-        const stageW = vw <= vh ? shortSide : Math.round((shortSide * vw) / vh);
-        const stageH = vw <= vh ? Math.round((shortSide * vh) / vw) : shortSide;
+        const size = stageSize(root);
+        const stageW = size.dw;
+        const stageH = size.dh;
+        const portrait = size.portrait;
         // Brand-aware: keep slot anchors in the content area (leave a chrome rail)
         // without clipping — cards may bleed slightly into the rail.
         const themeRoot =
@@ -2200,7 +2205,6 @@ html.dyn-mosaic-on .logo-tile {
           brandAware &&
           (themeRoot.classList.contains("dyn-show-qr") ||
             themeRoot.classList.contains("dyn-show-logo"));
-        const portrait = vh > vw;
         const layoutW = reserve && !portrait ? stageW * 0.78 : stageW;
         const layoutH = reserve && portrait ? stageH * 0.85 : stageH;
         const grid = polaroidGridFor(layoutW, layoutH, scale);

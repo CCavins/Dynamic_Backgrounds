@@ -223,7 +223,7 @@ Scope every rule:
 - Message: `#dyn-message-theme[data-theme="your-id"]`
 - Mosaic: `#dyn-mosaic-theme[data-theme="your-id"]`
 
-The popup **Stage → Aspect** setting resizes Vixi’s output canvas to a chosen ratio (`16:9`, `9:16`, `4:3`, `1:1`, `21:9`, or any `W:H`). The canvas contain-fits the window — it grows until it touches a pair of edges, then letterboxes the other axis. `auto` follows the window. Message themes still draw in a `.dyn-fit-stage` at a 1920-long-edge design size and `scale()` it to fill that canvas. Prefer `cqh` / `cqw`. The root gets `dyn-portrait` when height > width, and `data-aspect` (`16-9`, `9-16`, `4-3`, …).
+The popup **Stage → Aspect** setting chooses the output canvas. **Match Vixi** (default) uses the ratio Vixi is already showing. **Match the window** fills the browser and tracks its size. Presets (`16:9`, `9:16`, `4:3`, `1:1`, `21:9`, or any `W:H`) contain-fit the window and letterbox the other axis. Message themes still draw in a `.dyn-fit-stage` and `scale()` it to fill that canvas. Prefer `cqh` / `cqw`. The root gets `dyn-portrait` when height > width, and `data-aspect` (`vixi`, `auto`, `16-9`, `9-16`, `4-3`, …).
 
 Vixi’s background, QR, and logo are hidden while a theme is on. Mosaic and message each have their own **Show background** / **Show QR code** / **Show logo** toggles. Mosaic chrome never clones onto a message theme, and the reverse. The background fills the same contain-fitted canvas as the live kind (`object-fit: cover`). QR and logo return only if that kind’s theme has a slot (or the default corner chrome). Mosaic cards stay **2:3**; portrait restacks placement, it does not flip the crop to 3:2.
 
@@ -235,7 +235,7 @@ Root classes the runtime toggles:
 - `no-copy` — no message and no name
 - `no-name` — no name
 - `dyn-portrait` — stage is taller than wide (auto on a tall window, or any portrait ratio)
-- `data-aspect` — `16-9`, `9-16`, or the forced ratio (`4-3`, `1-1`, `21-9`, …)
+- `data-aspect` — `vixi` when matching Vixi’s canvas, `auto` when matching the window, otherwise the forced ratio (`16-9`, `9-16`, `4-3`, `1-1`, `21-9`, …)
 - `dyn-show-bg` / `dyn-show-qr` / `dyn-show-logo` — that kind’s popup toggles are on
 - `html.dyn-kind-message` / `html.dyn-kind-mosaic` — which output kind is live
 - `html.dyn-show-bg` — the live kind’s event background is visible and fitted to the stage; that kind’s theme backdrops go transparent so the asset shows through
@@ -375,7 +375,7 @@ On `BGMessageThemes`:
 
 | Helper | Role |
 | --- | --- |
-| `ensureFitStage(themeRoot)` | Creates/returns `.dyn-fit-stage` (1920×1080 or 1080×1920) |
+| `ensureFitStage(themeRoot)` | Creates/returns `.dyn-fit-stage` (1920 on the long edge, matching the window or the forced ratio) |
 | `applyVars(themeRoot, settings)` | Sets `--primary`, `--secondary`, `--background`, `--reveal-ms`, `data-motion` |
 | `commonShowPrep(themeRoot, state, extraClasses?)` | Clears `on`/`off`/`idle` and idle timers |
 | `fitText(boxEl, textEl, maxPx, minPx)` | Shrinks font until text fits |

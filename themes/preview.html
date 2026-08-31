@@ -343,21 +343,21 @@
     </div>
   </div>
 
-<script src="../extension/rules.js?v=1.17.5"></script>
-<script src="../extension/message-themes.js?v=1.17.5"></script>
+<script src="../extension/rules.js?v=1.17.7"></script>
+<script src="../extension/message-themes.js?v=1.17.7"></script>
 <script src="../extension/vendor/three.min.js"></script>
 <script src="../extension/vendor/RoundedBoxGeometry.js"></script>
-<script src="../extension/vendor/tile-field.js?v=1.17.5"></script>
-<script src="../extension/mosaic-themes.js?v=1.17.5"></script>
+<script src="../extension/vendor/tile-field.js?v=1.17.7"></script>
+<script src="../extension/mosaic-themes.js?v=1.17.7"></script>
 <script src="../extension/engines/api.js"></script>
-<script src="../extension/engines/xmas-snow-particles.js?v=1.17.5"></script>
-<script src="../extension/engines/message-aurora-engine.js?v=1.17.5"></script>
-<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.17.5"></script>
-<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.17.5"></script>
-<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.17.5"></script>
-<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.17.5"></script>
-<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.17.5"></script>
-<script src="../extension/custom-themes.js?v=1.17.5"></script>
+<script src="../extension/engines/xmas-snow-particles.js?v=1.17.7"></script>
+<script src="../extension/engines/message-aurora-engine.js?v=1.17.7"></script>
+<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.17.7"></script>
+<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.17.7"></script>
+<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.17.7"></script>
+<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.17.7"></script>
+<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.17.7"></script>
+<script src="../extension/custom-themes.js?v=1.17.7"></script>
 <script>
 (async () => {
   const SAMPLE_DIR = "../samples/patriots/";
@@ -594,7 +594,7 @@
   customOpt.textContent = "Custom — set width : height";
   aspectSelect.appendChild(customOpt);
 
-  let stageMode = "16:9";
+  let stageMode = "vixi";
   let active = null;
   let messageState = null;
   let mosaicState = null;
@@ -1009,7 +1009,7 @@
     } else {
       stageMode = aspectSelect.value;
       const parsed = rules.parseStageAspect && rules.parseStageAspect(stageMode);
-      if (parsed && parsed.mode !== "auto") {
+      if (parsed && parsed.mode !== "auto" && parsed.mode !== "vixi" && parsed.aw) {
         aspectW.value = parsed.aw;
         aspectH.value = parsed.ah;
       }
@@ -1062,17 +1062,24 @@
     });
   }
 
+  let previewResizeTimer = 0;
   window.addEventListener("resize", () => {
     applyAspect();
+    if (stageMode !== "auto" || !active) return;
+    clearTimeout(previewResizeTimer);
+    previewResizeTimer = setTimeout(() => {
+      previewResizeTimer = 0;
+      if (active) mountEntry(active, { keepSettingsForm: true });
+    }, 120);
   });
 
   const params = new URLSearchParams(location.search);
   const want = params.get("theme");
   const wantAspect = params.get("aspect");
   if (wantAspect && (wantAspect === "custom" || (rules.STAGE_ASPECTS || []).includes(wantAspect))) {
-    aspectSelect.value = wantAspect === "auto" ? "auto" : wantAspect;
+    aspectSelect.value = wantAspect;
   } else {
-    aspectSelect.value = "16:9";
+    aspectSelect.value = "vixi";
   }
   stageMode = aspectSelect.value;
   syncCustomAspectUI();
