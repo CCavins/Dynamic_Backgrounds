@@ -163,3 +163,5 @@ cd scripts && npm install && node record-previews.mjs
 ## Deploy
 
 The site is published from the `main` branch root with [GitHub Pages](https://pages.github.com/). Push to `main` and Pages rebuilds automatically.
+
+To host on [Render](https://render.com) instead (or in parallel), connect this repo as a **Static Site**, or use the Blueprint in [`render.yaml`](render.yaml) (publish directory `.`, no build).
