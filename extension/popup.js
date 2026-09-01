@@ -296,6 +296,7 @@
   }
 
   function themeSelectGroup(id, meta) {
+    if (meta && meta.bundled) return "Built-in";
     if (meta && meta.custom) {
       return isChristmasPack(id, meta.label) ? "Christmas" : "Imported";
     }
@@ -1541,11 +1542,13 @@
   }
 
   Promise.all([
-    rulesApi.loadCustomThemes ? rulesApi.loadCustomThemes() : Promise.resolve([]),
+    customApi && typeof customApi.loadAndRegister === "function"
+      ? customApi.loadAndRegister()
+      : rulesApi.loadCustomThemes
+        ? rulesApi.loadCustomThemes()
+        : Promise.resolve([]),
     rulesApi.loadSettings(),
   ]).then(([packs, settings]) => {
-    if (rulesApi.applyCustomThemeMeta) rulesApi.applyCustomThemeMeta(packs);
-    if (customApi && customApi.registerPacks) customApi.registerPacks(packs);
     fillMosaicThemeOptions();
     fillMessageThemeOptions();
     cachedSettings = settings;
@@ -1584,6 +1587,6 @@
     rulesRoot.replaceChildren();
     if (settings.rules.length === 0) addRuleRow({});
     else settings.rules.forEach(addRuleRow);
-    renderCustomList(packs);
+    renderCustomList((packs || []).filter((pack) => pack && !pack.bundled));
   });
 })();

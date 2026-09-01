@@ -46,7 +46,12 @@
     "mosaic-xmas-tree-engine",
     "mosaic-xmas-snowfall-engine",
     "message-xmas-bauble-engine",
+    "mosaic-slant-rows-engine",
   ]);
+  const BUNDLED_PACK_FILES = [
+    "packs/message-grunge-poster.json",
+    "packs/mosaic-slant-rows.json",
+  ];
   const RESERVED = new Set(["off", ...MESSAGE_ENGINES, ...MOSAIC_ENGINES]);
 
   let registeredIds = { message: [], mosaic: [] };
@@ -1230,6 +1235,43 @@
     notifyChange();
   }
 
+  async function loadBundledPacks() {
+    const out = [];
+    if (typeof fetch !== "function") return out;
+    const base =
+      typeof chrome !== "undefined" &&
+      chrome.runtime &&
+      typeof chrome.runtime.getURL === "function"
+        ? (path) => chrome.runtime.getURL(path)
+        : (path) => path;
+    for (let i = 0; i < BUNDLED_PACK_FILES.length; i += 1) {
+      const rel = BUNDLED_PACK_FILES[i];
+      try {
+        const res = await fetch(base(rel));
+        if (!res || !res.ok) continue;
+        const raw = await res.json();
+        const pack = parsePack(raw);
+        pack.bundled = true;
+        out.push(pack);
+      } catch {
+        /* skip missing bundled pack */
+      }
+    }
+    return out;
+  }
+
+  function mergePackLists(bundled, stored) {
+    const byId = new Map();
+    (Array.isArray(stored) ? stored : []).forEach((pack) => {
+      if (pack && pack.id) byId.set(pack.id, pack);
+    });
+    // Bundled packs always win so shipped themes stay current.
+    (Array.isArray(bundled) ? bundled : []).forEach((pack) => {
+      if (pack && pack.id) byId.set(pack.id, pack);
+    });
+    return [...byId.values()];
+  }
+
   async function loadAndRegister() {
     const rules = root.BGExtensionRules;
     try {
@@ -1238,14 +1280,16 @@
         ? rules.loadCustomEngines()
         : Promise.resolve({});
       const fontsReady = rules.loadCustomFonts ? rules.loadCustomFonts() : Promise.resolve({});
-      const [engines, packs, fontsMap] = await Promise.all([
+      const [engines, packs, fontsMap, bundled] = await Promise.all([
         enginesReady,
         rules.loadCustomThemes(),
         fontsReady,
+        loadBundledPacks(),
       ]);
       registerSideloadEngines(engines);
-      registerPacks(packs, fontsMap);
-      return packs;
+      const merged = mergePackLists(bundled, packs);
+      registerPacks(merged, fontsMap);
+      return merged;
     } finally {
       markReady();
     }

@@ -680,24 +680,24 @@
     </div>
   </div>
 
-<script src="../extension/rules.js?v=1.23.3"></script>
-<script src="../extension/media.js?v=1.23.3"></script>
-<script src="../extension/message-themes.js?v=1.23.3"></script>
+<script src="../extension/rules.js?v=1.23.4"></script>
+<script src="../extension/media.js?v=1.23.4"></script>
+<script src="../extension/message-themes.js?v=1.23.4"></script>
 <script src="../extension/vendor/three.min.js"></script>
 <script src="../extension/vendor/RoundedBoxGeometry.js"></script>
-<script src="../extension/vendor/tile-field.js?v=1.23.3"></script>
-<script src="../extension/mosaic-themes.js?v=1.23.3"></script>
+<script src="../extension/vendor/tile-field.js?v=1.23.4"></script>
+<script src="../extension/mosaic-themes.js?v=1.23.4"></script>
 <script src="../extension/engines/api.js"></script>
-<script src="../extension/engines/xmas-snow-particles.js?v=1.23.3"></script>
-<script src="../extension/engines/message-aurora-engine.js?v=1.23.3"></script>
-<script src="../extension/engines/message-text-message-engine.js?v=1.23.3"></script>
-<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.23.3"></script>
-<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.23.3"></script>
-<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.23.3"></script>
-<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.23.3"></script>
-<script src="./mosaic-slant-rows-engine.js?v=1.23.3"></script>
-<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.23.3"></script>
-<script src="../extension/custom-themes.js?v=1.23.3"></script>
+<script src="../extension/engines/xmas-snow-particles.js?v=1.23.4"></script>
+<script src="../extension/engines/message-aurora-engine.js?v=1.23.4"></script>
+<script src="../extension/engines/message-text-message-engine.js?v=1.23.4"></script>
+<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.23.4"></script>
+<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.23.4"></script>
+<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.23.4"></script>
+<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.23.4"></script>
+<script src="./mosaic-slant-rows-engine.js?v=1.23.4"></script>
+<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.23.4"></script>
+<script src="../extension/custom-themes.js?v=1.23.4"></script>
 <script>
 (async () => {
   const SAMPLE_DIR = "../samples/patriots/";
@@ -727,28 +727,20 @@
   }
 
   const CUSTOM_FILES = [
-    ["message-stamp.json", "Stamp message"],
     ["message-grunge-poster.json", "Grunge Poster"],
-    ["mosaic-framed.json", "Framed photos"],
-    ["mosaic-ribbon.json", "Ribbon mosaic"],
-    ["message-aurora.json", "Aurora engine"],
-    ["message-text-message.json", "Text Message engine"],
-    ["mosaic-orbit-swap.json", "Orbit Swap engine"],
+    ["mosaic-slant-rows.json", "Slant Rows"],
     ["message-xmas-bauble.json", "Christmas Bauble"],
     ["message-xmas-postcard.json", "Christmas Postcard"],
     ["message-xmas-mantel.json", "Christmas Mantel"],
     ["mosaic-xmas-wreath.json", "Christmas Wreath"],
     ["mosaic-xmas-tree.json", "Christmas Tree"],
     ["mosaic-xmas-snowfall.json", "Christmas Snowfall"],
-    ["mosaic-slant-rows.json", "Slant Rows"],
-    ["tmpl-card-decks.json", "Template · Card decks"],
-    ["tmpl-live-mosaic.json", "Template · Live mosaic"],
-    ["tmpl-polaroid-wall.json", "Template · Polaroid wall"],
-    ["tmpl-neon-nightclub.json", "Template · Neon Nightclub"],
-    ["tmpl-led-scoreboard.json", "Template · LED Scoreboard"],
-    ["tmpl-liquid-glass.json", "Template · Liquid Glass"],
-    ["tmpl-parallax-drift.json", "Template · Parallax Drift"],
   ];
+
+  const FEATURED_IDS = new Set(["message-grunge-poster", "mosaic-slant-rows"]);
+  function isChristmasItem(item) {
+    return /xmas|christmas/i.test(String(item.id || "") + " " + String(item.label || ""));
+  }
 
   const customPacks = [];
   const settled = await Promise.all(
@@ -1000,17 +992,25 @@
   addGroup(
     themeSelect,
     "Message · built-in",
-    catalog.filter((item) => item.kind === "message" && !item.custom)
+    catalog.filter(
+      (item) =>
+        item.kind === "message" &&
+        (!item.custom || FEATURED_IDS.has(item.id))
+    )
   );
   addGroup(
     themeSelect,
     "Mosaic · built-in",
-    catalog.filter((item) => item.kind === "mosaic" && !item.custom)
+    catalog.filter(
+      (item) =>
+        item.kind === "mosaic" &&
+        (!item.custom || FEATURED_IDS.has(item.id))
+    )
   );
   addGroup(
     themeSelect,
-    "Imported / examples",
-    catalog.filter((item) => item.custom)
+    "Christmas",
+    catalog.filter((item) => item.custom && isChristmasItem(item))
   );
 
   (rules.STAGE_ASPECT_PRESETS || []).forEach((preset) => {

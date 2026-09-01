@@ -7,6 +7,7 @@
     "mosaic-xmas-wreath-engine.js",
     "mosaic-xmas-tree-engine.js",
     "mosaic-xmas-snowfall-engine.js",
-    "message-xmas-bauble-engine.js"
+    "message-xmas-bauble-engine.js",
+    "mosaic-slant-rows-engine.js"
   ]
 }

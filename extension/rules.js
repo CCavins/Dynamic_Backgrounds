@@ -331,7 +331,8 @@
             : null;
       const meta = {
         label: pack.label || pack.id,
-        custom: true,
+        custom: !pack.bundled,
+        bundled: Boolean(pack.bundled),
         engine: pack.engine || "",
         labels: { ...((engineMeta && engineMeta.labels) || {}) },
         defaults: { ...((engineMeta && engineMeta.defaults) || {}) },
@@ -371,7 +372,8 @@
         delete meta.defaults.revealMs;
         customMosaicMeta[pack.id] = {
           label: meta.label,
-          custom: true,
+          custom: meta.custom,
+          bundled: meta.bundled,
           engine: pack.engine || "",
           labels: meta.labels,
           defaults: themeHasMosaicControls(meta) ? meta.defaults : undefined,
