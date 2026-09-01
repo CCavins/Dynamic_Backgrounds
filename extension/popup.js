@@ -250,6 +250,12 @@
           bgFolderStatus,
           files.length ? files.length + " media file(s)." : "Folder is empty — add images or videos, then Rescan."
         );
+        if (folderSelectedFile && mediaApi) {
+          const cached = await mediaApi.getMedia(BG_MEDIA_ID, { retries: 2 });
+          if (!cached || !cached.dataUrl) {
+            await useFolderFile(folderSelectedFile);
+          }
+        }
       } else if (folderHandle && restored.needsGesture) {
         setMediaStatus(bgFolderStatus, "Click Allow access to use this folder again.");
       } else {

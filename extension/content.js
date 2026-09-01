@@ -12,6 +12,8 @@
 
   let applyTimer = 0;
   let lastMediaKey = "";
+  let mediaRetryCount = 0;
+  const MEDIA_RETRY_MAX = 12;
 
   function hideOriginalBackground(wrapper) {
     rules.backgroundLayers(wrapper).forEach((background) => {
@@ -194,7 +196,7 @@
 
   async function injectMedia(mediaId, fit, settings, mountParent) {
     if (!mediaApi || typeof mediaApi.getMedia !== "function") return false;
-    const asset = await mediaApi.getMedia(mediaId);
+    const asset = await mediaApi.getMedia(mediaId, { retries: 5 });
     if (!asset || !asset.dataUrl) return false;
 
     return injectRemoteAsset(
@@ -325,8 +327,17 @@
         : "";
     if (mediaId) {
       const ok = await injectMedia(mediaId, settings.bgFit || "cover", settings);
-      if (ok) return;
+      if (ok) {
+        mediaRetryCount = 0;
+        return;
+      }
+      if (mediaRetryCount < MEDIA_RETRY_MAX) {
+        mediaRetryCount += 1;
+        scheduleApply(Math.min(2000, 120 * mediaRetryCount));
+      }
+      return;
     }
+    mediaRetryCount = 0;
 
     const src = rules.resolveIframeSrc(settings, location.href);
     if (!src) {
@@ -359,7 +370,21 @@
 
   try {
     chrome.storage.onChanged.addListener((changes, area) => {
-      if (area === "local") scheduleApply();
+      if (area !== "local") return;
+      if (changes.dynMediaAssets || Object.keys(changes).some((k) => k.indexOf("dynMediaAsset:") === 0)) {
+        mediaRetryCount = 0;
+      }
+      scheduleApply();
+    });
+  } catch {
+    /* extension reloaded */
+  }
+
+  try {
+    chrome.runtime.onMessage.addListener((message) => {
+      if (!message || message.type !== "dyn-bg-apply-settings") return;
+      mediaRetryCount = 0;
+      scheduleApply(0);
     });
   } catch {
     /* extension reloaded */

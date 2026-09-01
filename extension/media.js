@@ -4,6 +4,7 @@
  */
 (function (root) {
   const STORE_KEY = "dynMediaAssets";
+  const ITEM_PREFIX = "dynMediaAsset:";
   const MAX_BYTES = 3.5 * 1024 * 1024;
   const MAX_FOLDER_BYTES = 64 * 1024 * 1024;
   const MAX_IMAGE_EDGE = 1600;
@@ -70,6 +71,39 @@
         resolve(false);
       }
     });
+  }
+
+  function storageRemove(keys) {
+    return new Promise((resolve) => {
+      if (!extensionAlive()) {
+        resolve(false);
+        return;
+      }
+      try {
+        chrome.storage.local.remove(keys, () => resolve(!chrome.runtime.lastError));
+      } catch {
+        resolve(false);
+      }
+    });
+  }
+
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  function itemKey(id) {
+    return ITEM_PREFIX + id;
+  }
+
+  function formatMediaRecord(id, item) {
+    if (!item || !item.dataUrl) return null;
+    return {
+      id,
+      mime: String(item.mime || ""),
+      dataUrl: String(item.dataUrl || ""),
+      name: String(item.name || ""),
+      bytes: Number(item.bytes) || estimateDataUrlBytes(item.dataUrl),
+    };
   }
 
   function estimateDataUrlBytes(dataUrl) {
@@ -238,18 +272,37 @@
     return { ...memoryStore };
   }
 
-  async function getMedia(id) {
+  async function readStoredItem(id) {
     if (!id) return null;
-    const all = await loadAll();
-    const item = all[id] || memoryStore[id];
-    if (!item || !item.dataUrl) return null;
-    return {
-      id,
-      mime: String(item.mime || ""),
-      dataUrl: String(item.dataUrl || ""),
-      name: String(item.name || ""),
-      bytes: Number(item.bytes) || estimateDataUrlBytes(item.dataUrl),
-    };
+    if (memoryStore[id] && memoryStore[id].dataUrl) return memoryStore[id];
+    if (!extensionAlive()) return null;
+    const key = itemKey(id);
+    const stored = await storageGet({ [key]: null, [STORE_KEY]: {} });
+    if (stored[key] && stored[key].dataUrl) {
+      memoryStore[id] = stored[key];
+      return stored[key];
+    }
+    const legacy = stored[STORE_KEY];
+    const item = legacy && typeof legacy === "object" ? legacy[id] : null;
+    if (item && item.dataUrl) {
+      memoryStore[id] = item;
+      // Migrate off the monolithic map so refresh reads a single stable key.
+      await storageSet({ [key]: item });
+      return item;
+    }
+    return null;
+  }
+
+  async function getMedia(id, opts) {
+    if (!id) return null;
+    const retries = opts && Number.isFinite(opts.retries) ? Math.max(1, opts.retries) : 4;
+    for (let attempt = 0; attempt < retries; attempt += 1) {
+      const item = await readStoredItem(id);
+      const out = formatMediaRecord(id, item);
+      if (out) return out;
+      if (attempt < retries - 1) await sleep(60 * (attempt + 1));
+    }
+    return null;
   }
 
   async function putMedia(id, asset) {
@@ -263,15 +316,20 @@
     };
     memoryStore[id] = entry;
     if (!extensionAlive()) return true;
+    const key = itemKey(id);
+    if (!(await storageSet({ [key]: entry }))) return false;
+    // Keep the legacy index for older builds; ignore failure if the blob alone fits.
     const all = await loadAll();
     all[id] = entry;
-    return storageSet({ [STORE_KEY]: all });
+    await storageSet({ [STORE_KEY]: all });
+    return true;
   }
 
   async function removeMedia(id) {
     if (!id) return false;
     delete memoryStore[id];
     if (!extensionAlive()) return true;
+    await storageRemove(itemKey(id));
     const all = await loadAll();
     if (!all[id]) return true;
     delete all[id];
