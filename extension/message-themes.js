@@ -2414,9 +2414,11 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
       /* not extension */
     }
     try {
-      return new URL("assets/grunge-wall.webp", location.href).href;
+      const path = String(location.pathname || "");
+      const base = path.includes("/themes/") ? "assets/" : "themes/assets/";
+      return new URL(base + "grunge-wall.webp", location.href).href;
     } catch {
-      return "assets/grunge-wall.webp";
+      return "themes/assets/grunge-wall.webp";
     }
   }
 

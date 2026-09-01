@@ -84,16 +84,59 @@
         return out;
     }
 
-    function settingsFor(id) {
-        const meta = rules && rules.MESSAGE_THEME_META && rules.MESSAGE_THEME_META[id];
+    function settingsFor(id, kind) {
+        const meta =
+            rules && kind === "mosaic" && rules.mosaicThemeMetaAll
+                ? rules.mosaicThemeMetaAll()[id]
+                : rules && rules.messageThemeMetaAll
+                  ? rules.messageThemeMetaAll()[id]
+                  : rules && rules.MESSAGE_THEME_META
+                    ? rules.MESSAGE_THEME_META[id]
+                    : null;
         const defaults = (meta && meta.defaults) || {};
-        return {
+        const out = {
             primary: defaults.primary || "#d52265",
             secondary: defaults.secondary || "#fec651",
             background: defaults.background,
             motion: defaults.motion,
             revealMs: defaults.revealMs || 1000,
         };
+        if (kind === "mosaic") {
+            out.scale = defaults.scale != null ? defaults.scale : 1;
+            out.frame = defaults.frame;
+            out.photoStyle = defaults.photoStyle || "bw";
+        }
+        if (defaults.photoStyle) out.photoStyle = defaults.photoStyle;
+        return out;
+    }
+
+    function injectGalleryPackCss() {
+        const source = document.getElementById("dyn-custom-theme-style");
+        let node = document.getElementById("dyn-gallery-pack-style");
+        if (!node) {
+            node = document.createElement("style");
+            node.id = "dyn-gallery-pack-style";
+            document.head.appendChild(node);
+        }
+        if (!source || !source.textContent) {
+            node.textContent = "";
+            return;
+        }
+        let css = source.textContent;
+        css = rewriteThemeCss(css, "#dyn-message-theme", ".dyn-message-theme");
+        css = rewriteThemeCss(css, "#dyn-mosaic-theme", ".dyn-mosaic-theme");
+        node.textContent = css;
+    }
+
+    async function ensureGalleryThemes() {
+        const customApi = globalThis.BGCustomThemes;
+        if (customApi && typeof customApi.whenReady === "function") {
+            await customApi.whenReady();
+        }
+        injectGalleryPackCss();
+        if (customApi && typeof customApi.onChange === "function") {
+            customApi.onChange(() => injectGalleryPackCss());
+        }
     }
 
     function captureAt(captures, index) {
@@ -170,7 +213,7 @@
         if (!def) return;
         tile.def = def;
         tile.root.dataset.theme = tile.id;
-        const settings = settingsFor(tile.id);
+        const settings = settingsFor(tile.id, "message");
         tile.settings = settings;
         const state = def.mount(tile.root, settings);
         tile.state = state;
@@ -204,11 +247,9 @@
         if (!def) return;
         tile.def = def;
         tile.root.dataset.theme = tile.id;
-        if (String(tile.id).endsWith("-brand")) {
-            tile.root.dataset.engine = tile.id.replace(/-brand$/, "");
-        } else {
-            tile.root.removeAttribute("data-engine");
-        }
+        const engine = (def && def.engine) || tile.id;
+        if (engine) tile.root.dataset.engine = engine;
+        else tile.root.removeAttribute("data-engine");
         const pool = shuffle(photos);
         const api = {
             nextUrl() {
@@ -221,7 +262,10 @@
                 return false;
             },
         };
-        tile.state = def.mount(tile.root, pool, api);
+        const settings = settingsFor(tile.id, "mosaic");
+        tile.settings = settings;
+        tile.state = def.mount(tile.root, pool, api, settings) || {};
+        if (def.applySettings) def.applySettings(tile.root, tile.state, settings);
         if (def.tick) {
             tile.mosaicTimer = setInterval(() => {
                 if (!tile.mounted) return;
@@ -352,6 +396,11 @@
         window.addEventListener("pagehide", stopAllLive);
     }
 
+    async function startGallery(captures) {
+        await ensureGalleryThemes();
+        bindTiles(captures);
+    }
+
     fetch(CSV_URL)
         .then((res) => res.text())
         .then((text) => {
@@ -367,7 +416,7 @@
                     message: (row[msgIdx] || "").trim(),
                 }))
                 .filter((row) => row.src && row.src !== SAMPLE_DIR);
-            bindTiles(captures);
+            return startGallery(captures);
         })
-        .catch(() => bindTiles([]));
+        .catch(() => startGallery([]));
 })();

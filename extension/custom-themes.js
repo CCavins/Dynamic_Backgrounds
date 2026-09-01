@@ -780,12 +780,36 @@
     return "grayscale(1) contrast(1.08)";
   }
 
+  function packAssetUrl(filename) {
+    try {
+      if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.getURL) {
+        return chrome.runtime.getURL("packs/assets/" + filename);
+      }
+    } catch {
+      /* not extension */
+    }
+    try {
+      const path = String(location.pathname || "");
+      const base = path.includes("/themes/") ? "assets/" : "themes/assets/";
+      return new URL(base + filename, location.href).href;
+    } catch {
+      return "themes/assets/" + filename;
+    }
+  }
+
+  function applySlantAsphalt(rootEl) {
+    if (!rootEl) return;
+    const url = packAssetUrl("slant-asphalt.webp");
+    rootEl.style.setProperty("--sr-texture", 'url("' + url + '")');
+  }
+
   function applySlantRowsPresentation(rootEl, settings) {
     if (!rootEl) return false;
     const isSlant =
       rootEl.dataset.theme === "mosaic-slant-rows" ||
       rootEl.dataset.engine === "mosaic-slant-rows-engine";
     if (!isSlant) return false;
+    applySlantAsphalt(rootEl);
     const s = settings || {};
     const ps = photoStyleOf(s);
     rootEl.setAttribute("data-photo-style", ps);

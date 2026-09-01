@@ -39,19 +39,25 @@ A pack that includes JS runs on matching output pages only after Allow User Scri
 Examples to try:
 
 - `message-stamp.json` — postage-stamp message card (JSON only; Ink, Paper, Background, Motion)
-- `message-grunge-poster.json` — torn-paper grunge poster (JSON only; Ink, Paper, Photos)
+- `message-grunge-poster.json` — torn-paper grunge poster (JSON only; **Ink**, **Paper**, **Photos**). Brick wall is a separate asset (`assets/grunge-wall.webp`), not a popup color — see SPEC.md.
 - `mosaic-framed.json` — framed photo scatter (JSON only; Photo size + Frame color)
 - `mosaic-ribbon.json` — diagonal photo ribbon (JSON only)
 - `message-aurora.json` + `message-aurora-engine.js` — message card with a canvas aurora (same JS as `extension/engines/message-aurora-engine.js`)
 - `mosaic-orbit-swap.json` + `mosaic-orbit-swap-engine.js` — orbiting mosaic with photo swaps (same JS as `extension/engines/mosaic-orbit-swap-engine.js`)
-- `mosaic-slant-rows.json` + `mosaic-slant-rows-engine.js` — slanted photo rows (Frame + Photos settings; bundled engine)
+- `mosaic-slant-rows.json` + `mosaic-slant-rows-engine.js` — slanted photo rows (Frame + Photos settings; asphalt texture is `assets/slant-asphalt.webp`, not inline in CSS — see SPEC.md)
 - `message-xmas-bauble.json` (+ `message-xmas-bauble-engine`) / `message-xmas-postcard.json` / `message-xmas-mantel.json` — Christmas message options
 - `mosaic-xmas-snowfall.json` (+ `mosaic-xmas-snowfall-engine`) — scatter mosaic with particles.js–style canvas snow
 - `mosaic-xmas-wreath.json` + `mosaic-xmas-wreath-engine.js` — Christmas wreath mosaic
 - `mosaic-xmas-tree.json` + `mosaic-xmas-tree-engine.js` — Christmas tree mosaic
 - `tmpl-*.json` — full HTML/CSS ports of the built-in themes
 
-To preview without a live output, open `preview.html` in a browser.
+To preview without a live output, open [`preview.html`](preview.html) in a browser (also on the [live site](https://vixi-custom-theme-extension.netlify.app/themes/preview.html)). It uses the same pack CSS, `applyVars` / `applySettings` live path, and message enter/exit timing as the Chrome extension. Use the dock for Ink / Paper / Photos (or mosaic controls) while the theme is on screen. Optional **Stage background** upload behaves like Show background on output.
+
+**Do not** embed large textures as base64 inside pack `css` — keep `css` under 100 KB and ship images as files under `assets/` for **bundled** themes. Grunge Poster is the reference (wall WebP + flat Paper fills). Details: [SPEC.md — Pack assets](SPEC.md#pack-assets-images-and-textures).
+
+**Background on imported packs:** the **`background` color** setting (solid fill via `var(--background)`) is the supported path — see [Imported packs vs bundled image backdrops](SPEC.md#imported-packs-vs-bundled-image-backdrops). Import copies **fonts** with the pack, not image files; large base64 in CSS is not safe; relative `url(assets/…)` in CSS does not resolve on Vixi output.
+
+Harness pages for automated checks: `grunge-settings-check.html`, `slant-settings-check.html`, `settings-check.html` (load over HTTP, not `file://`, so bundled packs fetch correctly).
 
 Remove an imported theme from the same popup section. If that theme was selected, the dropdown returns to Off.
 
@@ -96,7 +102,7 @@ Clone these examples:
 | Goal | Pack |
 | --- | --- |
 | Message colors + motion | `message-stamp.json` |
-| Message + Photos + layered paper/wall | `message-grunge-poster.json` |
+| Message + Photos + flat paper + image wall | `message-grunge-poster.json` + `assets/grunge-wall.webp` |
 | Mosaic size + frame color | `mosaic-framed.json` |
 | Mosaic frame + Photos (engine) | `mosaic-slant-rows.json` + `mosaic-slant-rows-engine.js` |
 | Message engine + colors | `message-aurora.json` + `message-aurora-engine.js` |
@@ -112,10 +118,10 @@ When you add a new theme setting (like `frame` or `photoStyle`), wire it through
 3. Apply it on live output in `applyVars` / `applyMosaicVars` / engine `applySettings` without remounting.
 4. Add a row to `themes/*-settings-check.html` and bump the extension version.
 
-Slant Rows (`frame`, `photoStyle`) and Grunge Poster (Ink, Paper, Photos) are reference implementations. Imported copies of those JSON packs get the same live behavior after import.
+Slant Rows (`frame`, `photoStyle`) and Grunge Poster (Ink, Paper, Photos; wall asset + `applyGrungePresentation`) are reference implementations. Imported copies of those JSON packs get the same live behavior after import — except bundled-only JS helpers (Grunge wall URL resolution) ship with the extension, not in the JSON import.
 
 JSON cannot run the built-in canvas / WebGL / dealing scripts. For that exact runtime, add `"engine": "led-scoreboard"` (or `neon-nightclub`, `liquid-glass`, `parallax-drift`, `decks`, `polaroid`, `livewall`, …). Brand-aware wrap ids (`decks-brand`, `polaroid-brand`, …) are also reserved. For a **new** design with the same class of power, write a JS engine (see SPEC.md).
 
 ## Limits
 
-Up to 24 imported themes. CSS max 100 KB, HTML max 50 KB, engine JS max ~200 KB. Importing the same `id` again replaces the previous pack. Full rules are in [SPEC.md](SPEC.md).
+Up to 24 imported themes. CSS max 100 KB, HTML max 50 KB, engine JS max ~200 KB. **Keep textures out of `css`** — use separate asset files so stylesheets parse reliably and stay under the cap. Importing the same `id` again replaces the previous pack. Full rules are in [SPEC.md](SPEC.md).

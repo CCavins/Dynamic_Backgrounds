@@ -231,7 +231,7 @@ applySettings(themeRoot, _state, settings) {
 1. Add each control under `"settings"` with `"label"` and `"default"` (`#rrggbb` for colors; `"type": "select"` + `"options"` for Photos).
 2. Scope all CSS to `#dyn-message-theme[data-theme="your-id"]` or `#dyn-mosaic-theme[data-theme="your-id"]`.
 3. Never hardcode popup-driven colors on layers that should update live — use `var(--primary)` / `var(--secondary)` / `var(--background)` / `var(--frame)`.
-4. For textured surfaces, put the **tint** on `background-color: var(--paper)` (or `--background`) **before** noise/gradient overlays so live color changes stay visible.
+4. For textured surfaces, put the **tint** on `background-color: var(--paper)` (or `--background`) on the element itself. Avoid heavy `::after` multiply textures on user-tinted layers — they hide live Paper/Background changes. See [Pack assets](#pack-assets-images-and-textures) and [Grunge Poster](#grunge-poster-bundled-reference-message-theme).
 5. For Photos, always key off `data-photo-style` on the theme root (the runtime sets it on every change).
 6. Import the pack, reload the extension, hard-refresh the output tab, then change each popup control **while the theme is on air** to verify.
 
@@ -243,8 +243,95 @@ applySettings(themeRoot, _state, settings) {
 - **Motion while a card is showing** — `data-motion` updates immediately, but CSS enter animations usually run once per `show`. The next capture replays with the new mode. Prefer testing motion by changing the popup, then triggering a new message.
 - **Engine themes without `applySettings`** — colors freeze after mount until you call `applyVars`.
 - **New setting keys** — only the keys in the table above are supported in pack JSON today. A brand-new key (e.g. `"glow": …`) needs extension work (next section).
+- **Large `data:` URIs inside `css`** — a single embedded WebP/PNG (tens of KB of base64 in one rule) can exceed the **100 KB** CSS cap *and* break stylesheet parsing in Chrome, so rules after the bad block never apply. **Ship textures as separate files** under `assets/` (see [Pack assets](#pack-assets-images-and-textures)) and reference them with `url(...)` or paint from JS.
+- **Multiply / opacity overlays on `::before` / `::after`** — if a user-facing color (Paper, Wall, Frame) sits *under* a textured pseudo-element, live popup changes look stuck. Either keep the tint on `background-color` with **no** opaque texture on top, or repaint the flat fill from `applySettings` / `applyVars` (bundled Grunge does this — see below).
+- **Wall tint stacks** — brown washes, gradients, `mix-blend-mode`, and film grain on a `.wall` layer hide a brick photo. If the design is “show this image as the backdrop”, use the image alone (`background-image: cover`) with no color wash unless `background` is an explicit popup setting.
 
 Examples to copy: `message-stamp.json`, `message-grunge-poster.json`, `mosaic-framed.json`, `mosaic-slant-rows.json` + engine, `message-aurora.json` + engine.
+
+#### Pack assets (images and textures)
+
+Pack JSON `css` is capped at **100 KB**. Do **not** embed large textures as `data:image/...;base64,...` inside `css`.
+
+| Approach | When | Notes |
+| --- | --- | --- |
+| **External file** | Textures, brick, grain, SVG masks | Put files beside the pack, e.g. `themes/assets/my-texture.webp` and `extension/packs/assets/my-texture.webp` (keep both copies in sync for gallery preview + bundled extension). Reference with a relative `url("assets/…")` in CSS **only if** the URL resolves on every host (preview page). |
+| **JS paint on mount / live apply** | Extension + preview must share one asset path model | Bundled **Grunge Poster** sets `.wall { background-image }` from `BGMessageThemes.applyGrungeWall()` using `chrome.runtime.getURL('packs/assets/grunge-wall.webp')` on output and `assets/grunge-wall.webp` relative to `themes/preview.html` in the gallery. Add matching files to `web_accessible_resources` when content scripts load them on Vixi pages. |
+| **Small SVG / tiny PNG** | Icons, simple masks under ~2 KB | Inline `data:` URIs are fine when the whole `css` string stays well under 100 KB and you have verified parsing in DevTools. |
+| **`background` color setting** | Solid stage / wall tint the user picks in the popup | **Best default for imported packs.** Declare `background` under `settings`, use `background: var(--background)` or `--wall: var(--background)` in CSS. No image file needed — works on import, preview, and live output via `applyVars`. Clone `message-stamp.json`. |
+| **Public HTTPS `url(...)`** | Imported pack with a hosted texture | `background-image: url("https://…")` in pack CSS can work on output if the host page allows loading that URL. You maintain the hosted file; there is no import-time copy into storage (unlike fonts). |
+| **Bundled extension asset + JS** | Large fixed backdrop (Grunge brick wall) | Ship `extension/packs/assets/…`, resolve with `chrome.runtime.getURL`, mirror under `themes/assets/` for preview, list in `web_accessible_resources`. Optional helper in `message-themes.js` if CSS `url()` cannot resolve on Vixi pages. |
+
+After changing assets or CSS, hard-refresh the output tab and `themes/preview.html`. In DevTools, confirm the themed layer’s `background-image` is non-`none` and that `#dyn-custom-theme-style` contains your scoped rules without truncation.
+
+**Imported packs vs bundled image backdrops**
+
+Import **does** copy custom **font** files into extension storage (select them beside the JSON in **Import packs…**). Import **does not** yet copy arbitrary image files the same way — there is no `imageFile` field or batch import for `.webp` / `.png` today.
+
+| Author goal | Supported on import? | What to do |
+| --- | --- | --- |
+| User-pickable **solid** backdrop | **Yes** | `settings.background` + `var(--background)` in CSS |
+| **Small** texture (few KB) in CSS | **Yes** | Inline `data:` URI; keep total `css` under 100 KB |
+| **Large** texture baked into `css` | **No** | Breaks parsing and/or exceeds cap — same failure mode Grunge hit before v1.24.24 |
+| Relative `url("assets/foo.webp")` in imported CSS only | **No** on Vixi output | Injected pack CSS resolves URLs against the **page** origin, not the extension; the file is not on the event site |
+| Fixed image backdrop like Grunge | **Bundled only** (today) | Ship with the extension (`packs/assets/` + JS), or use a public HTTPS URL in CSS, or a small inline texture |
+| Gallery **preview** only | Relative `themes/assets/…` | Fine for `preview.html` on the site; does not automatically fix live output for imported JSON alone |
+
+External `.webp` files are **not preview-only** — they are the correct approach for **bundled** themes on both preview and extension. For **imported** JSON-only packs, prefer the **`background` color** setting unless the texture is small enough to inline or hosted at a stable HTTPS URL.
+
+#### Grunge Poster (bundled reference message theme)
+
+`message-grunge-poster.json` is the reference for **layered paper + external wall texture + Photos**.
+
+| Popup control | Maps to | Implementation |
+| --- | --- | --- |
+| **Ink** | Message text + name-stamp border/text | `--ink` / `--stamp-ink` from `primary` |
+| **Paper** | Photo mat, message paper, name-stamp fill | `--paper` from `secondary`; live output also calls `applyGrungePresentation()` to set flat `background-color` on `.photo-mat` and `.msg-paper` (texture pseudo-elements are disabled so Paper matches photo mat) |
+| **Photos** | Hero photo filter | `data-photo-style` + inline `img.style.filter` on `.photo-mat img` |
+
+There is **no** Wall tint control — the brick backdrop is a fixed asset (`grunge-wall.webp`), not `--background`. Do not add brown washes or grain on `.wall` when cloning this look.
+
+Extension wiring (do not duplicate in imported JSON-only packs unless you need the same workaround):
+
+- `extension/message-themes.js` — `applyVars` → `applyGrungePresentation` → `applyGrungeWall` + flat paper fills
+- `extension/packs/assets/grunge-wall.webp` — wall image (also copied to `themes/assets/` for preview)
+- Harness: `themes/grunge-settings-check.html` — changes Ink / Paper / Photos while live and asserts vars + computed fills
+
+Importing `message-grunge-poster.json` alone gives layout, Ink/Paper/Photos CSS, and live vars — **not** the bundled wall asset or `applyGrungeWall` JS. For the brick wall on output, use the extension’s bundled pack or host a texture yourself (see [Imported packs vs bundled image backdrops](#imported-packs-vs-bundled-image-backdrops)).
+
+#### Slant Rows (bundled reference mosaic theme)
+
+`mosaic-slant-rows.json` + `mosaic-slant-rows-engine.js` is the reference for **slanted card rows + external asphalt texture + Frame / Photos**.
+
+| Popup control | Maps to | Implementation |
+| --- | --- | --- |
+| **Background** | Stage fill under texture | `--background` on root and `.sr-texture` |
+| **Frame** | Card border / mat | `--frame`; live output sets `.dyn-card` background in `applySlantRowsPresentation()` |
+| **Photos** | Hero filters on row images | `data-photo-style` + inline filter on `.sr-well img` |
+
+The asphalt overlay is a fixed asset (`slant-asphalt.webp`), not a popup color — applied via `--sr-texture` from `applySlantAsphalt()` in `extension/custom-themes.js` (same dual-path asset URLs as Grunge wall).
+
+Extension wiring:
+
+- `extension/custom-themes.js` — `applyMosaicVars` → `applySlantRowsPresentation` → `applySlantAsphalt`
+- `extension/packs/assets/slant-asphalt.webp` — texture (also in `themes/assets/` for preview and gallery homepage)
+- Harness: `themes/slant-settings-check.html`
+
+Importing JSON + engine alone does **not** copy the asphalt WebP — bundled extension or hosted URL required for the same texture on output.
+
+#### Preview harness (`themes/preview.html`)
+
+Use the gallery preview to iterate on packs **before** a Vixi output tab:
+
+- Loads the same `rules.js`, `message-themes.js`, `custom-themes.js`, and pack JSON as the extension (cache-busted script query params).
+- **Live settings** in the dock call `applySettings` only (same as popup on output), not a full remount — except when `photoStyle` or mosaic `scale` requires it.
+- **Message cycle** uses the same visible exit → swap → enter pattern as `extension/message.js` `present()`.
+- **Stage background** in the dock is like **Show background** + a uploaded still/video — it sits inside `#dyn-message-theme` above the theme backdrop and below cards. Grunge keeps `.wall` / `.dyn-stage` visible; do not strip `.wall` in preview-only CSS.
+- URL params: `?theme=message-grunge-poster`, `&primary=…`, `&secondary=…`, `&aspect=16:9`, etc.
+
+When preview and extension diverge, fix the **shared** path (`applyVars`, pack CSS, asset URLs) — not a preview-only fork.
+
+Other harness pages: `themes/settings-check.html` (general), `themes/grunge-settings-check.html`, `themes/slant-settings-check.html`.
 
 #### Live settings on output (extension authors)
 
@@ -260,7 +347,7 @@ Popup color and select changes must update the **live** theme without remounting
 5. **Harness** — add or extend `themes/*-settings-check.html` (or `themes/settings-check.html`) to change each new key while the theme is live and assert DOM / computed style.
 6. **Version** — bump `extension/manifest.json` and gallery `#ext-version` fallbacks when behavior changes.
 
-Reference implementations: **Slant Rows** (`frame`, `photoStyle`, mosaic engine) and **Grunge Poster** (`photoStyle`, message JSON).
+Reference implementations: **Slant Rows** (`frame`, `photoStyle`, mosaic engine) and **Grunge Poster** (Ink, Paper, Photos; external wall asset + `applyGrungePresentation` in `message-themes.js` — see [Grunge Poster](#grunge-poster-bundled-reference-message-theme)).
 
 #### Message settings
 
