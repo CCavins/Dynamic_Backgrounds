@@ -2391,6 +2391,39 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
     }
   }
 
+  function grungePaperColor(themeRoot, settings) {
+    if (settings && settings.secondary != null && settings.secondary !== "") {
+      return settings.secondary;
+    }
+    if (themeRoot && themeRoot.style) {
+      const paper = themeRoot.style.getPropertyValue("--paper").trim();
+      if (paper) return paper;
+      const secondary = themeRoot.style.getPropertyValue("--secondary").trim();
+      if (secondary) return secondary;
+    }
+    return "#d9c7a4";
+  }
+
+  /** Grunge paper sits under multiply textures — CSS vars alone rarely repaint live. */
+  function applyGrungePresentation(themeRoot, settings) {
+    if (!themeRoot || themeRoot.dataset.theme !== "message-grunge-poster") return;
+    const paper = grungePaperColor(themeRoot, settings);
+    themeRoot.querySelectorAll(".photo-mat, .msg-paper").forEach((el) => {
+      el.style.setProperty("background-color", paper, "important");
+    });
+    const stampBg = "color-mix(in srgb, " + paper + " 88%, #fff)";
+    themeRoot.querySelectorAll(".name-stamp").forEach((el) => {
+      el.style.setProperty("background", stampBg, "important");
+    });
+    const wall =
+      settings && settings.background != null && settings.background !== ""
+        ? settings.background
+        : themeRoot.style.getPropertyValue("--wall").trim() || "#2a211c";
+    themeRoot.querySelectorAll(".wall").forEach((el) => {
+      el.style.setProperty("background-color", wall, "important");
+    });
+  }
+
   function applyVars(themeRoot, settings) {
     if (!themeRoot || !settings) return;
     const wasOn = themeRoot.classList.contains("on");
@@ -2421,6 +2454,7 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
     if (nextMotion) themeRoot.setAttribute("data-motion", nextMotion);
     else themeRoot.removeAttribute("data-motion");
     if (wasOn && nextMotion !== prevMotion) replayEnterMotion(themeRoot);
+    if (isGrunge) applyGrungePresentation(themeRoot, settings);
   }
 
   function commonShowPrep(themeRoot, state, extraClasses) {
