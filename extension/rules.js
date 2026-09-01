@@ -295,7 +295,14 @@
   function themeHasMosaicControls(meta) {
     const d = meta && meta.defaults;
     if (!d) return false;
-    return d.scale != null || d.primary || d.secondary || d.background;
+    return (
+      d.scale != null ||
+      d.primary ||
+      d.secondary ||
+      d.background ||
+      d.frame ||
+      typeof d.colorPhotos === "boolean"
+    );
   }
 
   function mosaicSettingsBaseId(themeId) {
@@ -361,6 +368,14 @@
           ? engineMeta.defaults.scale
           : 1;
       }
+      Object.keys(settings).forEach((key) => {
+        if (["primary", "secondary", "background", "scale", "motion"].includes(key)) return;
+        const spec = settings[key];
+        if (!spec || typeof spec !== "object") return;
+        meta.labels[key] = spec.label || meta.labels[key] || key;
+        if (spec.type === "toggle") meta.defaults[key] = Boolean(spec.default);
+        else if (spec.default != null && isHexColor(spec.default)) meta.defaults[key] = spec.default;
+      });
       if (pack.kind === "message") {
         if (!meta.defaults.primary) meta.defaults.primary = "#d52265";
         if (!meta.defaults.secondary) meta.defaults.secondary = "#fec651";
@@ -478,6 +493,25 @@
     if (Object.prototype.hasOwnProperty.call(defaults, "wallpaper")) {
       next.wallpaper = normalizeWallpaperId(src.wallpaper);
     }
+    Object.keys(defaults).forEach((key) => {
+      if (
+        ["primary", "secondary", "background", "motion", "scale", "wallpaper", "revealMs"].includes(
+          key
+        )
+      ) {
+        return;
+      }
+      if (typeof defaults[key] === "boolean") {
+        if (typeof src[key] === "boolean") next[key] = src[key];
+        else if (src[key] === true || src[key] === "true" || src[key] === 1 || src[key] === "1") {
+          next[key] = true;
+        } else if (src[key] === false || src[key] === "false" || src[key] === 0 || src[key] === "0") {
+          next[key] = false;
+        } else next[key] = defaults[key];
+      } else if (isHexColor(defaults[key])) {
+        next[key] = isHexColor(src[key]) ? src[key].toLowerCase() : defaults[key];
+      }
+    });
     return next;
   }
 

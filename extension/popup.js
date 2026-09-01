@@ -652,6 +652,41 @@
     return row;
   }
 
+  function toggleRow(key, label, value) {
+    const row = document.createElement("label");
+    row.className = "setting-row toggle";
+    row.innerHTML =
+      `<span>${label}</span>` +
+      `<input type="checkbox" class="theme-toggle" data-key="${key}"${value ? " checked" : ""}>`;
+    return row;
+  }
+
+  function appendExtraThemeSettings(container, meta, values) {
+    const skip = new Set(["primary", "secondary", "background", "scale", "motion", "wallpaper", "revealMs"]);
+    const labels = (meta && meta.labels) || {};
+    const defaults = (meta && meta.defaults) || {};
+    Object.keys(defaults).forEach((key) => {
+      if (skip.has(key)) return;
+      if (typeof defaults[key] === "boolean") {
+        container.appendChild(toggleRow(key, labels[key] || key, Boolean(values[key])));
+      } else if (/^#[0-9a-fA-F]{6}$/.test(defaults[key])) {
+        container.appendChild(colorRow(key, labels[key] || key, values[key] || defaults[key]));
+      }
+    });
+  }
+
+  function bindToggleInputs(container, onChange) {
+    container.querySelectorAll(".theme-toggle").forEach((input) => {
+      input.addEventListener("change", onChange);
+    });
+  }
+
+  function readToggleSettings(container, raw) {
+    container.querySelectorAll(".theme-toggle").forEach((input) => {
+      raw[input.dataset.key] = input.checked;
+    });
+  }
+
   function scaleRow(label, value) {
     const pct = Math.round((Number(value) || 1) * 100);
     const row = document.createElement("label");
@@ -802,6 +837,7 @@
         mediaRow(id, labels.wallpaper || "Chat wallpaper", values.wallpaper || "")
       );
     }
+    appendExtraThemeSettings(messageThemeSettings, meta, values);
 
     const reset = document.createElement("button");
     reset.type = "button";
@@ -819,6 +855,7 @@
     messageThemeSettings.appendChild(reset);
 
     bindColorInputs(messageThemeSettings, schedulePersist);
+    bindToggleInputs(messageThemeSettings, persist);
     messageThemeSettings.querySelectorAll(".theme-motion").forEach((input) => {
       input.addEventListener("change", persist);
       enhanceSelect(input);
@@ -857,6 +894,7 @@
         colorRow("background", labels.background || "Background", values.background)
       );
     }
+    appendExtraThemeSettings(mosaicThemeSettings, meta, values);
 
     const reset = document.createElement("button");
     reset.type = "button";
@@ -872,6 +910,7 @@
     mosaicThemeSettings.appendChild(reset);
 
     bindColorInputs(mosaicThemeSettings, schedulePersist);
+    bindToggleInputs(mosaicThemeSettings, persist);
     mosaicThemeSettings.querySelectorAll(".theme-scale").forEach((input) => {
       const valueEl = mosaicThemeSettings.querySelector(".theme-scale-value");
       input.addEventListener("input", () => {
@@ -896,6 +935,7 @@
     if (bg) raw.background = bg.value;
     if (motion) raw.motion = motion.value;
     if (wallpaper) raw.wallpaper = wallpaper.value;
+    readToggleSettings(messageThemeSettings, raw);
     return rulesApi.normalizeOneThemeSettings(id, raw);
   }
 
@@ -912,6 +952,7 @@
     if (secondary) raw.secondary = secondary.value;
     if (bg) raw.background = bg.value;
     if (scale) raw.scale = Number(scale.value) / 100;
+    readToggleSettings(mosaicThemeSettings, raw);
     return rulesApi.normalizeOneThemeSettings(storeId, raw);
   }
 

@@ -680,24 +680,24 @@
     </div>
   </div>
 
-<script src="../extension/rules.js?v=1.23.5"></script>
-<script src="../extension/media.js?v=1.23.5"></script>
-<script src="../extension/message-themes.js?v=1.23.5"></script>
+<script src="../extension/rules.js?v=1.23.6"></script>
+<script src="../extension/media.js?v=1.23.6"></script>
+<script src="../extension/message-themes.js?v=1.23.6"></script>
 <script src="../extension/vendor/three.min.js"></script>
 <script src="../extension/vendor/RoundedBoxGeometry.js"></script>
-<script src="../extension/vendor/tile-field.js?v=1.23.5"></script>
-<script src="../extension/mosaic-themes.js?v=1.23.5"></script>
+<script src="../extension/vendor/tile-field.js?v=1.23.6"></script>
+<script src="../extension/mosaic-themes.js?v=1.23.6"></script>
 <script src="../extension/engines/api.js"></script>
-<script src="../extension/engines/xmas-snow-particles.js?v=1.23.5"></script>
-<script src="../extension/engines/message-aurora-engine.js?v=1.23.5"></script>
-<script src="../extension/engines/message-text-message-engine.js?v=1.23.5"></script>
-<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.23.5"></script>
-<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.23.5"></script>
-<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.23.5"></script>
-<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.23.5"></script>
-<script src="./mosaic-slant-rows-engine.js?v=1.23.5"></script>
-<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.23.5"></script>
-<script src="../extension/custom-themes.js?v=1.23.5"></script>
+<script src="../extension/engines/xmas-snow-particles.js?v=1.23.6"></script>
+<script src="../extension/engines/message-aurora-engine.js?v=1.23.6"></script>
+<script src="../extension/engines/message-text-message-engine.js?v=1.23.6"></script>
+<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.23.6"></script>
+<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.23.6"></script>
+<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.23.6"></script>
+<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.23.6"></script>
+<script src="./mosaic-slant-rows-engine.js?v=1.23.6"></script>
+<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.23.6"></script>
+<script src="../extension/custom-themes.js?v=1.23.6"></script>
 <script>
 (async () => {
   const SAMPLE_DIR = "../samples/patriots/";
@@ -1260,10 +1260,36 @@
     return row;
   }
 
+  function toggleRow(key, label, value) {
+    const row = document.createElement("label");
+    row.className = "setting-row toggle";
+    row.innerHTML =
+      `<span>${label}</span>` +
+      `<input type="checkbox" class="theme-toggle" data-key="${key}"${value ? " checked" : ""}>`;
+    return row;
+  }
+
+  function appendExtraThemeSettings(container, meta, values) {
+    const skip = new Set(["primary", "secondary", "background", "scale", "motion", "wallpaper", "revealMs"]);
+    const labels = (meta && meta.labels) || {};
+    const defaults = (meta && meta.defaults) || {};
+    Object.keys(defaults).forEach((key) => {
+      if (skip.has(key)) return;
+      if (typeof defaults[key] === "boolean") {
+        container.appendChild(toggleRow(key, labels[key] || key, Boolean(values[key])));
+      } else if (/^#[0-9a-fA-F]{6}$/.test(defaults[key])) {
+        container.appendChild(colorRow(key, labels[key] || key, values[key] || defaults[key]));
+      }
+    });
+  }
+
   function readSettingsForm(id) {
     const raw = {};
     settingsFields.querySelectorAll(".theme-hex").forEach((input) => {
       raw[input.dataset.key] = input.value;
+    });
+    settingsFields.querySelectorAll(".theme-toggle").forEach((input) => {
+      raw[input.dataset.key] = input.checked;
     });
     const motion = settingsFields.querySelector(".theme-motion");
     if (motion) raw.motion = motion.value;
@@ -1316,7 +1342,9 @@
       (meta.defaults.scale != null ||
         meta.defaults.primary ||
         meta.defaults.secondary ||
-        meta.defaults.background);
+        meta.defaults.background ||
+        meta.defaults.frame ||
+        typeof meta.defaults.colorPhotos === "boolean");
     const hasMessage = Boolean(meta && meta.defaults && entry.kind === "message");
     if (entry.kind === "message" && !hasMessage) {
       settingsPanel.hidden = true;
@@ -1357,6 +1385,7 @@
         mediaRow(entry.id, labels.wallpaper || "Chat wallpaper", values.wallpaper || "")
       );
     }
+    appendExtraThemeSettings(settingsFields, meta, values);
 
     settingsFields.querySelectorAll(".theme-color").forEach((colorInput) => {
       const key = colorInput.dataset.key;
@@ -1391,6 +1420,12 @@
       input.addEventListener("change", () => {
         settingsByTheme[entry.id] = readSettingsForm(entry.id);
         mountEntry(entry, { keepSettingsForm: true });
+      });
+    });
+    settingsFields.querySelectorAll(".theme-toggle").forEach((input) => {
+      input.addEventListener("change", () => {
+        settingsByTheme[entry.id] = readSettingsForm(entry.id);
+        applyLiveSettings();
       });
     });
 

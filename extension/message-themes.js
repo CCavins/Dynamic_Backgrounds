@@ -2325,6 +2325,9 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
       themeRoot.style.setProperty("--background", settings.background);
       themeRoot.style.setProperty("--wall", settings.background);
     }
+    if (settings.frame) themeRoot.style.setProperty("--frame", settings.frame);
+    if (settings.colorPhotos) themeRoot.setAttribute("data-color-photos", "1");
+    else themeRoot.removeAttribute("data-color-photos");
     themeRoot.style.setProperty("--reveal-ms", (settings.revealMs || 1000) + "ms");
     if (settings.motion) themeRoot.setAttribute("data-motion", settings.motion);
     else themeRoot.removeAttribute("data-motion");
