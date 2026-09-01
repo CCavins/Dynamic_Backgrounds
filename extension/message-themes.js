@@ -2405,6 +2405,35 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
   }
 
   /** Grunge paper sits under multiply textures — CSS vars alone rarely repaint live. */
+  function grungeWallUrl() {
+    try {
+      if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.getURL) {
+        return chrome.runtime.getURL("packs/assets/grunge-wall.webp");
+      }
+    } catch {
+      /* not extension */
+    }
+    try {
+      return new URL("assets/grunge-wall.webp", location.href).href;
+    } catch {
+      return "assets/grunge-wall.webp";
+    }
+  }
+
+  function applyGrungeWall(themeRoot) {
+    if (!themeRoot || themeRoot.dataset.theme !== "message-grunge-poster") return;
+    const url = grungeWallUrl();
+    themeRoot.querySelectorAll(".wall").forEach((el) => {
+      el.style.setProperty("background-image", 'url("' + url + '")', "important");
+      el.style.setProperty("background-size", "cover", "important");
+      el.style.setProperty("background-position", "center", "important");
+      el.style.setProperty("background-repeat", "no-repeat", "important");
+      el.style.removeProperty("background-color");
+      el.style.removeProperty("opacity");
+      el.style.removeProperty("mix-blend-mode");
+    });
+  }
+
   function ensureGrungeLiveStyle() {
     let style = document.getElementById("dyn-grunge-live-style");
     if (!style) {
@@ -2420,6 +2449,7 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
   function applyGrungePresentation(themeRoot, settings) {
     if (!themeRoot || themeRoot.dataset.theme !== "message-grunge-poster") return;
     ensureGrungeLiveStyle();
+    applyGrungeWall(themeRoot);
     const paper = grungePaperColor(themeRoot, settings);
     themeRoot.querySelectorAll(".photo-mat, .msg-paper").forEach((el) => {
       el.style.setProperty("background-color", paper, "important");
@@ -2447,10 +2477,10 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
     }
     if (settings.background != null && settings.background !== "") {
       themeRoot.style.setProperty("--background", settings.background);
-      themeRoot.style.setProperty("--wall", settings.background);
+      if (!isGrunge) themeRoot.style.setProperty("--wall", settings.background);
     } else if (isGrunge) {
       themeRoot.style.removeProperty("--background");
-      themeRoot.style.setProperty("--wall", "#2a211c");
+      themeRoot.style.removeProperty("--wall");
     }
     if (settings.frame != null && settings.frame !== "") {
       themeRoot.style.setProperty("--frame", settings.frame);
