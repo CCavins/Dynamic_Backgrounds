@@ -18,10 +18,10 @@
   }
 
   const HOLD_MS = 5500;
-  const ENTER_MS = 900;
-  const EXIT_MS = 850;
-  const STAGGER_MS = 70;
-  const TOP_COUNT = 4;
+  const ENTER_MS = 1000;
+  const EXIT_MS = 900;
+  const STAGGER_MS = 28;
+  const TOP_COUNT = 5;
   const BOTTOM_COUNT = 5;
 
   function makeFallbackCard(src) {
@@ -34,29 +34,51 @@
     return card;
   }
 
+  function shuffle(list) {
+    const arr = list.slice();
+    for (let i = arr.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = tmp;
+    }
+    return arr;
+  }
+
   function pickUrls(pool, api, count, avoid) {
+    const avoidSet = new Set((avoid || []).filter(Boolean));
+    const poolList = Array.isArray(pool) ? pool.filter(Boolean) : [];
+    const seen = new Set();
+    const uniquePool = [];
+    poolList.forEach((src) => {
+      if (!src || seen.has(src)) return;
+      seen.add(src);
+      uniquePool.push(src);
+    });
+
+    // Prefer a shuffled fresh set that is not in the previous batch.
+    let fresh = shuffle(uniquePool.filter((src) => !avoidSet.has(src)));
+    if (fresh.length < count) {
+      fresh = fresh.concat(
+        shuffle(uniquePool.filter((src) => avoidSet.has(src)))
+      );
+    }
+
     const out = [];
-    const used = new Set(avoid || []);
-    const list = Array.isArray(pool) ? pool.filter(Boolean) : [];
+    const used = new Set();
     for (let i = 0; i < count; i += 1) {
-      let src = "";
-      if (api && typeof api.nextUrl === "function") {
+      let src = fresh[i] || "";
+      if (!src && api && typeof api.nextUrl === "function") {
         src = api.nextUrl(used) || "";
       }
-      if (!src && list.length) {
-        for (let tries = 0; tries < list.length; tries += 1) {
-          const candidate = list[(i + tries) % list.length];
-          if (candidate && !used.has(candidate)) {
-            src = candidate;
-            break;
-          }
-        }
-        if (!src) src = list[i % list.length] || "";
+      if (!src && uniquePool.length) {
+        src = uniquePool[Math.floor(Math.random() * uniquePool.length)];
       }
       if (src) used.add(src);
       out.push(src || "");
     }
-    return out;
+    // Shuffle slot order so the same people do not land in the same cells.
+    return shuffle(out);
   }
 
   function buildShapes(layer) {
@@ -140,19 +162,21 @@
           ".sr-trace.sr-sec{stroke:var(--secondary,#f36c1b);}",
           ".sr-dot{fill:var(--primary,#e31b23);}",
           ".sr-dot.sr-sec{fill:var(--secondary,#f36c1b);}",
-          ".sr-rows{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;justify-content:center;gap:clamp(10px,3.2cqh,36px);padding:clamp(8%,7cqh,14%) clamp(3%,3cqw,4%);box-sizing:border-box;transition:padding .45s ease,gap .45s ease;}",
-          ".sr-row{display:flex;justify-content:center;align-items:center;gap:clamp(10px,1.8cqw,28px);width:100%;position:relative;}",
-          /* opacity !important beats mosaic-themes.js `.dyn-card:not(.dyn-feed-ready){opacity:0!important}`
-             so enter/exit --sr-o animation can run (and batch refills do not stay stuck black). */
-          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"] .sr-row .dyn-card{position:relative!important;flex:0 0 auto;margin:0;width:var(--sr-card-w,14cqw);aspect-ratio:2/3;height:auto;padding:clamp(5px,.55cqw,10px);box-sizing:border-box;background:#fff;border-radius:2px;overflow:hidden;transform:skewX(-16deg) translate3d(var(--sr-x,0),var(--sr-y,0),0) scale(var(--sr-s,1));opacity:var(--sr-o,0)!important;filter:grayscale(1) contrast(1.05);box-shadow:0 14px 34px rgba(0,0,0,.42);will-change:transform,opacity;transition:none;}',
-          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"] .sr-row .dyn-card img{position:absolute;inset:clamp(5px,.55cqw,10px);width:100%;height:100%;object-fit:cover;object-position:center center;display:block;transform:skewX(16deg);transform-origin:center center;filter:grayscale(1) contrast(1.08);}',
-          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"] .sr-row .dyn-card.is-animating{transition:transform .9s cubic-bezier(.22,.82,.2,1),opacity .75s ease;}',
-          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"] .sr-row .dyn-card.is-exiting{transition:transform .85s cubic-bezier(.45,.05,.55,1),opacity .7s ease;}',
+          ".sr-rows{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;justify-content:center;gap:clamp(10px,3.2cqh,36px);padding:clamp(8%,7cqh,14%) 4.5% clamp(8%,7cqh,14%) 1.5%;box-sizing:border-box;transition:padding .45s ease,gap .45s ease;}",
+          ".sr-row{display:flex;justify-content:center;align-items:center;gap:clamp(8px,1.4cqw,22px);width:100%;position:relative;transform:translateX(-1.2cqw);}",
+          /* Slot = motion only. Shadow stays on the card (no filter) so exits do not shimmer. */
+          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"] .sr-row .sr-slot{position:relative;flex:0 0 auto;width:var(--sr-card-w,12cqw);aspect-ratio:2/3;height:auto;transform:skewX(-16deg) translate3d(var(--sr-x,0px),0,0);will-change:transform;transition:transform 1s cubic-bezier(.25,.8,.25,1);backface-visibility:hidden;}',
+          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"] .sr-row .sr-slot.is-hold{transition:none;}',
+          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"] .sr-row .sr-slot.is-exiting{transition:transform .85s cubic-bezier(.37,0,.2,1);}',
+          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"] .sr-row .sr-slot .dyn-card{position:absolute!important;inset:0;margin:0;width:100%!important;height:100%!important;padding:clamp(5px,.55cqw,10px);box-sizing:border-box;background:#fff;border-radius:2px;overflow:hidden;transform:none!important;box-shadow:0 14px 28px rgba(0,0,0,.4)!important;filter:none!important;opacity:1!important;transition:none;}',
+          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"] .sr-row .sr-slot .sr-well{position:absolute;inset:clamp(5px,.55cqw,10px);overflow:hidden;background:#1a1a1a;opacity:var(--sr-o,0);transition:opacity 1s cubic-bezier(.25,.8,.25,1);}',
+          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"] .sr-row .sr-slot.is-hold .sr-well{transition:none;}',
+          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"] .sr-row .sr-slot.is-exiting .sr-well{transition:opacity .75s cubic-bezier(.37,0,.2,1);}',
+          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"] .sr-row .sr-slot .sr-well img{position:absolute;left:50%;top:50%;width:148%;height:115%;max-width:none;object-fit:cover;object-position:center center;display:block;transform:translate(-50%,-50%) skewX(16deg);filter:grayscale(1) contrast(1.08);}',
           ".sr-chrome{position:absolute;z-index:6;width:min(11.5%,132px);aspect-ratio:1;pointer-events:none;}",
           ".sr-logo{top:3.4%;left:3.2%;}",
           ".sr-qr{bottom:3.4%;right:3.2%;}",
           ".sr-chrome img,.sr-chrome canvas,.sr-chrome svg{width:100%;height:100%;object-fit:contain;display:block;}",
-          /* Clear busy shapes near chrome when toggled */
           '#dyn-mosaic-theme.dyn-show-logo[data-theme="mosaic-slant-rows"] .sr-shapes .sr-shape:nth-child(1),',
           '#dyn-mosaic-theme.dyn-show-logo[data-theme="mosaic-slant-rows"] .sr-shapes .sr-shape:nth-child(3){opacity:.18;transform:scale(.7);}',
           '#dyn-mosaic-theme.dyn-show-qr[data-theme="mosaic-slant-rows"] .sr-shapes .sr-shape:nth-child(7),',
@@ -160,9 +184,8 @@
           '#dyn-mosaic-theme.dyn-show-logo[data-theme="mosaic-slant-rows"] .sr-rows{padding-top:clamp(11%,9cqh,16%);}',
           '#dyn-mosaic-theme.dyn-show-qr[data-theme="mosaic-slant-rows"] .sr-rows{padding-bottom:clamp(11%,9cqh,16%);}',
           '#dyn-mosaic-theme.dyn-show-logo.dyn-show-qr[data-theme="mosaic-slant-rows"] .sr-rows{padding-top:clamp(11%,9cqh,16%);padding-bottom:clamp(11%,9cqh,16%);gap:clamp(8px,2.4cqh,28px);}',
-          /* Portrait: stack density, slightly smaller cards */
-          '#dyn-mosaic-theme.dyn-portrait[data-theme="mosaic-slant-rows"] .sr-row{gap:clamp(8px,2.2cqw,16px);}',
-          '#dyn-mosaic-theme.dyn-portrait[data-theme="mosaic-slant-rows"] .sr-rows{padding-left:4%;padding-right:4%;gap:clamp(12px,2.8cqh,28px);}',
+          '#dyn-mosaic-theme.dyn-portrait[data-theme="mosaic-slant-rows"] .sr-row{gap:clamp(6px,1.8cqw,14px);transform:translateX(-0.6cqw);}',
+          '#dyn-mosaic-theme.dyn-portrait[data-theme="mosaic-slant-rows"] .sr-rows{padding-left:2%;padding-right:5%;gap:clamp(12px,2.8cqh,28px);}',
           '#dyn-mosaic-theme.dyn-portrait[data-theme="mosaic-slant-rows"] .sr-chrome{width:min(18%,120px);}',
         ].join("");
         themeRoot.appendChild(style);
@@ -211,6 +234,7 @@
         api: hostApi,
         pool: pool || [],
         cards: [],
+        slots: [],
         batchUrls: [],
         timers: [],
         phase: "idle",
@@ -228,7 +252,7 @@
             : 1;
         const s = Math.max(0.7, Math.min(1.5, scale || 1));
         const portrait = themeRoot.classList.contains("dyn-portrait");
-        const base = portrait ? 22 : 13.5;
+        const base = portrait ? 18 : 11.8;
         themeRoot.style.setProperty("--sr-card-w", (base * s).toFixed(2) + "cqw");
         themeRoot.style.setProperty("--scale", String(s));
       };
@@ -251,17 +275,15 @@
         return id;
       };
 
-      const setCardPose = (card, x, y, o, sc) => {
-        card.style.setProperty("--sr-x", x);
-        card.style.setProperty("--sr-y", y || "0px");
-        card.style.setProperty("--sr-o", String(o));
-        card.style.setProperty("--sr-s", String(sc == null ? 1 : sc));
+      const setSlotPose = (slot, x, o) => {
+        slot.style.setProperty("--sr-x", x);
+        slot.style.setProperty("--sr-o", String(o));
       };
 
       const whenCardsReady = () =>
         Promise.all(
-          state.cards.map((card) => {
-            const img = card.querySelector("img");
+          state.slots.map((slot) => {
+            const img = slot.querySelector("img");
             if (!img || !img.getAttribute("src")) return Promise.resolve();
             if (img.complete && img.naturalWidth) return Promise.resolve();
             return new Promise((resolve) => {
@@ -277,18 +299,29 @@
         state.batchUrls = (urls || []).slice();
         topRow.replaceChildren();
         bottomRow.replaceChildren();
+        state.slots = [];
         state.cards = [];
         const topN = TOP_COUNT;
         const botN = BOTTOM_COUNT;
         for (let i = 0; i < topN + botN; i += 1) {
           const src = state.batchUrls[i] || "";
           const card = state.makeCard(src);
-          card.classList.add(i < topN ? "sr-top" : "sr-bot");
-          card.dataset.row = i < topN ? "top" : "bot";
-          card.dataset.idx = String(i < topN ? i : i - topN);
-          setCardPose(card, "0px", "18px", 0, 0.86);
-          if (i < topN) topRow.appendChild(card);
-          else bottomRow.appendChild(card);
+          const img = card.querySelector("img");
+          const well = document.createElement("div");
+          well.className = "sr-well";
+          if (img) well.appendChild(img);
+          card.appendChild(well);
+
+          const slot = document.createElement("div");
+          slot.className = "sr-slot is-hold";
+          slot.dataset.row = i < topN ? "top" : "bot";
+          slot.dataset.idx = String(i < topN ? i : i - topN);
+          slot.appendChild(card);
+          setSlotPose(slot, "0px", 0);
+
+          if (i < topN) topRow.appendChild(slot);
+          else bottomRow.appendChild(slot);
+          state.slots.push(slot);
           state.cards.push(card);
         }
       };
@@ -296,23 +329,31 @@
       const enterCards = () => {
         if (state.phase === "unmount") return;
         state.phase = "enter";
-        state.cards.forEach((card, i) => {
-          const row = card.dataset.row;
-          const idx = Number(card.dataset.idx) || 0;
-          const fromLeft = row === "top";
-          const startX = fromLeft
-            ? -(48 + idx * 8) + "%"
-            : 48 + idx * 8 + "%";
-          card.classList.remove("is-exiting");
-          card.classList.add("is-animating");
-          setCardPose(card, startX, "22px", 0, 0.82);
-          schedule(() => {
-            setCardPose(card, "0%", "0px", 1, 1);
-          }, 30 + i * STAGGER_MS);
+        // Park off-stage with transitions disabled.
+        state.slots.forEach((slot) => {
+          const fromLeft = slot.dataset.row === "top";
+          const startX = fromLeft ? "-48cqw" : "48cqw";
+          slot.classList.remove("is-exiting");
+          slot.classList.add("is-hold");
+          slot.style.transitionDelay = "0ms";
+          setSlotPose(slot, startX, 0);
         });
-        const enterDone = ENTER_MS + state.cards.length * STAGGER_MS;
+        void topRow.offsetWidth;
+        global.requestAnimationFrame(() => {
+          if (state.phase === "unmount") return;
+          state.slots.forEach((slot, i) => {
+            slot.classList.remove("is-hold");
+            slot.style.transitionDelay = i * STAGGER_MS + "ms";
+            setSlotPose(slot, "0px", 1);
+          });
+        });
+        const enterDone = ENTER_MS + (state.slots.length - 1) * STAGGER_MS + 30;
         schedule(() => {
-          state.cards.forEach((c) => c.classList.remove("is-animating"));
+          state.slots.forEach((slot) => {
+            slot.classList.add("is-hold");
+            slot.style.transitionDelay = "0ms";
+            setSlotPose(slot, "0px", 1);
+          });
           state.phase = "hold";
           schedule(exitCards, HOLD_MS);
         }, enterDone);
@@ -324,19 +365,26 @@
         state.exitFlip = 1 - (state.exitFlip || 0);
         const topDir = state.exitFlip ? 1 : -1;
         const botDir = -topDir;
-        state.cards.forEach((card, i) => {
-          const row = card.dataset.row;
-          const idx = Number(card.dataset.idx) || 0;
-          const dir = row === "top" ? topDir : botDir;
-          const endX = dir * (55 + idx * 10) + "%";
-          card.classList.add("is-exiting");
-          schedule(() => {
-            setCardPose(card, endX, "8px", 0, 0.92);
-          }, i * 35);
+
+        // Smooth exit: enable easing first, then set destination next frame.
+        // Avoid transition:none → reflow → re-enable (that hitch makes exits shake).
+        state.slots.forEach((slot, i) => {
+          slot.classList.remove("is-hold");
+          slot.classList.add("is-exiting");
+          slot.style.transitionDelay = i * STAGGER_MS + "ms";
+        });
+        void topRow.offsetWidth;
+        global.requestAnimationFrame(() => {
+          if (state.phase === "unmount") return;
+          state.slots.forEach((slot) => {
+            const dir = slot.dataset.row === "top" ? topDir : botDir;
+            const endX = dir > 0 ? "52cqw" : "-52cqw";
+            setSlotPose(slot, endX, 0);
+          });
         });
         schedule(() => {
           refillAndEnter();
-        }, EXIT_MS + state.cards.length * 35 + 80);
+        }, EXIT_MS + (state.slots.length - 1) * STAGGER_MS + 60);
       };
 
       const refillAndEnter = () => {

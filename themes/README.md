@@ -39,6 +39,7 @@ A pack that includes JS runs on matching output pages only after Allow User Scri
 Examples to try:
 
 - `message-stamp.json` — postage-stamp message card (JSON only; Ink, Paper, Background, Motion)
+- `message-grunge-poster.json` — torn-paper grunge poster (JSON only)
 - `mosaic-framed.json` — framed photo scatter (JSON only; Photo size + Frame color)
 - `mosaic-ribbon.json` — diagonal photo ribbon (JSON only)
 - `message-aurora.json` + `message-aurora-engine.js` — message card with a canvas aurora (same JS as `extension/engines/message-aurora-engine.js`)
