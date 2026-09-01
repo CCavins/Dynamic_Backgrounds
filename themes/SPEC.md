@@ -326,7 +326,7 @@ Use the gallery preview to iterate on packs **before** a Vixi output tab:
 - Loads the same `rules.js`, `message-themes.js`, `custom-themes.js`, and pack JSON as the extension (cache-busted script query params).
 - **Live settings** in the dock call `applySettings` only (same as popup on output), not a full remount — except when `photoStyle` or mosaic `scale` requires it.
 - **Message cycle** uses the same visible exit → swap → enter pattern as `extension/message.js` `present()`.
-- **Stage background** in the dock is like **Show background** + a uploaded still/video — it sits inside `#dyn-message-theme` above the theme backdrop and below cards. Grunge keeps `.wall` / `.dyn-stage` visible; do not strip `.wall` in preview-only CSS.
+- **Stage background** in the dock is like **Show background** + an uploaded still/video — it sits inside the theme root **above** theme backdrop layers (brick wall, asphalt texture, dark stage fills) and **below** cards/copy. With **Fill** fit, the asset fully replaces those backdrops; transparent PNG/GIF holes can still show the theme **Background** color when fit is not full-bleed.
 - URL params: `?theme=message-grunge-poster`, `&primary=…`, `&secondary=…`, `&aspect=16:9`, etc.
 
 When preview and extension diverge, fix the **shared** path (`applyVars`, pack CSS, asset URLs) — not a preview-only fork.

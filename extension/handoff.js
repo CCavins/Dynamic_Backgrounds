@@ -79,8 +79,8 @@
       "pointer-events:none!important;z-index:0!important;" +
       "display:block!important;" +
     "}" +
-    /* Custom media lives inside the theme root: above the theme Background
-       color, below cards/copy. Transparent PNG/GIF holes show that color. */
+    /* Custom media lives inside the theme root: above theme backdrop layers
+       (.wall, asphalt texture, stage fills), below cards/copy. */
     "html.dyn-custom-bg #dyn-message-theme > #dyn-bg-media," +
     "html.dyn-custom-bg #dyn-mosaic-theme > #dyn-bg-media," +
     "html.dyn-custom-bg #dyn-theme-host > #dyn-bg-media," +
@@ -166,6 +166,17 @@
     "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .frame::after," +
     "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .scene::before," +
     "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .scene::after{" +
+      "background:transparent!important;background-image:none!important;" +
+    "}" +
+    /* Image backdrops (Grunge brick, Slant asphalt, etc.) must not paint over
+       #dyn-bg-media / #dyn-bg-embed when Show background is on. */
+    "html.dyn-show-bg #dyn-message-theme .wall," +
+    "html.dyn-show-bg #dyn-message-theme .grain," +
+    "html.dyn-show-bg #dyn-mosaic-theme .sr-texture{" +
+      "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
+    "}" +
+    "html.dyn-show-bg.dyn-kind-mosaic #dyn-mosaic-theme .dyn-stage," +
+    "html.dyn-show-bg.dyn-kind-mosaic #dyn-mosaic-theme[data-theme]{" +
       "background:transparent!important;background-image:none!important;" +
     "}" +
     "html.dyn-custom-bg.dyn-kind-message #dyn-message-theme > *:not(#dyn-bg-media):not(#dyn-bg-embed)," +

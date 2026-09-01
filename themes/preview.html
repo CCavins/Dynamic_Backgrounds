@@ -63,9 +63,8 @@
     container-type: size;
   }
 
-  /* Selected preview media sits inside the theme root, above that theme’s
-     Background color and below cards/copy. Transparent PNG/GIF holes show
-     the theme color through. */
+  /* Selected preview media sits inside the theme root, above theme backdrop
+     layers and below cards/copy. */
   #dyn-message-theme > #preview-bg,
   #dyn-mosaic-theme > #preview-bg {
     z-index: 0;
@@ -77,18 +76,36 @@
     z-index: 2;
   }
 
-  /* Stage fills around cards stay clear so the selected media shows;
-     the theme root keeps its Background color. */
+  /* Clear stage fills so the selected media shows through around cards. */
   body.has-preview-bg #dyn-message-theme .dyn-fit-stage,
+  body.has-preview-bg #dyn-message-theme .dyn-stage,
   body.has-preview-bg #dyn-message-theme .frame,
   body.has-preview-bg #dyn-message-theme .scene {
     background: transparent !important;
     background-image: none !important;
   }
 
-  /* Keep grunge wall/grain layers — never strip .dyn-stage or .wall (brick texture). */
-  body.has-preview-bg #dyn-message-theme[data-theme="message-grunge-poster"] .dyn-stage {
+  body.has-preview-bg #dyn-message-theme .frame::before,
+  body.has-preview-bg #dyn-message-theme .frame::after,
+  body.has-preview-bg #dyn-message-theme .scene::before,
+  body.has-preview-bg #dyn-message-theme .scene::after {
     background: transparent !important;
+    background-image: none !important;
+  }
+
+  /* Theme image backdrops must not cover the stage background media. */
+  body.has-preview-bg #dyn-message-theme .wall,
+  body.has-preview-bg #dyn-message-theme .grain,
+  body.has-preview-bg #dyn-mosaic-theme .sr-texture {
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  body.has-preview-bg #dyn-mosaic-theme .dyn-stage,
+  body.has-preview-bg #dyn-mosaic-theme[data-theme] {
+    background: transparent !important;
+    background-image: none !important;
   }
 
   /* Hide the inactive root only — never force display:block, or theme
@@ -684,24 +701,24 @@
     </div>
   </div>
 
-<script src="../extension/rules.js?v=1.24.25"></script>
-<script src="../extension/media.js?v=1.24.25"></script>
-<script src="../extension/message-themes.js?v=1.24.25"></script>
+<script src="../extension/rules.js?v=1.24.26"></script>
+<script src="../extension/media.js?v=1.24.26"></script>
+<script src="../extension/message-themes.js?v=1.24.26"></script>
 <script src="../extension/vendor/three.min.js"></script>
 <script src="../extension/vendor/RoundedBoxGeometry.js"></script>
-<script src="../extension/vendor/tile-field.js?v=1.24.25"></script>
-<script src="../extension/mosaic-themes.js?v=1.24.25"></script>
+<script src="../extension/vendor/tile-field.js?v=1.24.26"></script>
+<script src="../extension/mosaic-themes.js?v=1.24.26"></script>
 <script src="../extension/engines/api.js"></script>
-<script src="../extension/engines/xmas-snow-particles.js?v=1.24.25"></script>
-<script src="../extension/engines/message-aurora-engine.js?v=1.24.25"></script>
-<script src="../extension/engines/message-text-message-engine.js?v=1.24.25"></script>
-<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.24.25"></script>
-<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.24.25"></script>
-<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.24.25"></script>
-<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.24.25"></script>
-<script src="./mosaic-slant-rows-engine.js?v=1.24.25"></script>
-<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.24.25"></script>
-<script src="../extension/custom-themes.js?v=1.24.25"></script>
+<script src="../extension/engines/xmas-snow-particles.js?v=1.24.26"></script>
+<script src="../extension/engines/message-aurora-engine.js?v=1.24.26"></script>
+<script src="../extension/engines/message-text-message-engine.js?v=1.24.26"></script>
+<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.24.26"></script>
+<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.24.26"></script>
+<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.24.26"></script>
+<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.24.26"></script>
+<script src="./mosaic-slant-rows-engine.js?v=1.24.26"></script>
+<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.24.26"></script>
+<script src="../extension/custom-themes.js?v=1.24.26"></script>
 <script>
 (async () => {
   const SAMPLE_DIR = "../samples/patriots/";
