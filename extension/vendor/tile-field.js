@@ -113,6 +113,17 @@
       );
   }
 
+  function stageBackgroundActive(_host) {
+    try {
+      if (document.body && document.body.classList.contains("has-preview-bg")) return true;
+      const html = document.documentElement;
+      if (html.classList.contains("dyn-show-bg")) return true;
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+
   function createScene(host, pool, preset, options) {
     const activePreset = preset === "depth" ? "depth" : "showcase";
     const userScale = (() => {
@@ -162,7 +173,7 @@
       renderer = new THREE.WebGLRenderer({
         canvas,
         antialias: window.devicePixelRatio < 1.5,
-        alpha: false,
+        alpha: true,
         powerPreference: "high-performance",
       });
     } catch {
@@ -180,8 +191,33 @@
     renderer.toneMappingExposure = 1.25;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x050506);
-    scene.fog = new THREE.FogExp2(0x050506, 0.018);
+    const defaultSceneBg = new THREE.Color(0x050506);
+    const defaultFog = new THREE.FogExp2(0x050506, 0.018);
+    scene.background = defaultSceneBg;
+    scene.fog = defaultFog;
+    renderer.setClearColor(0x050506, 1);
+
+    let backdropTransparent = null;
+    function applyBackdropMode() {
+      const transparent = stageBackgroundActive(host);
+      if (backdropTransparent === transparent) return;
+      backdropTransparent = transparent;
+      if (transparent) {
+        scene.background = null;
+        scene.fog = null;
+        renderer.setClearColor(0x000000, 0);
+        vignette.style.visibility = "hidden";
+        vignette.style.opacity = "0";
+        vignette.style.pointerEvents = "none";
+      } else {
+        scene.background = defaultSceneBg;
+        scene.fog = defaultFog;
+        renderer.setClearColor(0x050506, 1);
+        vignette.style.visibility = "";
+        vignette.style.opacity = "";
+        vignette.style.pointerEvents = "";
+      }
+    }
 
     const camera = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 100);
     camera.position.set(activePreset === "showcase" ? 0.15 : 2.8, activePreset === "showcase" ? 0.35 : 1.6, 10.5);
@@ -1216,6 +1252,7 @@ uniform float uImageMix;`
         });
       }
     }
+    applyBackdropMode();
     renderer.setAnimationLoop(frame);
 
     let ro = null;
@@ -1228,9 +1265,10 @@ uniform float uImageMix;`
       ro.observe(host);
     }
 
-    return {
+    const fieldApi = {
       stopped: false,
       syncPool,
+      applyBackdropMode,
       applySettings(next) {
         const hex = String((next && (next.color || next.primary)) || "");
         if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
@@ -1240,9 +1278,11 @@ uniform float uImageMix;`
         pctx.fillStyle = hex;
         pctx.fillRect(0, 0, 4, 4);
         tiles.forEach((tile) => syncTileLayerMaterials(tile));
+        applyBackdropMode();
       },
       dispose() {
         stopped = true;
+        if (host && host._bgTileField === fieldApi) delete host._bgTileField;
         renderer.setAnimationLoop(null);
         if (ro) ro.disconnect();
         images.forEach((img) => {
@@ -1264,6 +1304,8 @@ uniform float uImageMix;`
         if (vignette.parentNode) vignette.remove();
       },
     };
+    if (host) host._bgTileField = fieldApi;
+    return fieldApi;
   }
 
   root.BGTileField = {
@@ -1277,16 +1319,23 @@ uniform float uImageMix;`
         return { stopped: true };
       }
     },
+    syncStageBackground(themeRoot) {
+      const field = themeRoot && themeRoot._bgTileField;
+      if (field && typeof field.applyBackdropMode === "function") field.applyBackdropMode();
+    },
     tick(root, pool, state) {
       if (state && state.field && state.field.syncPool) state.field.syncPool(pool);
     },
     applySettings(root, state, settings) {
       if (state && state.field && typeof state.field.applySettings === "function") {
         state.field.applySettings(settings);
+      } else if (root && root._bgTileField && typeof root._bgTileField.applyBackdropMode === "function") {
+        root._bgTileField.applyBackdropMode();
       }
     },
     unmount(root, state) {
       if (state && state.field && state.field.dispose) state.field.dispose();
+      if (root && root._bgTileField) delete root._bgTileField;
     },
   };
 })(typeof globalThis !== "undefined" ? globalThis : this);

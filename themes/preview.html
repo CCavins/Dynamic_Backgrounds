@@ -108,6 +108,14 @@
     background-image: none !important;
   }
 
+  body.has-preview-bg #dyn-mosaic-theme[data-theme="cubes"] .dyn-cube-vignette,
+  body.has-preview-bg #dyn-mosaic-theme[data-theme="cubes-brand"] .dyn-cube-vignette,
+  body.has-preview-bg #dyn-mosaic-theme[data-theme="depthfield"] .dyn-cube-vignette {
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
   /* Hide the inactive root only — never force display:block, or theme
      flex/grid layouts (decks, spotlight, etc.) lose to this rule. */
   body.is-mosaic #dyn-message-theme { display: none !important; }
@@ -701,24 +709,24 @@
     </div>
   </div>
 
-<script src="../extension/rules.js?v=1.24.26"></script>
-<script src="../extension/media.js?v=1.24.26"></script>
-<script src="../extension/message-themes.js?v=1.24.26"></script>
+<script src="../extension/rules.js?v=1.24.28"></script>
+<script src="../extension/media.js?v=1.24.28"></script>
+<script src="../extension/message-themes.js?v=1.24.28"></script>
 <script src="../extension/vendor/three.min.js"></script>
 <script src="../extension/vendor/RoundedBoxGeometry.js"></script>
-<script src="../extension/vendor/tile-field.js?v=1.24.26"></script>
-<script src="../extension/mosaic-themes.js?v=1.24.26"></script>
+<script src="../extension/vendor/tile-field.js?v=1.24.28"></script>
+<script src="../extension/mosaic-themes.js?v=1.24.28"></script>
 <script src="../extension/engines/api.js"></script>
-<script src="../extension/engines/xmas-snow-particles.js?v=1.24.26"></script>
-<script src="../extension/engines/message-aurora-engine.js?v=1.24.26"></script>
-<script src="../extension/engines/message-text-message-engine.js?v=1.24.26"></script>
-<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.24.26"></script>
-<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.24.26"></script>
-<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.24.26"></script>
-<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.24.26"></script>
-<script src="./mosaic-slant-rows-engine.js?v=1.24.26"></script>
-<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.24.26"></script>
-<script src="../extension/custom-themes.js?v=1.24.26"></script>
+<script src="../extension/engines/xmas-snow-particles.js?v=1.24.28"></script>
+<script src="../extension/engines/message-aurora-engine.js?v=1.24.28"></script>
+<script src="../extension/engines/message-text-message-engine.js?v=1.24.28"></script>
+<script src="../extension/engines/mosaic-orbit-swap-engine.js?v=1.24.28"></script>
+<script src="../extension/engines/mosaic-xmas-wreath-engine.js?v=1.24.28"></script>
+<script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.24.28"></script>
+<script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.24.28"></script>
+<script src="./mosaic-slant-rows-engine.js?v=1.24.28"></script>
+<script src="../extension/engines/message-xmas-bauble-engine.js?v=1.24.28"></script>
+<script src="../extension/custom-themes.js?v=1.24.28"></script>
 <script>
 (async () => {
   const SAMPLE_DIR = "../samples/patriots/";
@@ -1796,6 +1804,12 @@
       previewBgHost.replaceChildren();
       document.body.classList.remove("has-preview-bg");
       parkPreviewBg();
+      if (rules.syncThemeBackdrops) {
+        const msg = document.getElementById("dyn-message-theme");
+        const mos = document.getElementById("dyn-mosaic-theme");
+        if (msg) rules.syncThemeBackdrops(msg);
+        if (mos) rules.syncThemeBackdrops(mos);
+      }
       return;
     }
     const asset = await mediaApi.getMedia(previewBgMediaId);
@@ -1803,6 +1817,12 @@
       previewBgHost.replaceChildren();
       document.body.classList.remove("has-preview-bg");
       parkPreviewBg();
+      if (rules.syncThemeBackdrops) {
+        const msg = document.getElementById("dyn-message-theme");
+        const mos = document.getElementById("dyn-mosaic-theme");
+        if (msg) rules.syncThemeBackdrops(msg);
+        if (mos) rules.syncThemeBackdrops(mos);
+      }
       return;
     }
 
@@ -1832,6 +1852,9 @@
     if (wantVideo && typeof node.play === "function") {
       const play = node.play();
       if (play && typeof play.catch === "function") play.catch(() => {});
+    }
+    if (rules.syncThemeBackdrops) {
+      if (activeTheme) rules.syncThemeBackdrops(activeTheme);
     }
   }
 

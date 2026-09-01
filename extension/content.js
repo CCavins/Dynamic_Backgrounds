@@ -188,6 +188,7 @@
       if (play && typeof play.catch === "function") play.catch(() => {});
     }
     markCustomBg(true);
+    if (rules.syncThemeBackdrops && parent) rules.syncThemeBackdrops(parent);
     return true;
   }
 

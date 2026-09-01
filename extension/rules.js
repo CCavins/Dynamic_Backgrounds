@@ -1235,6 +1235,59 @@
     return Boolean(src);
   }
 
+  /** True when Show background is active on the output/preview document. */
+  function isStageBackgroundActive(_themeRoot) {
+    try {
+      if (document.body && document.body.classList.contains("has-preview-bg")) return true;
+      const html = document.documentElement;
+      if (html.classList.contains("dyn-show-bg")) return true;
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+
+  /** Hide theme backdrop layers so #dyn-bg-media can cover the stage on output. */
+  function syncThemeBackdrops(themeRoot) {
+    if (!themeRoot || !themeRoot.querySelectorAll) return;
+    const on = isStageBackgroundActive(themeRoot);
+    themeRoot.querySelectorAll(".wall, .grain, .sr-texture").forEach((el) => {
+      if (on) {
+        el.style.setProperty("visibility", "hidden", "important");
+        el.style.setProperty("opacity", "0", "important");
+        el.style.setProperty("pointer-events", "none", "important");
+        el.style.setProperty("background-image", "none", "important");
+      } else {
+        el.style.removeProperty("visibility");
+        el.style.removeProperty("opacity");
+        el.style.removeProperty("pointer-events");
+        el.style.removeProperty("background-image");
+      }
+    });
+    themeRoot.querySelectorAll(".dyn-stage, .dyn-fit-stage, .frame, .scene").forEach((el) => {
+      if (on) {
+        el.style.setProperty("background", "transparent", "important");
+        el.style.setProperty("background-image", "none", "important");
+      } else {
+        el.style.removeProperty("background");
+        el.style.removeProperty("background-image");
+      }
+    });
+    if (on && (themeRoot.id === "dyn-message-theme" || themeRoot.id === "dyn-mosaic-theme")) {
+      themeRoot.style.setProperty("background", "transparent", "important");
+      themeRoot.style.setProperty("background-image", "none", "important");
+    } else if (!on && (themeRoot.id === "dyn-message-theme" || themeRoot.id === "dyn-mosaic-theme")) {
+      themeRoot.style.removeProperty("background");
+      themeRoot.style.removeProperty("background-image");
+    }
+    try {
+      const api = typeof globalThis !== "undefined" && globalThis.BGTileField;
+      if (api && typeof api.syncStageBackground === "function") api.syncStageBackground(themeRoot);
+    } catch {
+      /* ignore */
+    }
+  }
+
   let lastVixiBgAsset = null;
 
   function cssBackgroundImageUrl(el) {
@@ -1725,6 +1778,7 @@
     themeRoot.classList.toggle("dyn-show-logo", wantLogo);
     themeRoot.classList.toggle("dyn-show-bg", wantBg);
     if (mode) themeRoot.dataset.chromeKind = mode;
+    syncThemeBackdrops(themeRoot);
 
     let qrSlot = themeRoot.querySelector("[data-qr]");
     let logoSlot = themeRoot.querySelector("[data-logo]");
@@ -2487,6 +2541,8 @@
     restoreBackgroundLayers,
     hideBackgroundLayers,
     usesCustomBackground,
+    isStageBackgroundActive,
+    syncThemeBackdrops,
     resolveVixiBackgroundAsset,
     silenceReplacedMedia,
     resumeBackgroundMedia,

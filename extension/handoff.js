@@ -75,6 +75,7 @@
     "}" +
     "html.dyn-show-bg #dyn-bg-media{" +
       "position:absolute!important;inset:0!important;" +
+      "width:100%!important;height:100%!important;" +
       "visibility:visible!important;opacity:1!important;" +
       "pointer-events:none!important;z-index:0!important;" +
       "display:block!important;" +
@@ -92,6 +93,8 @@
     "}" +
     "html.dyn-show-bg #dyn-bg-media > img," +
     "html.dyn-show-bg #dyn-bg-media > video{" +
+      "position:absolute!important;inset:0!important;" +
+      "width:100%!important;height:100%!important;" +
       "visibility:visible!important;opacity:1!important;" +
       "pointer-events:none!important;display:block!important;" +
     "}" +
@@ -158,31 +161,57 @@
     "html.dyn-show-bg:not(.dyn-custom-bg).dyn-kind-mosaic #dyn-mosaic-theme{" +
       "background:transparent!important;background-image:none!important;" +
     "}" +
-    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .dyn-fit-stage," +
-    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .dyn-stage," +
-    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .frame," +
-    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .scene," +
-    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .frame::before," +
-    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .frame::after," +
-    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .scene::before," +
-    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .scene::after{" +
-      "background:transparent!important;background-image:none!important;" +
-    "}" +
     /* Image backdrops (Grunge brick, Slant asphalt, etc.) must not paint over
        #dyn-bg-media / #dyn-bg-embed when Show background is on. */
     "html.dyn-show-bg #dyn-message-theme .wall," +
     "html.dyn-show-bg #dyn-message-theme .grain," +
-    "html.dyn-show-bg #dyn-mosaic-theme .sr-texture{" +
+    "html.dyn-show-bg #dyn-mosaic-theme .sr-texture," +
+    "html.dyn-custom-bg #dyn-message-theme .wall," +
+    "html.dyn-custom-bg #dyn-message-theme .grain," +
+    "html.dyn-custom-bg #dyn-mosaic-theme .sr-texture," +
+    "#dyn-message-theme.dyn-show-bg .wall," +
+    "#dyn-message-theme.dyn-show-bg .grain," +
+    "#dyn-mosaic-theme.dyn-show-bg .sr-texture{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
-    "html.dyn-show-bg.dyn-kind-mosaic #dyn-mosaic-theme .dyn-stage," +
-    "html.dyn-show-bg.dyn-kind-mosaic #dyn-mosaic-theme[data-theme]{" +
+    "html.dyn-show-bg #dyn-message-theme .dyn-fit-stage," +
+    "html.dyn-show-bg #dyn-message-theme .dyn-stage," +
+    "html.dyn-show-bg #dyn-message-theme .frame," +
+    "html.dyn-show-bg #dyn-message-theme .scene," +
+    "html.dyn-custom-bg #dyn-message-theme .dyn-fit-stage," +
+    "html.dyn-custom-bg #dyn-message-theme .dyn-stage," +
+    "html.dyn-custom-bg #dyn-message-theme .frame," +
+    "html.dyn-custom-bg #dyn-message-theme .scene," +
+    "html.dyn-show-bg #dyn-mosaic-theme .dyn-stage," +
+    "html.dyn-custom-bg #dyn-mosaic-theme .dyn-stage," +
+    "html.dyn-show-bg #dyn-message-theme[data-theme]," +
+    "html.dyn-show-bg #dyn-mosaic-theme[data-theme]," +
+    "html.dyn-custom-bg #dyn-message-theme[data-theme]," +
+    "html.dyn-custom-bg #dyn-mosaic-theme[data-theme]," +
+    "#dyn-message-theme.dyn-show-bg[data-theme]," +
+    "#dyn-mosaic-theme.dyn-show-bg[data-theme]{" +
       "background:transparent!important;background-image:none!important;" +
     "}" +
-    "html.dyn-custom-bg.dyn-kind-message #dyn-message-theme > *:not(#dyn-bg-media):not(#dyn-bg-embed)," +
-    "html.dyn-custom-bg.dyn-kind-mosaic #dyn-mosaic-theme > *:not(#dyn-bg-media):not(#dyn-bg-embed)," +
-    "html.dyn-custom-bg #dyn-theme-host > *:not(#dyn-bg-media):not(#dyn-bg-embed):not(#dyn-message-theme):not(#dyn-mosaic-theme){" +
+    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .frame::before," +
+    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .frame::after," +
+    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .scene::before," +
+    "html.dyn-show-bg.dyn-kind-message #dyn-message-theme .scene::after," +
+    "html.dyn-custom-bg #dyn-message-theme .frame::before," +
+    "html.dyn-custom-bg #dyn-message-theme .frame::after," +
+    "html.dyn-custom-bg #dyn-message-theme .scene::before," +
+    "html.dyn-custom-bg #dyn-message-theme .scene::after{" +
+      "background:transparent!important;background-image:none!important;" +
+    "}" +
+    "html.dyn-custom-bg.dyn-kind-message #dyn-message-theme > *:not(#dyn-bg-media):not(#dyn-bg-embed):not(.dyn-brand-chrome)," +
+    "html.dyn-custom-bg.dyn-kind-mosaic #dyn-mosaic-theme > *:not(#dyn-bg-media):not(#dyn-bg-embed):not(.dyn-brand-chrome)," +
+    "html.dyn-custom-bg #dyn-theme-host > *:not(#dyn-bg-media):not(#dyn-bg-embed):not(#dyn-message-theme):not(#dyn-mosaic-theme):not(.dyn-brand-chrome){" +
       "z-index:2;" +
+    "}" +
+    "html.dyn-show-bg #dyn-message-theme > .dyn-brand-chrome," +
+    "html.dyn-show-bg #dyn-mosaic-theme > .dyn-brand-chrome," +
+    "html.dyn-custom-bg #dyn-message-theme > .dyn-brand-chrome," +
+    "html.dyn-custom-bg #dyn-mosaic-theme > .dyn-brand-chrome{" +
+      "z-index:130!important;" +
     "}" +
     "html.dyn-theme-on,html.dyn-theme-on body,html.dyn-theme-on .output-page{" +
       "background:#000!important;" +
@@ -314,8 +343,10 @@
       : { showBackground: false };
     const wantCustomBg = Boolean(rules.usesCustomBackground && rules.usesCustomBackground(s));
     const showBg = Boolean(chrome.showBackground);
-    // Reparent #dyn-bg-media onto the incoming theme/host BEFORE kind classes
-    // hide the outgoing theme (that was flashing Vixi’s original bg).
+    html.classList.toggle("dyn-show-bg", liveOn && showBg);
+    // Reparent #dyn-bg-media onto the incoming theme/host AFTER dyn-show-bg is
+    // set (so visibility/backdrop sync agree) but BEFORE kind classes hide the
+    // outgoing theme (avoids flashing Vixi's original bg).
     const bgApi = root.BGCustomBackground;
     if (wantCustomBg && bgApi && typeof bgApi.syncMount === "function") {
       bgApi.syncMount(s, {
@@ -328,7 +359,6 @@
     html.classList.toggle("dyn-kind-message", shownKind === "message");
     html.classList.toggle("dyn-kind-mosaic", shownKind === "mosaic");
     html.classList.toggle("dyn-kind-native", nativeBeat);
-    html.classList.toggle("dyn-show-bg", liveOn && showBg);
     if (!msgThemeOn) html.classList.remove("dyn-message-on");
     if (!mosThemeOn) html.classList.remove("dyn-mosaic-on");
     if (!liveOn) html.classList.remove("dyn-hold");
@@ -359,12 +389,19 @@
         if (rules.resumeBackgroundMedia) rules.resumeBackgroundMedia();
         html.classList.remove("dyn-custom-bg");
       }
-    } else if (rules.silenceReplacedMedia) {
-      rules.silenceReplacedMedia();
-      if (rules.hideBackgroundLayers) rules.hideBackgroundLayers();
+    } else {
+      html.classList.remove("dyn-custom-bg");
+      if (rules.restoreBackgroundLayers) rules.restoreBackgroundLayers();
+      if (rules.resumeBackgroundMedia) rules.resumeBackgroundMedia();
     }
     if (bgApi && typeof bgApi.scheduleApply === "function") {
       bgApi.scheduleApply(0);
+    }
+    if (rules.syncThemeBackdrops) {
+      const msgRoot = document.getElementById("dyn-message-theme");
+      const mosRoot = document.getElementById("dyn-mosaic-theme");
+      if (msgRoot) rules.syncThemeBackdrops(msgRoot);
+      if (mosRoot) rules.syncThemeBackdrops(mosRoot);
     }
   }
 

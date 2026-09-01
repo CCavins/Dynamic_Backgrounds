@@ -2424,8 +2424,22 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
 
   function applyGrungeWall(themeRoot) {
     if (!themeRoot || themeRoot.dataset.theme !== "message-grunge-poster") return;
-    const url = grungeWallUrl();
+    const rulesApi = root.BGExtensionRules;
+    const hideWall =
+      rulesApi &&
+      typeof rulesApi.isStageBackgroundActive === "function" &&
+      rulesApi.isStageBackgroundActive(themeRoot);
     themeRoot.querySelectorAll(".wall").forEach((el) => {
+      if (hideWall) {
+        el.style.setProperty("visibility", "hidden", "important");
+        el.style.setProperty("opacity", "0", "important");
+        el.style.setProperty("pointer-events", "none", "important");
+        el.style.setProperty("background-image", "none", "important");
+        return;
+      }
+      el.style.removeProperty("visibility");
+      el.style.removeProperty("pointer-events");
+      const url = grungeWallUrl();
       el.style.setProperty("background-image", 'url("' + url + '")', "important");
       el.style.setProperty("background-size", "cover", "important");
       el.style.setProperty("background-position", "center", "important");

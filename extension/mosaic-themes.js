@@ -1002,11 +1002,13 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
 }
 
 #dyn-mosaic-theme[data-theme="cubes"],
+#dyn-mosaic-theme[data-theme="cubes-brand"],
 #dyn-mosaic-theme[data-theme="depthfield"] {
   overflow: hidden;
   background: #050506;
 }
 #dyn-mosaic-theme[data-theme="cubes"] canvas,
+#dyn-mosaic-theme[data-theme="cubes-brand"] canvas,
 #dyn-mosaic-theme[data-theme="depthfield"] canvas {
   position: absolute;
   inset: 0;
@@ -1015,6 +1017,7 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
   height: 100%;
 }
 #dyn-mosaic-theme[data-theme="cubes"] .dyn-cube-vignette,
+#dyn-mosaic-theme[data-theme="cubes-brand"] .dyn-cube-vignette,
 #dyn-mosaic-theme[data-theme="depthfield"] .dyn-cube-vignette {
   position: absolute;
   inset: 0;

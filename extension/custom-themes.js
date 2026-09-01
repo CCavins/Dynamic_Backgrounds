@@ -799,6 +799,28 @@
 
   function applySlantAsphalt(rootEl) {
     if (!rootEl) return;
+    const rulesApi = root.BGExtensionRules;
+    const hideTexture =
+      rulesApi &&
+      typeof rulesApi.isStageBackgroundActive === "function" &&
+      rulesApi.isStageBackgroundActive(rootEl);
+    rootEl.querySelectorAll(".sr-texture").forEach((el) => {
+      if (hideTexture) {
+        el.style.setProperty("visibility", "hidden", "important");
+        el.style.setProperty("opacity", "0", "important");
+        el.style.setProperty("pointer-events", "none", "important");
+        el.style.setProperty("background-image", "none", "important");
+      } else {
+        el.style.removeProperty("visibility");
+        el.style.removeProperty("opacity");
+        el.style.removeProperty("pointer-events");
+        el.style.removeProperty("background-image");
+      }
+    });
+    if (hideTexture) {
+      rootEl.style.setProperty("--sr-texture", "none");
+      return;
+    }
     const url = packAssetUrl("slant-asphalt.webp");
     rootEl.style.setProperty("--sr-texture", 'url("' + url + '")');
   }
