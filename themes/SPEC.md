@@ -109,7 +109,7 @@ Every field the parser keeps. Extra fields are ignored. Do not invent settings k
 | `fontFaces` | no | array | Custom fonts for this pack (max 12). Each item: `{ "fontFile": "Face.woff2", "fontFamily": "Face Name" }`. Preferred when you need more than one face |
 | `fontFile` | no | string | Legacy single custom font basename (`.woff2`, `.woff`, `.ttf`, `.otf`). Used only when `fontFaces` is omitted. Same matching / sharing rules |
 | `fontFamily` | no | string | CSS `font-family` for singular `fontFile` (max 80). Defaults from the filename stem if omitted |
-| `settings` | no | object | Keys only: `primary`, `secondary`, `background`, `motion`, `scale` |
+| `settings` | no | object | Keys: `primary`, `secondary`, `background`, `motion`, `scale`, `frame`, `photoStyle`, plus `type: "select"` / `type: "toggle"` extras |
 | `revealMs` | no | number | Message enter. Clamped 200–4000. Default 1000 |
 | `hideMs` | no | number | Message leave. Clamped 120–2000. Default 320 |
 | `fit` | no | array | Message text fit rules. See below |
@@ -180,7 +180,7 @@ Single-font shorthand (still supported):
 
 ### settings
 
-Each present key is `{ "label": "…", "default": "…" }`. `label` max 40 characters. Do not invent keys beyond this list.
+Each present key is `{ "label": "…", "default": "…" }`. Optional `"type": "select"` with `"options": [{ "value", "label" }, …]` or `"type": "toggle"`. `label` max 40 characters.
 
 | Key | Kind | `default` | Popup control | Runtime |
 | --- | --- | --- | --- | --- |
@@ -189,12 +189,95 @@ Each present key is `{ "label": "…", "default": "…" }`. `label` max 40 chara
 | `background` | both | `#rrggbb` | color | `--background` |
 | `motion` | message only | `slow` / `drift` / `fizz` | select | `data-motion` on the theme root |
 | `scale` | mosaic | number `0.7`–`1.5` | slider 70%–150% | `--scale` (`1` = the default look) |
+| `frame` | mosaic | `#rrggbb` | color | `--frame` (card border / mat; see Slant Rows) |
+| `photoStyle` | both | `bw` / `color` / `sepia` | select | `data-photo-style` on the theme root (+ photo `filter` in CSS or live apply) |
 
 Invalid colors fall back to `#d52265` / `#fec651`. Mosaic packs that set `motion` are ignored. Wrapping a built-in (`"engine": "polaroid"`) inherits that engine’s sliders; pack `settings` override labels and defaults only.
 
+#### Live settings for imported themes (pack authors)
+
+**Imported packs use the same live-settings pipeline as bundled themes.** After **Import packs…**, the popup reads your `settings` block, stores values in Chrome storage, and the output page applies them without remounting whenever you change a control while that theme is live.
+
+You do **not** need to ship anything extra for the standard keys below — only correct JSON + CSS (or engine `applySettings`).
+
+| Key | Works on import? | What the runtime sets | What you must do in the pack |
+| --- | --- | --- | --- |
+| `primary` | yes | `--primary` on the theme root | Use `var(--primary)` (or an alias like `--ink: var(--primary)`) in CSS — not a fixed hex on elements that should recolor |
+| `secondary` | yes | `--secondary` | Same — e.g. `--paper: var(--secondary)` then `background: var(--paper)` |
+| `background` | yes | `--background` | Same — e.g. `background: var(--background)` on the theme root or a `.wall` layer |
+| `motion` | yes (message) | `data-motion` (`slow` / `drift` / `fizz`) | Target `[data-motion="slow"]`, `[data-motion="drift"]`, `[data-motion="fizz"]` on `#dyn-message-theme` for enter timing/name. Motion affects **enter** animation; mid-card replay is best-effort (see note below) |
+| `photoStyle` | yes | `data-photo-style` (`bw` / `color` / `sepia`) | Scope img `filter` rules to `[data-photo-style="bw"]` etc. on the theme root |
+| `scale` | yes (mosaic) | `--scale` | Multiply card size with `calc(… * var(--scale, 1))`. Large scale changes may remount (card count layouts) |
+| `frame` | yes (mosaic) | `--frame` | Card mat/border: `background: var(--frame)` or `border-color: var(--frame)` |
+
+**JSON-only message** — declare `settings`, wire CSS to the variables above. The compiler’s `applySettings` already calls `BGMessageThemes.applyVars`. Clone `message-stamp.json` (Ink / Paper / Background / Motion) or `message-grunge-poster.json` (Ink / Paper / Photos).
+
+**JSON-only mosaic** — declare `settings`, use `--primary`, `--secondary`, `--background`, `--scale`, `--frame`, and `[data-photo-style]` in CSS. `applyMosaicVars` runs on every popup change. Clone `mosaic-framed.json` or `mosaic-slant-rows.json`.
+
+**Message engine** — in `applySettings`, call helpers at runtime:
+
+```js
+applySettings(themeRoot, _state, settings) {
+  const helpers = globalThis.BGMessageThemes || {};
+  if (helpers.applyVars) helpers.applyVars(themeRoot, settings);
+  // Also update any canvas/WebGL colors you draw from settings here
+}
+```
+
+**Mosaic engine** — implement `applySettings(root, state, settings)` and mirror whatever you did in `mount` for colors, `--frame`, and photo filters. Slant Rows is the reference (`mosaic-slant-rows-engine.js`).
+
+**Checklist when creating a theme**
+
+1. Add each control under `"settings"` with `"label"` and `"default"` (`#rrggbb` for colors; `"type": "select"` + `"options"` for Photos).
+2. Scope all CSS to `#dyn-message-theme[data-theme="your-id"]` or `#dyn-mosaic-theme[data-theme="your-id"]`.
+3. Never hardcode popup-driven colors on layers that should update live — use `var(--primary)` / `var(--secondary)` / `var(--background)` / `var(--frame)`.
+4. For textured surfaces, put the **tint** on `background-color: var(--paper)` (or `--background`) **before** noise/gradient overlays so live color changes stay visible.
+5. For Photos, always key off `data-photo-style` on the theme root (the runtime sets it on every change).
+6. Import the pack, reload the extension, hard-refresh the output tab, then change each popup control **while the theme is on air** to verify.
+
+**Common pitfalls**
+
+- **Hardcoded hex in CSS** — popup changes nothing visible.
+- **Only the theme root uses vars** — child layers with fixed `#d9c7a4` never update. Point `background-color` at a variable on each painted layer.
+- **Photos** — if `[data-photo-style]` CSS is missing, the select does nothing visible.
+- **Motion while a card is showing** — `data-motion` updates immediately, but CSS enter animations usually run once per `show`. The next capture replays with the new mode. Prefer testing motion by changing the popup, then triggering a new message.
+- **Engine themes without `applySettings`** — colors freeze after mount until you call `applyVars`.
+- **New setting keys** — only the keys in the table above are supported in pack JSON today. A brand-new key (e.g. `"glow": …`) needs extension work (next section).
+
+Examples to copy: `message-stamp.json`, `message-grunge-poster.json`, `mosaic-framed.json`, `mosaic-slant-rows.json` + engine, `message-aurora.json` + engine.
+
+#### Live settings on output (extension authors)
+
+Popup color and select changes must update the **live** theme without remounting. The pipeline is:
+
+1. **Pack JSON** — declare the key under `settings` with a `label` and `default` (and `type` / `options` for selects).
+2. **Meta registration** — `applyCustomThemeMeta` in `extension/rules.js` picks up hex colors and selects automatically when the pack loads.
+3. **Normalize + resolve** — `normalizeOneThemeSettings` and `mergeResolvedThemeSettings` in `extension/rules.js` must preserve the key from stored popup values. New keys need **explicit** handling (same tier as `primary` / `secondary`), not only the generic `defaults` loop — otherwise live output can keep working colors while dropping newer keys like `frame` or `photoStyle`.
+4. **Live apply** — when storage changes, content scripts call `applySettings` / `applyVars` without remounting:
+   - **Message JSON** — `BGMessageThemes.applyVars` sets CSS vars, `data-motion`, and `data-photo-style`. Use `var(--…)` in pack CSS so imported themes update live without extension changes. Photo filters: `[data-photo-style]` CSS is usually enough; bundled Grunge also sets hero `img.style.filter` inline when CSS alone is too subtle.
+   - **Mosaic JSON** — `BGCustomThemes.applyMosaicVars` sets `--primary`, `--secondary`, `--background`, `--scale`, `--frame`, `data-photo-style`.
+   - **Mosaic engine** — `applySettings` must mirror mount-time color / photo-style logic (Slant Rows sets card background and `.sr-well img` filter in `applySettings`, not only on first mount).
+5. **Harness** — add or extend `themes/*-settings-check.html` (or `themes/settings-check.html`) to change each new key while the theme is live and assert DOM / computed style.
+6. **Version** — bump `extension/manifest.json` and gallery `#ext-version` fallbacks when behavior changes.
+
+Reference implementations: **Slant Rows** (`frame`, `photoStyle`, mosaic engine) and **Grunge Poster** (`photoStyle`, message JSON).
+
 #### Message settings
 
-The runtime writes `--primary`, `--secondary`, `--background`, `--reveal-ms`, and `data-motion` on `#dyn-message-theme`. `BGMessageThemes.applyVars(themeRoot, settings)` does this. JSON-only packs get it from `applySettings` after mount and whenever the popup colors change. Engines should call `applyVars` from `applySettings` (and may also read `settings` in `show`).
+The runtime writes `--primary`, `--secondary`, `--background`, `--reveal-ms`, `data-motion`, and `data-photo-style` on `#dyn-message-theme`. `BGMessageThemes.applyVars(themeRoot, settings)` does this. JSON-only packs get it from `applySettings` after mount and whenever the popup colors change. Engines should call `applyVars` from `applySettings` (and may also read `settings` in `show`).
+
+**Photos (`photoStyle`)** — use a select with `bw`, `color`, and/or `sepia`. Scope CSS to the theme root:
+
+```css
+#dyn-message-theme[data-theme="my-theme"][data-photo-style="bw"] .photo-mat img {
+  filter: grayscale(1) contrast(1.08);
+}
+#dyn-message-theme[data-theme="my-theme"][data-photo-style="color"] .photo-mat img {
+  filter: contrast(1.05);
+}
+```
+
+On live output, `applyPhotoStyle` (called from `applyVars`) sets `data-photo-style` on every theme. Pack CSS keyed off that attribute is enough for most imported themes. Bundled Grunge also sets hero `img.style.filter` inline when CSS alone is too subtle (`message-grunge-poster` in `extension/message-themes.js`) — only needed for extension-shipped fixes, not for new imports if your CSS filters are scoped correctly.
 
 Color change does not remount — only `applySettings` runs. Motion modes that rebuild a canvas (Liquid Glass) may remount from the preview dock; on output, `applySettings` is enough if the engine honors `data-motion` live.
 
@@ -223,7 +306,7 @@ JSON-only example — Ink / Paper / Background / Motion, clone `message-stamp.js
 }
 ```
 
-Engine `settings` object: `{ primary, secondary, background?, motion?, revealMs }`. See `message-aurora.json` + engine, and `tmpl-liquid-glass.json` for all four keys.
+Engine `settings` object: `{ primary, secondary, background?, motion?, revealMs, photoStyle? }`. See `message-aurora.json` + engine, `message-stamp.json`, and `tmpl-liquid-glass.json`.
 
 #### Mosaic settings
 
@@ -247,7 +330,40 @@ JSON-only example — clone `mosaic-framed.json`:
 }
 ```
 
-Engine signatures: `mount(root, pool, api, settings)` and optional `applySettings(root, state, settings)`. Scale changes remount (Polaroid grid, flip wall cols/rows, live mosaic camera, cube count). Color can update live in `applySettings` (Polaroid frame, flip-wall edge, cube color, pedestal metal). Wrapping `"engine": "polaroid"` shows Polaroid’s photo-size slider plus any `primary` you declare as Frame. Wrapping `"engine": "pedestals"` shows Pedestal color.
+Engine signatures: `mount(root, pool, api, settings)` and optional `applySettings(root, state, settings)`. Scale changes remount (Polaroid grid, flip wall cols/rows, live mosaic camera, cube count). Color, frame, and photo style can update live in `applySettings` (Polaroid frame, flip-wall edge, cube color, Slant Rows card border and photo filter). Wrapping `"engine": "polaroid"` shows Polaroid’s photo-size slider plus any `primary` you declare as Frame. Wrapping `"engine": "pedestals"` shows Pedestal color.
+
+**Frame (`frame`)** — hex color for card borders / mats (not accent shapes). Example (Slant Rows):
+
+```json
+"settings": {
+  "scale": { "label": "Photo size", "default": 1 },
+  "primary": { "label": "Accent", "default": "#e31b23" },
+  "secondary": { "label": "Accent 2", "default": "#f36c1b" },
+  "background": { "label": "Background", "default": "#141414" },
+  "frame": { "label": "Frame", "default": "#ffffff" },
+  "photoStyle": {
+    "label": "Photos",
+    "type": "select",
+    "default": "bw",
+    "options": [
+      { "value": "bw", "label": "Black & white" },
+      { "value": "color", "label": "Color" },
+      { "value": "sepia", "label": "Sepia" }
+    ]
+  }
+}
+```
+
+```css
+#dyn-mosaic-theme[data-theme="mosaic-slant-rows"] .dyn-card {
+  background: var(--frame, #fff);
+}
+#dyn-mosaic-theme[data-theme="mosaic-slant-rows"][data-photo-style="bw"] .sr-well img {
+  filter: grayscale(1) contrast(1.08);
+}
+```
+
+Engines that draw cards must update `--frame`, card `background`, and photo `filter` in `applySettings`, not only in `mount`.
 
 ### fit
 
@@ -418,7 +534,7 @@ unmount(themeRoot, state)
 
 - `themeRoot` is `#dyn-message-theme`
 - `capture` is `{ src, message, name }` — `src` is a photo URL or empty
-- `settings` is `{ primary, secondary, background?, motion?, revealMs }`
+- `settings` is `{ primary, secondary, background?, motion?, revealMs, photoStyle? }`
 - `state` is whatever `mount` returned. Keep timers and rAF ids on it
 - `hide` must resolve after the leave animation
 - `unmount` must cancel rAF, timers, and WebGL
@@ -434,7 +550,7 @@ unmount(root, state)
 ```
 
 - `root` is `#dyn-mosaic-theme`
-- `settings` is `{ scale?, primary?, secondary?, background? }`. `scale` is `0.7`–`1.5`, default `1`
+- `settings` is `{ scale?, primary?, secondary?, background?, frame?, photoStyle? }`. `scale` is `0.7`–`1.5`, default `1`
 - `applySettings` is optional. Use it for live color (and CSS `--scale` on JSON-only layouts). Scale that changes card count should remount
 - `pool` is the current live mosaic list for this tick. Photos that left the mosaic are omitted. An empty pool means show no photos. Do not snapshot `pool` from `mount` and reuse it forever — read the `pool` argument on each `tick`, or call `api.nextUrl()`
 - Treat feed add/remove as a **pool** update. Do not mass-swap every on-screen card when membership changes; use your theme’s enter/exit motion (or `api.nextUrl()`) so the wall stays stable between intentional transitions
@@ -454,7 +570,7 @@ On `BGMessageThemes`:
 | Helper | Role |
 | --- | --- |
 | `ensureFitStage(themeRoot)` | Creates/returns `.dyn-fit-stage` (1920 on the long edge, matching the window or the forced ratio) |
-| `applyVars(themeRoot, settings)` | Sets `--primary`, `--secondary`, `--background`, `--reveal-ms`, `data-motion` |
+| `applyVars(themeRoot, settings)` | Sets `--primary`, `--secondary`, `--background`, `--reveal-ms`, `data-motion`, `data-photo-style` |
 | `commonShowPrep(themeRoot, state, extraClasses?)` | Clears `on`/`off`/`idle` and idle timers |
 | `fitText(boxEl, textEl, maxPx, minPx)` | Shrinks font until text fits |
 | `finishShow(themeRoot, images?)` | Waits for image decode, then adds `on` |
@@ -506,7 +622,7 @@ Must not:
 - Use ESM in the engine
 - Fetch remote engines
 - Reuse reserved ids for a new design
-- Invent settings keys other than `primary` / `secondary` / `background` / `motion` / `scale`
+- Invent settings keys other than `primary` / `secondary` / `background` / `motion` / `scale` / `frame` / `photoStyle` (plus documented `select` / `toggle` extras)
 - Assume only landscape — handle `dyn-portrait`
 
 ## Copy-paste prompt
@@ -524,7 +640,7 @@ Then describe the look, kind (message or mosaic), and whether it needs canvas/We
 - Reserved ids (`polaroid`, `decks`, `orbit`, …)
 - Unscoped CSS (rules that leak onto the host page)
 - px-only layout that does not scale with `.dyn-fit-stage`
-- Settings keys other than `primary` / `secondary` / `background` / `motion` / `scale`
+- Settings keys other than `primary` / `secondary` / `background` / `motion` / `scale` / `frame` / `photoStyle`
 - Colors that are not `#rrggbb`
 - `<script>` or `onclick=` in JSON
 - ESM `import`/`export` in the engine

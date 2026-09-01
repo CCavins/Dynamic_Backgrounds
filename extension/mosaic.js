@@ -389,33 +389,137 @@
     return theme + ":" + JSON.stringify(themeSettings || {});
   }
 
+  function mosaicSettingsBag(theme, slice) {
+    const bag = {};
+    if (!slice || typeof slice !== "object") return bag;
+    const storeId =
+      typeof rules.mosaicSettingsBaseId === "function"
+        ? rules.mosaicSettingsBaseId(theme) || theme
+        : theme;
+    bag[storeId] = slice;
+    if (theme && theme !== storeId) bag[theme] = slice;
+    return bag;
+  }
+
+  function overlayMatchesTheme(overlay, theme) {
+    if (!overlay || !theme) return false;
+    if (overlay.dataset.theme === theme) return true;
+    const storeId =
+      typeof rules.mosaicSettingsBaseId === "function"
+        ? rules.mosaicSettingsBaseId(theme) || theme
+        : theme;
+    if (storeId && overlay.dataset.theme === storeId) return true;
+    if (active && active.id === theme) return true;
+    return false;
+  }
+
   function mosaicScaleOf(themeSettings) {
     const n = Number(themeSettings && themeSettings.scale);
     return isFinite(n) ? n : 1;
   }
 
   function resolveLiveMosaicSettings(settings, theme) {
-    if (typeof rules.resolveMosaicThemeSettings === "function") {
-      return rules.resolveMosaicThemeSettings(settings, theme) || { scale: 1 };
+    if (typeof rules.resolveMosaicThemeSettings !== "function") {
+      return { scale: 1 };
     }
-    return { scale: 1 };
+    if (settings && settings.mosaicThemeSettings && theme && !settings.mosaicTheme) {
+      const storeId =
+        typeof rules.mosaicSettingsBaseId === "function"
+          ? rules.mosaicSettingsBaseId(theme) || theme
+          : theme;
+      const slice =
+        settings.mosaicThemeSettings[storeId] ||
+        settings.mosaicThemeSettings[theme];
+      return (
+        rules.resolveMosaicThemeSettings(
+          { mosaicTheme: theme, mosaicThemeSettings: mosaicSettingsBag(theme, slice) },
+          theme
+        ) || { scale: 1 }
+      );
+    }
+    return rules.resolveMosaicThemeSettings(settings, theme) || { scale: 1 };
   }
 
-  function applyMosaicSettingsLive(theme, themeSettings) {
+  function pushMosaicVars(overlay, theme, themeSettings) {
+    if (!overlay || !themeSettings) return;
+    const customApi = globalThis.BGCustomThemes;
+    if (theme === "mosaic-slant-rows" && customApi && typeof customApi.refreshSlantRows === "function") {
+      customApi.refreshSlantRows(overlay, themeSettings);
+    } else if (customApi && typeof customApi.applyMosaicVars === "function") {
+      customApi.applyMosaicVars(overlay, themeSettings);
+    }
+    const def = (active && active.def) || themeApi.themes[theme];
+    if (def && typeof def.applySettings === "function") {
+      def.applySettings(overlay, active && active.state, themeSettings);
+    }
+  }
+
+  function applyMosaicSettingsLive(theme, themeSettings, force) {
     const overlay = document.getElementById(OVERLAY_ID);
-    if (!overlay || !active || mountedTheme !== theme) return false;
-    const nextKey = mosaicSettingsKey(theme, themeSettings);
-    if (nextKey === lastSettingsKey) return true;
-    if (Math.abs(mosaicScaleOf(lastThemeSettings) - mosaicScaleOf(themeSettings)) > 0.001) {
+    if (!overlay || !overlayMatchesTheme(overlay, theme)) return false;
+    const resolved = resolveLiveMosaicSettings(
+      { mosaicTheme: theme, mosaicThemeSettings: mosaicSettingsBag(theme, themeSettings || lastThemeSettings || {}) },
+      theme
+    );
+    const nextKey = mosaicSettingsKey(theme, resolved);
+    if (!force && nextKey === lastSettingsKey) return true;
+    if (
+      !force &&
+      active &&
+      mountedTheme === theme &&
+      Math.abs(mosaicScaleOf(lastThemeSettings) - mosaicScaleOf(resolved)) > 0.001
+    ) {
+      lastThemeSettings = resolved;
       return false;
     }
-    if (typeof active.def.applySettings === "function") {
-      active.def.applySettings(overlay, active.state, themeSettings);
-    }
+    pushMosaicVars(overlay, theme, resolved);
     lastSettingsKey = nextKey;
-    lastThemeSettings = themeSettings;
-    active.settings = themeSettings;
+    lastThemeSettings = resolved;
+    if (active) {
+      active.settings = resolved;
+      if (active.state) active.state.settings = resolved;
+    }
     return true;
+  }
+
+  function applyMosaicSettingsFromStorage(settings, force) {
+    const resolved =
+      settings ||
+      (rules.peekSettings ? rules.peekSettings() : null);
+    if (!resolved || resolved.enabled === false) return;
+    const theme = rules.normalizeMosaicTheme(resolved.mosaicTheme);
+    if (theme === "off") return;
+    const themeSettings = resolveLiveMosaicSettings(resolved, theme);
+    const prevScale = mosaicScaleOf(lastThemeSettings);
+    lastThemeSettings = themeSettings;
+    const overlay = document.getElementById(OVERLAY_ID);
+    const applied = applyMosaicSettingsLive(theme, themeSettings, force);
+    if (!applied) {
+      if (overlay && overlayMatchesTheme(overlay, theme)) {
+        pushMosaicVars(overlay, theme, themeSettings);
+        if (force) lastSettingsKey = mosaicSettingsKey(theme, themeSettings);
+      } else if (
+        active &&
+        mountedTheme === theme &&
+        Math.abs(prevScale - mosaicScaleOf(themeSettings)) > 0.001
+      ) {
+        requestRebuild();
+        scheduleApply(0);
+      } else if (overlay) {
+        scheduleApply(0);
+      }
+    }
+  }
+
+  function isMosaicSettingsOnlyChange(changes) {
+    if (!changes || !changes.mosaicThemeSettings) return false;
+    return !(
+      changes.mosaicTheme ||
+      changes.enabled ||
+      changes.stageAspect ||
+      changes.customThemes ||
+      changes.customEngines
+    );
   }
 
   const FEED_CSS =
@@ -1116,6 +1220,7 @@
       const kind = handoff.liveKind();
       const mode = handoff.currentMode();
       if (kind === "message" || kind === "native" || (kind === "" && mode === "message")) return;
+      if (rules.peekSettings) applyMosaicSettingsFromStorage(rules.peekSettings());
       requestRebuild();
       scheduleApply();
     });
@@ -1136,7 +1241,7 @@
       !overlayIsStale(overlay) &&
       layoutReady(overlay)
     ) {
-      if (applyMosaicSettingsLive(theme, settings)) return true;
+      if (applyMosaicSettingsLive(theme, settings, true)) return true;
     }
     const ok = await rebuildNow(theme);
     const liveEl = document.getElementById(OVERLAY_ID);
@@ -1284,12 +1389,12 @@
           pendingRebuild ||
           overlayIsStale(overlay) ||
           mountedTheme !== theme ||
-          (settingsChanged && !applyMosaicSettingsLive(theme, themeSettings))
+          (settingsChanged && !applyMosaicSettingsLive(theme, themeSettings, true))
         ) {
           await ensureMosaicMounted(theme, themeSettings);
         } else {
           unparkOverlay(overlay);
-          if (settingsChanged) applyMosaicSettingsLive(theme, themeSettings);
+          if (settingsChanged) applyMosaicSettingsLive(theme, themeSettings, true);
         }
       }
       const hasMsg =
@@ -1408,7 +1513,7 @@
             watchSettle();
             return;
           }
-          applyMosaicSettingsLive(theme, themeSettings);
+          applyMosaicSettingsLive(theme, themeSettings, true);
           watchFeedImgs(live);
           const liveTheme = live.dataset ? live.dataset.theme : "";
           if (added.length || removed.length) runThemeTick(added);
@@ -1454,8 +1559,37 @@
   });
 
   try {
+    chrome.runtime.onMessage.addListener((message) => {
+      if (!message || message.type !== "dyn-bg-apply-settings" || !message.settings) return;
+      if (rules.applyStorageDelta) {
+        rules.applyStorageDelta({
+          messageThemeSettings: { newValue: message.settings.messageThemeSettings },
+          mosaicThemeSettings: { newValue: message.settings.mosaicThemeSettings },
+          messageTheme: { newValue: message.settings.messageTheme },
+          mosaicTheme: { newValue: message.settings.mosaicTheme },
+          enabled: { newValue: message.settings.enabled },
+        });
+      }
+      lastSettingsKey = "";
+      applyMosaicSettingsFromStorage(message.settings, true);
+    });
+  } catch {
+    /* dead runtime */
+  }
+
+  try {
+    document.documentElement.addEventListener("dyn-bg-theme-settings", (event) => {
+      lastSettingsKey = "";
+      applyMosaicSettingsFromStorage(event && event.detail, true);
+    });
+  } catch {
+    /* no document */
+  }
+
+  try {
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== "local") return;
+      if (rules.applyStorageDelta) rules.applyStorageDelta(changes);
       // Changing the message theme (or its colors) must not interrupt a live mosaic.
       const touchesMosaic = Boolean(
         changes.mosaicTheme ||
@@ -1472,11 +1606,15 @@
           changes.customEngines
       );
       if (!touchesMosaic) return;
+      const settingsOnly = isMosaicSettingsOnlyChange(changes);
+      if (changes.mosaicThemeSettings) {
+        lastSettingsKey = "";
+        applyMosaicSettingsFromStorage(rules.peekSettings ? rules.peekSettings() : null, true);
+      }
       if (
         changes.mosaicTheme ||
         changes.enabled ||
         changes.stageAspect ||
-        changes.mosaicThemeSettings ||
         changes.customThemes ||
         changes.customEngines
       ) {
@@ -1496,6 +1634,8 @@
         }
         if (typeof handoff.applyCovers === "function") handoff.applyCovers();
       }
+      // Sliders/colors only — live apply above is enough; full apply() can park the overlay.
+      if (settingsOnly) return;
       scheduleApply(0);
     });
   } catch {

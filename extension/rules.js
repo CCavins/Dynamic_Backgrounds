@@ -65,6 +65,14 @@
   };
 
   const MOTION_MODES = ["slow", "drift", "fizz"];
+  const PHOTO_STYLE_MODES = ["bw", "color", "sepia"];
+
+  function normalizePhotoStyle(value, fallback) {
+    if (PHOTO_STYLE_MODES.includes(value)) return value;
+    if (value === true || value === "true" || value === 1 || value === "1") return "color";
+    if (value === false || value === "false" || value === 0 || value === "0") return "bw";
+    return fallback && PHOTO_STYLE_MODES.includes(fallback) ? fallback : "bw";
+  }
   const BG_MODES = ["auto", "vixi", "link", "media"];
   const BG_FITS = ["cover", "contain", "fill", "center"];
   const MOSAIC_SCALE_MIN = 0.7;
@@ -257,6 +265,16 @@
 
   let customMessageMeta = {};
   let customMosaicMeta = {};
+  const bundledMessageThemeIds = new Set();
+  const bundledMosaicThemeIds = new Set();
+
+  function registerBundledThemeIds(kind, ids) {
+    const set = kind === "message" ? bundledMessageThemeIds : bundledMosaicThemeIds;
+    (Array.isArray(ids) ? ids : []).forEach((id) => {
+      const next = String(id || "").trim();
+      if (next) set.add(next);
+    });
+  }
   let lastGoodCustomThemes = [];
   let lastGoodCustomEngines = {};
   let lastRawSettings = null;
@@ -273,11 +291,19 @@
   }
 
   function isKnownMessageTheme(value) {
-    return value === "off" || Boolean(messageThemeMetaAll()[value]);
+    return (
+      value === "off" ||
+      Boolean(messageThemeMetaAll()[value]) ||
+      bundledMessageThemeIds.has(value)
+    );
   }
 
   function isKnownMosaicTheme(value) {
-    return value === "off" || Boolean(mosaicThemeMetaAll()[value]);
+    return (
+      value === "off" ||
+      Boolean(mosaicThemeMetaAll()[value]) ||
+      bundledMosaicThemeIds.has(value)
+    );
   }
 
   function builtinMosaicEngineMeta(engine) {
@@ -301,7 +327,7 @@
       d.secondary ||
       d.background ||
       d.frame ||
-      typeof d.colorPhotos === "boolean"
+      d.photoStyle
     );
   }
 
@@ -373,7 +399,15 @@
         const spec = settings[key];
         if (!spec || typeof spec !== "object") return;
         meta.labels[key] = spec.label || meta.labels[key] || key;
-        if (spec.type === "toggle") meta.defaults[key] = Boolean(spec.default);
+        if (spec.type === "select" && Array.isArray(spec.options) && spec.options.length) {
+          meta.selects = meta.selects || {};
+          meta.selects[key] = spec.options.map((option) => ({
+            value: String(option.value),
+            label: option.label || String(option.value),
+          }));
+          meta.defaults[key] =
+            spec.default != null ? String(spec.default) : String(spec.options[0].value);
+        } else if (spec.type === "toggle") meta.defaults[key] = Boolean(spec.default);
         else if (spec.default != null && isHexColor(spec.default)) meta.defaults[key] = spec.default;
       });
       if (pack.kind === "message") {
@@ -391,6 +425,7 @@
           bundled: meta.bundled,
           engine: pack.engine || "",
           labels: meta.labels,
+          selects: meta.selects || {},
           defaults: themeHasMosaicControls(meta) ? meta.defaults : undefined,
         };
       }
@@ -399,8 +434,22 @@
     if (lastRawSettings) {
       lastGoodSettings = normalizeSettings(lastRawSettings);
       settingsFresh = true;
+      refreshLiveThemeSettings();
     } else {
       settingsFresh = false;
+    }
+  }
+
+  function refreshLiveThemeSettings() {
+    if (typeof document === "undefined") return;
+    try {
+      document.documentElement.dispatchEvent(
+        new CustomEvent("dyn-bg-theme-settings", {
+          detail: peekSettings(),
+        })
+      );
+    } catch {
+      /* ignore */
     }
   }
 
@@ -484,8 +533,35 @@
         ? src.background.toLowerCase()
         : defaults.background;
     }
+    if (defaults.frame || isHexColor(src.frame)) {
+      next.frame = isHexColor(src.frame) ? src.frame.toLowerCase() : defaults.frame || "#ffffff";
+    }
     if (defaults.motion) {
       next.motion = MOTION_MODES.includes(src.motion) ? src.motion : defaults.motion;
+    }
+    if (defaults.photoStyle || src.photoStyle != null || typeof src.colorPhotos === "boolean") {
+      let photoStyle = src.photoStyle;
+      if (photoStyle == null && typeof src.colorPhotos === "boolean") {
+        photoStyle = src.colorPhotos ? "color" : "bw";
+      }
+      next.photoStyle = normalizePhotoStyle(
+        photoStyle,
+        defaults.photoStyle || next.photoStyle || "bw"
+      );
+    }
+    if (meta.selects) {
+      Object.keys(meta.selects).forEach((key) => {
+        if (next[key] != null) return;
+        const options = meta.selects[key].map((option) => String(option.value));
+        const fallback = defaults[key];
+        let raw = src[key];
+        if (key === "photoStyle" && raw == null && typeof src.colorPhotos === "boolean") {
+          raw = src.colorPhotos ? "color" : "bw";
+        }
+        if (options.includes(String(raw))) next[key] = String(raw);
+        else if (options.includes(String(fallback))) next[key] = String(fallback);
+        else if (options.length) next[key] = options[0];
+      });
     }
     if (defaults.scale != null) {
       next.scale = clampMosaicScale(src.scale, defaults.scale);
@@ -495,9 +571,16 @@
     }
     Object.keys(defaults).forEach((key) => {
       if (
-        ["primary", "secondary", "background", "motion", "scale", "wallpaper", "revealMs"].includes(
-          key
-        )
+        [
+          "primary",
+          "secondary",
+          "background",
+          "motion",
+          "photoStyle",
+          "scale",
+          "wallpaper",
+          "revealMs",
+        ].includes(key)
       ) {
         return;
       }
@@ -518,8 +601,14 @@
   function normalizeMessageThemeSettings(value) {
     const src = value && typeof value === "object" ? value : {};
     const next = {};
+    const seen = new Set();
     Object.keys(messageThemeMetaAll()).forEach((id) => {
+      seen.add(id);
       next[id] = normalizeOneThemeSettings(id, src[id]);
+    });
+    Object.keys(src).forEach((id) => {
+      if (seen.has(id)) return;
+      next[id] = src[id];
     });
     return next;
   }
@@ -527,15 +616,47 @@
   function normalizeMosaicThemeSettings(value) {
     const src = value && typeof value === "object" ? value : {};
     const next = {};
+    const seen = new Set();
     Object.keys(mosaicThemeMetaAll()).forEach((id) => {
       const storeId = mosaicSettingsBaseId(id) || id;
       if (!themeHasMosaicControls(mosaicThemeMetaAll()[storeId] || mosaicThemeMetaAll()[id])) {
         return;
       }
       if (next[storeId]) return;
+      seen.add(storeId);
       next[storeId] = normalizeOneThemeSettings(storeId, src[storeId] || src[id]);
     });
+    Object.keys(src).forEach((storeId) => {
+      if (seen.has(storeId)) return;
+      next[storeId] = src[storeId];
+    });
     return next;
+  }
+
+  function mergeResolvedThemeSettings(themeId, stored) {
+    const normalized = normalizeOneThemeSettings(themeId, stored);
+    const meta = themeMetaForSettings(themeId);
+    const resolved =
+      meta && meta.defaults
+        ? normalized
+        : stored && typeof stored === "object"
+          ? Object.assign({}, stored, normalized)
+          : normalized;
+    if (stored && typeof stored === "object") {
+      if (isHexColor(stored.primary)) resolved.primary = stored.primary.toLowerCase();
+      if (isHexColor(stored.secondary)) resolved.secondary = stored.secondary.toLowerCase();
+      if (isHexColor(stored.background)) resolved.background = stored.background.toLowerCase();
+      if (isHexColor(stored.frame)) resolved.frame = stored.frame.toLowerCase();
+      if (stored.motion && MOTION_MODES.includes(stored.motion)) resolved.motion = stored.motion;
+      if (stored.photoStyle != null || typeof stored.colorPhotos === "boolean") {
+        let photoStyle = stored.photoStyle;
+        if (photoStyle == null && typeof stored.colorPhotos === "boolean") {
+          photoStyle = stored.colorPhotos ? "color" : "bw";
+        }
+        resolved.photoStyle = normalizePhotoStyle(photoStyle, resolved.photoStyle || "bw");
+      }
+    }
+    return resolved;
   }
 
   function resolveMessageThemeSettings(settings, themeId) {
@@ -543,9 +664,13 @@
     if (id === "off") return null;
     const meta = messageThemeMetaAll()[id];
     const stored = settings && settings.messageThemeSettings && settings.messageThemeSettings[id];
+    const resolved = mergeResolvedThemeSettings(id, stored);
     return {
-      ...normalizeOneThemeSettings(id, stored),
-      revealMs: meta && meta.defaults ? meta.defaults.revealMs : 1000,
+      ...resolved,
+      revealMs:
+        (meta && meta.defaults && meta.defaults.revealMs) ||
+        Number(resolved.revealMs) ||
+        1000,
     };
   }
 
@@ -557,9 +682,9 @@
       settings &&
       settings.mosaicThemeSettings &&
       (settings.mosaicThemeSettings[id] || settings.mosaicThemeSettings[storeId]);
-    const normalized = normalizeOneThemeSettings(storeId, stored);
-    if (normalized.scale == null) normalized.scale = 1;
-    return normalized;
+    const resolved = mergeResolvedThemeSettings(storeId, stored);
+    if (resolved.scale == null) resolved.scale = 1;
+    return resolved;
   }
 
   function formatAspectPart(n) {
@@ -2113,21 +2238,19 @@
 
   function applyStorageDelta(changes) {
     settingsEpoch += 1;
-    if (!lastRawSettings) {
-      settingsFresh = false;
-      return;
-    }
-    const base = Object.assign({}, lastRawSettings);
+    const base = Object.assign({}, lastRawSettings || DEFAULTS);
     Object.keys(changes || {}).forEach((key) => {
       if (changes[key] && Object.prototype.hasOwnProperty.call(changes[key], "newValue")) {
         base[key] = changes[key].newValue;
       }
     });
     lastRawSettings = base;
-    const packs = Array.isArray(base.customThemes) ? base.customThemes : [];
-    applyCustomThemeMeta(packs);
     lastGoodSettings = normalizeSettings(base);
     settingsFresh = true;
+  }
+
+  function peekSettings() {
+    return lastGoodSettings || normalizeSettings(lastRawSettings || DEFAULTS);
   }
 
   function watchSettings() {
@@ -2164,8 +2287,6 @@
             return;
           }
           lastRawSettings = stored;
-          const packs = Array.isArray(stored.customThemes) ? stored.customThemes : [];
-          applyCustomThemeMeta(packs);
           lastGoodSettings = normalizeSettings(stored);
           settingsFresh = true;
           resolve(lastGoodSettings);
@@ -2200,7 +2321,7 @@
       try {
         chrome.storage.local.get({ customThemes: [] }, (stored) => {
           const packs = Array.isArray(stored.customThemes) ? stored.customThemes : [];
-          applyCustomThemeMeta(packs);
+          lastGoodCustomThemes = packs.slice();
           resolve(packs);
         });
       } catch {
@@ -2277,7 +2398,7 @@
 
   function saveCustomThemes(packs) {
     const next = Array.isArray(packs) ? packs : [];
-    applyCustomThemeMeta(next);
+    lastGoodCustomThemes = next.slice();
     return new Promise((resolve) => {
       if (!extensionAlive()) {
         resolve();
@@ -2336,6 +2457,8 @@
     MESSAGE_THEMES,
     MESSAGE_THEME_META,
     MOTION_MODES,
+    PHOTO_STYLE_MODES,
+    normalizePhotoStyle,
     MOSAIC_SCALE_MIN,
     MOSAIC_SCALE_MAX,
     STAGE_ASPECTS,
@@ -2372,6 +2495,9 @@
     messageThemeMetaAll,
     mosaicThemeMetaAll,
     applyCustomThemeMeta,
+    registerBundledThemeIds,
+    refreshLiveThemeSettings,
+    applyStorageDelta,
     loadCustomThemes,
     saveCustomThemes,
     loadCustomEngines,
@@ -2423,6 +2549,7 @@
     extensionAlive,
     loadSettings,
     saveSettings,
+    peekSettings,
   };
   watchSettings();
 })(typeof globalThis !== "undefined" ? globalThis : window);

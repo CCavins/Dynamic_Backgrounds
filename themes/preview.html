@@ -29,7 +29,7 @@
   #stage {
     position: fixed;
     inset: 0;
-    background: #000;
+    background: #05050c;
   }
 
   #preview-bg {
@@ -80,11 +80,15 @@
   /* Stage fills around cards stay clear so the selected media shows;
      the theme root keeps its Background color. */
   body.has-preview-bg #dyn-message-theme .dyn-fit-stage,
-  body.has-preview-bg #dyn-message-theme .dyn-stage,
   body.has-preview-bg #dyn-message-theme .frame,
   body.has-preview-bg #dyn-message-theme .scene {
     background: transparent !important;
     background-image: none !important;
+  }
+
+  /* Keep grunge wall/grain layers — never strip .dyn-stage or .wall (brick texture). */
+  body.has-preview-bg #dyn-message-theme[data-theme="message-grunge-poster"] .dyn-stage {
+    background: transparent !important;
   }
 
   /* Hide the inactive root only — never force display:block, or theme
@@ -770,11 +774,20 @@
       /* skip bad pack */
     }
   });
-  if (customPacks.length) {
+  if (customApi && typeof customApi.whenReady === "function") {
+    await customApi.whenReady();
+  }
+  // Register after bundled-pack bootstrap so loadAndRegister() cannot wipe pack CSS.
+  function registerPreviewPacks() {
+    if (!customPacks.length || !customApi.registerPacks) return;
     customApi.registerPacks(customPacks.map((item) => item.pack));
     if (rules.applyCustomThemeMeta) {
       rules.applyCustomThemeMeta(customPacks.map((item) => item.pack));
     }
+  }
+  registerPreviewPacks();
+  if (customApi.onChange) {
+    customApi.onChange(() => registerPreviewPacks());
   }
 
   function parseCsv(text) {
@@ -1031,9 +1044,70 @@
   let messageTimer = 0;
   let mosaicTimer = 0;
   let captureIndex = 0;
+  let messageCycle = 0;
   let resizeRo = null;
 
+  function decodeImage(src) {
+    if (!src) return Promise.resolve();
+    return new Promise((resolve) => {
+      const img = new Image();
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      img.onload = () => {
+        if (typeof img.decode === "function") {
+          img.decode().then(done).catch(done);
+        } else {
+          done();
+        }
+      };
+      img.onerror = done;
+      img.src = src;
+      setTimeout(done, 1100);
+    });
+  }
+
+  /** Match extension/message.js present(): visible exit, hidden swap, animated enter. */
+  async function presentMessage(capture, def, state, settings) {
+    if (!capture || !def || !messageState) return;
+    const token = ++messageCycle;
+    const shouldHide = messageRoot.classList.contains("on");
+    messageRoot.classList.remove("dyn-awaiting-show");
+    try {
+      await decodeImage(capture.src);
+      if (token !== messageCycle) return;
+      if (shouldHide && typeof def.hide === "function") {
+        await def.hide(messageRoot, state);
+      }
+      if (token !== messageCycle) return;
+      if (shouldHide) messageRoot.classList.add("dyn-awaiting-show");
+      const img =
+        (messageApi.findMessagePhoto && messageApi.findMessagePhoto(messageRoot)) ||
+        messageRoot.querySelector(".well img, [data-photo]");
+      if (
+        img &&
+        capture.src &&
+        !(messageApi.isBackgroundMediaNode && messageApi.isBackgroundMediaNode(img))
+      ) {
+        img.src = capture.src;
+      }
+      messageRoot.classList.remove("dyn-awaiting-show");
+      const live = messageState.settings || settings;
+      await def.show(messageRoot, capture, state, live);
+      if (token !== messageCycle) return;
+      if (messageApi.ensureFitStage) messageApi.ensureFitStage(messageRoot);
+    } finally {
+      if (token === messageCycle) {
+        messageRoot.classList.remove("dyn-awaiting-show");
+      }
+    }
+  }
+
   function clearTimers() {
+    messageCycle += 1;
     if (messageTimer) {
       clearInterval(messageTimer);
       messageTimer = 0;
@@ -1260,6 +1334,23 @@
     return row;
   }
 
+  function selectRow(key, label, value, options) {
+    const row = document.createElement("label");
+    row.className = "setting-row select";
+    const opts = (options || [])
+      .map(
+        (option) =>
+          `<option value="${option.value}">${option.label || option.value}</option>`
+      )
+      .join("");
+    row.innerHTML =
+      `<span>${label}</span>` +
+      `<select class="theme-select" data-key="${key}">${opts}</select>`;
+    const select = row.querySelector("select");
+    if (select) select.value = value || (options[0] && options[0].value) || "";
+    return row;
+  }
+
   function toggleRow(key, label, value) {
     const row = document.createElement("label");
     row.className = "setting-row toggle";
@@ -1273,9 +1364,14 @@
     const skip = new Set(["primary", "secondary", "background", "scale", "motion", "wallpaper", "revealMs"]);
     const labels = (meta && meta.labels) || {};
     const defaults = (meta && meta.defaults) || {};
+    const selects = (meta && meta.selects) || {};
     Object.keys(defaults).forEach((key) => {
       if (skip.has(key)) return;
-      if (typeof defaults[key] === "boolean") {
+      if (selects[key] && selects[key].length) {
+        container.appendChild(
+          selectRow(key, labels[key] || key, values[key] || defaults[key], selects[key])
+        );
+      } else if (typeof defaults[key] === "boolean") {
         container.appendChild(toggleRow(key, labels[key] || key, Boolean(values[key])));
       } else if (/^#[0-9a-fA-F]{6}$/.test(defaults[key])) {
         container.appendChild(colorRow(key, labels[key] || key, values[key] || defaults[key]));
@@ -1290,6 +1386,9 @@
     });
     settingsFields.querySelectorAll(".theme-toggle").forEach((input) => {
       raw[input.dataset.key] = input.checked;
+    });
+    settingsFields.querySelectorAll(".theme-select").forEach((input) => {
+      raw[input.dataset.key] = input.value;
     });
     const motion = settingsFields.querySelector(".theme-motion");
     if (motion) raw.motion = motion.value;
@@ -1308,9 +1407,15 @@
     if (active.kind === "message" && messageState) {
       const def = messageApi.themes[active.id];
       if (!def) return;
+      const prev = messageState.settings || {};
       messageState.settings = settings;
+      // Match extension/message.js: live color tweaks use applySettings only.
       if (def.applySettings) def.applySettings(messageRoot, messageState.state, settings);
-      def.show(messageRoot, captureAt(captureIndex), messageState.state, settings);
+      const photoChanged =
+        (prev.photoStyle || "bw") !== (settings.photoStyle || "bw");
+      if (photoChanged && def.show) {
+        void def.show(messageRoot, captureAt(captureIndex), messageState.state, settings);
+      }
       scheduleUrlSync();
       return;
     }
@@ -1344,7 +1449,7 @@
         meta.defaults.secondary ||
         meta.defaults.background ||
         meta.defaults.frame ||
-        typeof meta.defaults.colorPhotos === "boolean");
+        meta.defaults.photoStyle);
     const hasMessage = Boolean(meta && meta.defaults && entry.kind === "message");
     if (entry.kind === "message" && !hasMessage) {
       settingsPanel.hidden = true;
@@ -1422,6 +1527,12 @@
         mountEntry(entry, { keepSettingsForm: true });
       });
     });
+    settingsFields.querySelectorAll(".theme-select").forEach((input) => {
+      input.addEventListener("change", () => {
+        settingsByTheme[entry.id] = readSettingsForm(entry.id);
+        applyLiveSettings();
+      });
+    });
     settingsFields.querySelectorAll(".theme-toggle").forEach((input) => {
       input.addEventListener("change", () => {
         settingsByTheme[entry.id] = readSettingsForm(entry.id);
@@ -1487,6 +1598,9 @@
     updateMeta(entry);
     themeSelect.value = entry.kind + ":" + entry.id;
     document.body.classList.toggle("is-mosaic", entry.kind === "mosaic");
+    document.documentElement.classList.toggle("dyn-theme-on", true);
+    document.documentElement.classList.toggle("dyn-message-on", entry.kind === "message");
+    document.documentElement.classList.toggle("dyn-kind-message", entry.kind === "message");
     applyAspect();
     if (!(opts && opts.keepSettingsForm)) renderSettingsPanel(entry);
 
@@ -1546,23 +1660,14 @@
     const state = def.mount(messageRoot, settings);
     messageState = { id: entry.id, state, settings };
     if (def.applySettings) def.applySettings(messageRoot, state, settings);
-    const show = (cap) => {
-      const live = messageState && messageState.settings ? messageState.settings : settings;
-      def.show(messageRoot, cap, state, live);
-    };
-    show(captureAt(captureIndex));
+    void presentMessage(captureAt(captureIndex), def, state, settings);
     if (typeof ResizeObserver !== "undefined" && messageApi.ensureFitStage) {
       resizeRo = new ResizeObserver(() => messageApi.ensureFitStage(messageRoot));
       resizeRo.observe(messageRoot);
     }
     messageTimer = setInterval(() => {
       captureIndex += 1;
-      const next = captureAt(captureIndex);
-      if (def.hide) {
-        Promise.resolve(def.hide(messageRoot, state)).then(() => show(next)).catch(() => show(next));
-      } else {
-        show(next);
-      }
+      void presentMessage(captureAt(captureIndex), def, state, settings);
     }, MESSAGE_CYCLE_MS);
     scheduleUrlSync();
     void renderPreviewBackground();

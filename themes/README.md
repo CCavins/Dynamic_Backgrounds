@@ -39,12 +39,12 @@ A pack that includes JS runs on matching output pages only after Allow User Scri
 Examples to try:
 
 - `message-stamp.json` — postage-stamp message card (JSON only; Ink, Paper, Background, Motion)
-- `message-grunge-poster.json` — torn-paper grunge poster (JSON only)
+- `message-grunge-poster.json` — torn-paper grunge poster (JSON only; Ink, Paper, Photos)
 - `mosaic-framed.json` — framed photo scatter (JSON only; Photo size + Frame color)
 - `mosaic-ribbon.json` — diagonal photo ribbon (JSON only)
 - `message-aurora.json` + `message-aurora-engine.js` — message card with a canvas aurora (same JS as `extension/engines/message-aurora-engine.js`)
 - `mosaic-orbit-swap.json` + `mosaic-orbit-swap-engine.js` — orbiting mosaic with photo swaps (same JS as `extension/engines/mosaic-orbit-swap-engine.js`)
-- `mosaic-slant-rows.json` + `mosaic-slant-rows-engine.js` — slanted photo rows (sideload-only example; needs Allow User Scripts)
+- `mosaic-slant-rows.json` + `mosaic-slant-rows-engine.js` — slanted photo rows (Frame + Photos settings; bundled engine)
 - `message-xmas-bauble.json` (+ `message-xmas-bauble-engine`) / `message-xmas-postcard.json` / `message-xmas-mantel.json` — Christmas message options
 - `mosaic-xmas-snowfall.json` (+ `mosaic-xmas-snowfall-engine`) — scatter mosaic with particles.js–style canvas snow
 - `mosaic-xmas-wreath.json` + `mosaic-xmas-wreath-engine.js` — Christmas wreath mosaic
@@ -78,7 +78,41 @@ Self-animated themes (Polaroid, flip wall, cubes, …) often own card replacemen
 
 The `tmpl-*.json` files are complete importable themes: HTML, CSS, fonts, text-fit, and color settings. They use new ids (`tmpl-led-scoreboard`, …) so you can import them beside the originals.
 
-After import, pick the theme in the popup. Message packs can show color and motion controls; mosaic packs can show size and chrome color when they declare `settings.scale` / `settings.primary` (see SPEC.md). Some built-in mosaics (Polaroid wall, Live mosaic, 3D flip wall, Cube field, Depth Field, Pedestals) have the same size/color controls without importing.
+After import, pick the theme in the popup. **Imported and bundled themes share the same live-settings behavior** — declare keys under `settings` in your JSON and wire CSS to `--primary`, `--secondary`, `--background`, `--scale`, `--frame`, `data-motion`, and `data-photo-style` (see **Live settings for imported themes** in [SPEC.md](SPEC.md)). Message packs can show Ink/Paper/Background/Motion and **Photos**; mosaic packs can show photo size, accent colors, **Frame**, and **Photos**. Some built-in mosaics (Polaroid wall, Live mosaic, 3D flip wall, Cube field, Depth Field, Pedestals) have the same controls without importing.
+
+## Live settings when creating a theme
+
+Popup controls only work on output if the pack cooperates with the runtime hooks. **You do not need to modify the extension** for the standard keys (`primary`, `secondary`, `background`, `motion`, `scale`, `frame`, `photoStyle`).
+
+1. **Declare** each control in the pack `"settings"` object (label + default; `type: "select"` for Photos).
+2. **CSS** — use `var(--primary)`, `var(--secondary)`, `var(--background)`, `var(--frame)`, and `calc(… * var(--scale, 1))`. Drive motion off `[data-motion="…"]` and photo treatment off `[data-photo-style="…"]` on the scoped theme root selector.
+3. **JSON-only message** — no engine code; the import compiler wires `applySettings` → `applyVars` automatically.
+4. **JSON-only mosaic** — same via `applyMosaicVars`.
+5. **JS engine** — call `BGMessageThemes.applyVars(themeRoot, settings)` (message) or update colors/filters in `applySettings` (mosaic) the same way you do in `mount`.
+6. **Test live** — import the pack, reload the extension, hard-refresh the Vixi output tab, go on air with the theme, then change each popup control without switching themes.
+
+Clone these examples:
+
+| Goal | Pack |
+| --- | --- |
+| Message colors + motion | `message-stamp.json` |
+| Message + Photos + layered paper/wall | `message-grunge-poster.json` |
+| Mosaic size + frame color | `mosaic-framed.json` |
+| Mosaic frame + Photos (engine) | `mosaic-slant-rows.json` + `mosaic-slant-rows-engine.js` |
+| Message engine + colors | `message-aurora.json` + `message-aurora-engine.js` |
+
+Full rules, pitfalls, and tables: [SPEC.md — Live settings for imported themes](SPEC.md#live-settings-for-imported-themes-pack-authors).
+
+## Adding or changing popup settings (extension authors)
+
+When you add a new theme setting (like `frame` or `photoStyle`), wire it through the full live pipeline — not just the pack JSON and popup UI. See **Live settings on output** in [SPEC.md](SPEC.md). In short:
+
+1. Declare the key in pack `settings` (hex default, or `type: "select"` with options).
+2. Ensure `normalizeOneThemeSettings` and `mergeResolvedThemeSettings` in `extension/rules.js` preserve it (explicit handling for new keys).
+3. Apply it on live output in `applyVars` / `applyMosaicVars` / engine `applySettings` without remounting.
+4. Add a row to `themes/*-settings-check.html` and bump the extension version.
+
+Slant Rows (`frame`, `photoStyle`) and Grunge Poster (Ink, Paper, Photos) are reference implementations. Imported copies of those JSON packs get the same live behavior after import.
 
 JSON cannot run the built-in canvas / WebGL / dealing scripts. For that exact runtime, add `"engine": "led-scoreboard"` (or `neon-nightclub`, `liquid-glass`, `parallax-drift`, `decks`, `polaroid`, `livewall`, …). Brand-aware wrap ids (`decks-brand`, `polaroid-brand`, …) are also reserved. For a **new** design with the same class of power, write a JS engine (see SPEC.md).
 

@@ -19,7 +19,7 @@
                 <a href="extension.html">Extension</a>
                 <a href="create.html" aria-current="page">Create</a>
             </nav>
-            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.23.6</span></a>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.24.21</span></a>
         </header>
 
         <div class="page-intro">
@@ -67,7 +67,7 @@
             <h2>Other examples</h2>
             <ul class="pack-list">
                 <li><a href="themes/message-stamp.json" download><code>message-stamp.json</code></a> — postage-stamp message card (JSON only; Ink, Paper, Background, Motion)</li>
-                <li><a href="themes/message-grunge-poster.json" download><code>message-grunge-poster.json</code></a> — torn-paper grunge poster (JSON only)</li>
+                <li><a href="themes/message-grunge-poster.json" download><code>message-grunge-poster.json</code></a> — torn-paper grunge poster (JSON only; Ink, Paper, Photos)</li>
                 <li><a href="themes/mosaic-framed.json" download><code>mosaic-framed.json</code></a> — framed photo scatter (JSON only; Photo size + Frame color)</li>
                 <li><a href="themes/mosaic-ribbon.json" download><code>mosaic-ribbon.json</code></a> — diagonal photo ribbon (JSON only)</li>
                 <li>
@@ -128,6 +128,9 @@
                 </li>
             </ul>
             <p>To preview without a live output, open <a href="themes/preview.html">themes/preview.html</a>.</p>
+
+            <h2>Live popup settings</h2>
+            <p>Imported packs use the same live-settings pipeline as bundled themes. Declare controls under <code>settings</code> in your JSON, then wire CSS to <code>var(--primary)</code>, <code>var(--secondary)</code>, <code>var(--background)</code>, <code>var(--frame)</code>, <code>var(--scale)</code>, <code>[data-motion]</code>, and <code>[data-photo-style]</code> on the scoped theme root — not hardcoded hex on layers that should recolor. JSON-only packs need no extra code; engines should call <code>BGMessageThemes.applyVars</code> from <code>applySettings</code>. See <a href="themes/SPEC.md#live-settings-for-imported-themes-pack-authors">Live settings for imported themes</a> in the spec and clone <code>message-stamp.json</code> or <code>mosaic-framed.json</code>.</p>
 
             <h2>QR, logo, and layout variants</h2>
             <p>Put <code>data-qr</code> and <code>data-logo</code> on the boxes that should receive Vixi’s marks when those toggles are on. Style them for exact size and position. Omit them to use the default corners, or leave the toggles off to hide chrome entirely.</p>

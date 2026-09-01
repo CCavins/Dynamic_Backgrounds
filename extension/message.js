@@ -183,9 +183,10 @@
   function parkOverlay(reason) {
     const root = document.getElementById(OVERLAY_ID);
     if (root) {
-      root.classList.add("is-parked", "dyn-awaiting-show");
+      root.classList.add("is-parked");
       root.classList.remove("on", "off", "idle", "held");
       if (reason === "native") {
+        root.classList.add("dyn-awaiting-show");
         const img =
           (themeApi && themeApi.findMessagePhoto && themeApi.findMessagePhoto(root)) ||
           root.querySelector(".well img, [data-photo]");
@@ -193,6 +194,8 @@
           img.removeAttribute("src");
           img.removeAttribute("srcset");
         }
+      } else {
+        root.classList.remove("dyn-awaiting-show");
       }
     }
     document.documentElement.classList.remove("dyn-message-on");
@@ -203,8 +206,51 @@
   }
 
   function unparkOverlay(root) {
-    if (root) root.classList.remove("is-parked");
+    if (root) {
+      root.classList.remove("is-parked", "is-leaving", "dyn-awaiting-show");
+    }
+    document.documentElement.classList.add("dyn-message-on");
     if (typeof handoff.applyCovers === "function") handoff.applyCovers();
+  }
+
+  function overlayIsStale(root) {
+    if (!root || !active || !mountedTheme) return true;
+    if (
+      root.classList.contains("is-parked") ||
+      root.classList.contains("dyn-awaiting-show") ||
+      !root.classList.contains("on")
+    ) {
+      return true;
+    }
+    if (!document.documentElement.classList.contains("dyn-message-on")) return true;
+    if (handoff.currentMode() === "mosaic") return true;
+    return false;
+  }
+
+  function applyMessageThemeSettings(root, themeSettings) {
+    if (!root || !themeSettings) return;
+    const def = (active && active.def) || themeApi.themes[root.dataset.theme];
+    if (def && typeof def.applySettings === "function") {
+      def.applySettings(root, active && active.state, themeSettings);
+    } else if (themeApi.applyVars) {
+      themeApi.applyVars(root, themeSettings);
+    }
+  }
+
+  async function restoreMessageVisible(root, capture, themeSettings) {
+    if (!root || !active) return;
+    unparkOverlay(root);
+    applyMessageThemeSettings(root, themeSettings);
+    if (root.classList.contains("on") && !root.classList.contains("off")) {
+      if (themeApi.ensurePosterPasteVisible) themeApi.ensurePosterPasteVisible(root);
+      return;
+    }
+    if (typeof active.def.show === "function") {
+      await active.def.show(root, capture, active.state, themeSettings);
+    } else {
+      root.classList.add("on");
+    }
+    if (themeApi.ensurePosterPasteVisible) themeApi.ensurePosterPasteVisible(root);
   }
 
   function leftoverAfterNative(key) {
@@ -279,46 +325,49 @@
     const token = ++cycle;
     const root = document.getElementById(OVERLAY_ID);
     if (!root) return;
-    // After CTA / first mount, keep the overlay off until the new card is
-    // ready. Back-to-back messages must stay up — hiding the theme here is
-    // what flashes Vixi's stock capture between guests.
+    // First mount / CTA return: stay fully hidden until the card is ready.
     if (hideStage) root.classList.add("dyn-awaiting-show");
     else root.classList.remove("dyn-awaiting-show");
-    await decodeImage(capture.src);
-    if (token !== cycle) return;
-    const latest = rules.messageCapture();
-    const next = latest.src || latest.message || latest.name ? latest : capture;
-    if (shouldHide && typeof active.def.hide === "function") {
-      await active.def.hide(root, active.state, themeSettings);
-    }
-    if (token !== cycle) return;
-    // Swap the photo while still hidden so a CTA return cannot flash the
-    // previous card, then reveal for the entrance of the new capture.
-    // Never target #dyn-bg-media (selected Show-background asset) — a bare
-    // `img` query matches that first when it is mounted inside the theme root.
-    const img =
-      (themeApi && themeApi.findMessagePhoto && themeApi.findMessagePhoto(root)) ||
-      root.querySelector(".well img, [data-photo]");
-    if (
-      img &&
-      next.src &&
-      !(themeApi && themeApi.isBackgroundMediaNode && themeApi.isBackgroundMediaNode(img))
-    ) {
-      img.src = next.src;
-    }
-    root.classList.remove("dyn-awaiting-show");
-    unparkOverlay(root);
-    // Theme root is mountable now — pull #dyn-bg-media out of the host/wrapper
-    // into this theme before show() paints (avoids a late overlay flash).
-    if (typeof handoff.applyCovers === "function") handoff.applyCovers();
     try {
+      await decodeImage(capture.src);
+      if (token !== cycle) return;
+      const latest = rules.messageCapture();
+      const next = latest.src || latest.message || latest.name ? latest : capture;
+      if (shouldHide && typeof active.def.hide === "function") {
+        await active.def.hide(root, active.state, themeSettings);
+      }
+      if (token !== cycle) return;
+      // Back-to-back messages: keep the overlay hidden while swapping media/copy
+      // so the previous guest cannot flash before the new enter animation.
+      if (shouldHide) root.classList.add("dyn-awaiting-show");
+      // Swap the photo while hidden so a CTA return cannot flash the
+      // previous card, then reveal for the entrance of the new capture.
+      // Never target #dyn-bg-media (selected Show-background asset) — a bare
+      // `img` query matches that first when it is mounted inside the theme root.
+      const img =
+        (themeApi && themeApi.findMessagePhoto && themeApi.findMessagePhoto(root)) ||
+        root.querySelector(".well img, [data-photo]");
+      if (
+        img &&
+        next.src &&
+        !(themeApi && themeApi.isBackgroundMediaNode && themeApi.isBackgroundMediaNode(img))
+      ) {
+        img.src = next.src;
+      }
+      root.classList.remove("dyn-awaiting-show");
+      unparkOverlay(root);
+      // Theme root is mountable now — pull #dyn-bg-media out of the host/wrapper
+      // into this theme before show() paints (avoids a late overlay flash).
+      if (typeof handoff.applyCovers === "function") handoff.applyCovers();
       if (typeof active.def.show === "function") {
         await active.def.show(root, next, active.state, themeSettings);
       }
     } finally {
-      root.classList.remove("dyn-awaiting-show");
-      unparkOverlay(root);
-      if (typeof handoff.applyCovers === "function") handoff.applyCovers();
+      if (token === cycle) {
+        root.classList.remove("dyn-awaiting-show");
+        unparkOverlay(root);
+        if (typeof handoff.applyCovers === "function") handoff.applyCovers();
+      }
     }
   }
 
@@ -338,6 +387,7 @@
       const kind = handoff.liveKind();
       const mode = handoff.currentMode();
       if (kind === "mosaic" || kind === "native" || (kind === "" && mode === "mosaic")) return;
+      if (rules.peekSettings) applyMessageSettingsFromStorage(rules.peekSettings());
       requestRebuild();
       lastKey = "";
       scheduleApply();
@@ -404,6 +454,23 @@
     ensureFonts();
     lastThemeSettings = themeSettings;
 
+    const liveOverlay = document.getElementById(OVERLAY_ID);
+    const msgKey = hasMsg ? captureKey(cap) : lastKey;
+    // Settings-only fast path — never skip when playlist content changed.
+    if (
+      !pendingRebuild &&
+      !overlayIsStale(liveOverlay) &&
+      mountedTheme === theme &&
+      liveOverlay &&
+      hasMsg &&
+      msgKey === lastKey &&
+      applyMessageSettingsLive(theme, themeSettings)
+    ) {
+      handoff.applyCovers(settings);
+      if (typeof handoff.endHold === "function") handoff.endHold();
+      return;
+    }
+
     if (!document.getElementById(OVERLAY_ID) || pendingRebuild || mountedTheme !== theme) {
       pendingRebuild = false;
       await rebuildNow(theme, themeSettings);
@@ -457,10 +524,8 @@
             return;
           }
           parkedFromNative = false;
-          if (live) {
-            live.classList.remove("dyn-awaiting-show");
-            unparkOverlay(live);
-          }
+          // Stay hidden under mosaic until reveal — avoid playing enter twice.
+          applyMessageThemeSettings(live, themeSettings);
           return;
         }
         const shouldHide = Boolean(lastKey) && !fromNative;
@@ -499,10 +564,12 @@
           );
         if (key === lastKey && !fromNative) {
           parkedFromNative = false;
-          if (live) {
-            live.classList.remove("dyn-awaiting-show");
+          if (live && live.classList.contains("on") && !live.classList.contains("off")) {
             unparkOverlay(live);
+            applyMessageThemeSettings(live, themeSettings);
+            return;
           }
+          await restoreMessageVisible(live, capture, themeSettings);
           return;
         }
         // After CTA the parked overlay still holds the previous card. Never
@@ -514,6 +581,63 @@
         unparkOverlay(document.getElementById(OVERLAY_ID));
       },
     });
+  }
+
+  function pushMessageVars(overlay, themeSettings) {
+    if (!overlay || !themeSettings) return;
+    const def = (active && active.def) || themeApi.themes[overlay.dataset.theme];
+    if (def && typeof def.applySettings === "function") {
+      def.applySettings(overlay, active && active.state, themeSettings);
+    } else if (themeApi.applyVars) {
+      themeApi.applyVars(overlay, themeSettings);
+    }
+  }
+
+  function applyMessageSettingsLive(theme, themeSettings, force) {
+    const overlay = document.getElementById(OVERLAY_ID);
+    if (!overlay || overlay.dataset.theme !== theme) return false;
+    const resolved =
+      themeSettings &&
+      (themeSettings.primary != null ||
+        themeSettings.secondary != null ||
+        themeSettings.background != null ||
+        themeSettings.motion != null ||
+        themeSettings.photoStyle != null ||
+        themeSettings.revealMs != null)
+        ? themeSettings
+        : rules.resolveMessageThemeSettings
+          ? rules.resolveMessageThemeSettings(
+              {
+                messageTheme: theme,
+                messageThemeSettings: { [theme]: themeSettings || lastThemeSettings || {} },
+              },
+              theme
+            )
+          : themeSettings;
+    const nextKey = settingsKey(theme, resolved);
+    if (!force && nextKey === lastSettingsKey) return true;
+    pushMessageVars(overlay, resolved);
+    lastSettingsKey = nextKey;
+    lastThemeSettings = resolved;
+    return true;
+  }
+
+  function applyMessageSettingsFromStorage(settings, force) {
+    const resolved =
+      settings ||
+      (rules.peekSettings ? rules.peekSettings() : null);
+    if (!resolved || resolved.enabled === false) return;
+    const theme = rules.normalizeMessageTheme(resolved.messageTheme);
+    if (theme === "off") return;
+    const themeSettings = rules.resolveMessageThemeSettings(resolved, theme);
+    if (!themeSettings) return;
+    if (!applyMessageSettingsLive(theme, themeSettings, force)) {
+      const overlay = document.getElementById(OVERLAY_ID);
+      if (overlay && overlay.dataset.theme === theme) pushMessageVars(overlay, themeSettings);
+      else if (overlay) scheduleApply(0);
+      return;
+    }
+    handoff.applyCovers(resolved);
   }
 
   function scheduleApply(delay) {
@@ -546,8 +670,37 @@
   });
 
   try {
+    chrome.runtime.onMessage.addListener((message) => {
+      if (!message || message.type !== "dyn-bg-apply-settings" || !message.settings) return;
+      if (rules.applyStorageDelta) {
+        rules.applyStorageDelta({
+          messageThemeSettings: { newValue: message.settings.messageThemeSettings },
+          mosaicThemeSettings: { newValue: message.settings.mosaicThemeSettings },
+          messageTheme: { newValue: message.settings.messageTheme },
+          mosaicTheme: { newValue: message.settings.mosaicTheme },
+          enabled: { newValue: message.settings.enabled },
+        });
+      }
+      lastSettingsKey = "";
+      applyMessageSettingsFromStorage(message.settings, true);
+    });
+  } catch {
+    /* dead runtime */
+  }
+
+  try {
+    document.documentElement.addEventListener("dyn-bg-theme-settings", (event) => {
+      lastSettingsKey = "";
+      applyMessageSettingsFromStorage(event && event.detail, true);
+    });
+  } catch {
+    /* no document */
+  }
+
+  try {
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== "local") return;
+      if (rules.applyStorageDelta) rules.applyStorageDelta(changes);
       // Changing the mosaic theme must not interrupt a live message.
       const touchesMessage = Boolean(
         changes.messageTheme ||
@@ -564,11 +717,14 @@
           changes.customEngines
       );
       if (!touchesMessage) return;
+      if (changes.messageThemeSettings) {
+        lastSettingsKey = "";
+        applyMessageSettingsFromStorage(rules.peekSettings ? rules.peekSettings() : null, true);
+      }
       if (
         changes.messageTheme ||
         changes.enabled ||
         changes.stageAspect ||
-        changes.messageThemeSettings ||
         changes.customThemes ||
         changes.customEngines
       ) {

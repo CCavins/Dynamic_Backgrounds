@@ -24,6 +24,28 @@
   const TOP_COUNT = 5;
   const BOTTOM_COUNT = 5;
 
+  function photoStyleOf(settings) {
+    const rules = global.BGExtensionRules;
+    const raw =
+      settings && settings.photoStyle != null
+        ? settings.photoStyle
+        : settings && typeof settings.colorPhotos === "boolean"
+          ? settings.colorPhotos
+          : undefined;
+    if (rules && typeof rules.normalizePhotoStyle === "function") {
+      return rules.normalizePhotoStyle(raw, "bw");
+    }
+    if (raw === true || raw === "true") return "color";
+    if (raw === "color" || raw === "sepia") return raw;
+    return "bw";
+  }
+
+  function applyPhotoStyle(themeRoot, settings) {
+    if (!themeRoot) return;
+    themeRoot.setAttribute("data-photo-style", photoStyleOf(settings || {}));
+    themeRoot.removeAttribute("data-color-photos");
+  }
+
   function makeFallbackCard(src) {
     const card = document.createElement("div");
     card.className = "dyn-card";
@@ -201,8 +223,9 @@
           '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"] .sr-row .sr-slot.is-exiting{transition:transform 850ms cubic-bezier(.37,0,.2,1),opacity 700ms cubic-bezier(.37,0,.2,1);}',
           '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"] .sr-row .sr-slot .dyn-card{position:absolute!important;inset:0;margin:0;width:100%!important;height:100%!important;padding:clamp(5px,.55cqw,10px);box-sizing:border-box;background:var(--frame,#fff);border-radius:2px;overflow:hidden;transform:none!important;box-shadow:0 14px 28px rgba(0,0,0,.4)!important;filter:none!important;opacity:1!important;transition:none;}',
           '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"] .sr-row .sr-slot .sr-well{position:absolute;inset:clamp(5px,.55cqw,10px);overflow:hidden;background:#1a1a1a;opacity:1;transition:none;}',
-          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"]:not([data-color-photos]) .sr-row .sr-slot .sr-well img{position:absolute;left:50%;top:50%;width:148%;height:115%;max-width:none;object-fit:cover;object-position:center center;display:block;transform:translate(-50%,-50%) skewX(16deg);filter:grayscale(1) contrast(1.08);}',
-          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"][data-color-photos] .sr-row .sr-slot .sr-well img{position:absolute;left:50%;top:50%;width:148%;height:115%;max-width:none;object-fit:cover;object-position:center center;display:block;transform:translate(-50%,-50%) skewX(16deg);filter:contrast(1.05);}',
+          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"][data-photo-style="bw"] .sr-row .sr-slot .sr-well img{position:absolute;left:50%;top:50%;width:148%;height:115%;max-width:none;object-fit:cover;object-position:center center;display:block;transform:translate(-50%,-50%) skewX(16deg);filter:grayscale(1) contrast(1.08);}',
+          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"][data-photo-style="color"] .sr-row .sr-slot .sr-well img{position:absolute;left:50%;top:50%;width:148%;height:115%;max-width:none;object-fit:cover;object-position:center center;display:block;transform:translate(-50%,-50%) skewX(16deg);filter:contrast(1.05);}',
+          '#dyn-mosaic-theme[data-theme="mosaic-slant-rows"][data-photo-style="sepia"] .sr-row .sr-slot .sr-well img{position:absolute;left:50%;top:50%;width:148%;height:115%;max-width:none;object-fit:cover;object-position:center center;display:block;transform:translate(-50%,-50%) skewX(16deg);filter:sepia(.88) contrast(1.08) brightness(.92) saturate(.85);}',
           ".sr-chrome{position:absolute;z-index:6;width:min(11.5%,132px);aspect-ratio:1;pointer-events:none;}",
           ".sr-logo{top:3.4%;left:3.2%;}",
           ".sr-qr{bottom:3.4%;right:3.2%;}",
@@ -290,12 +313,27 @@
 
       const applyColors = () => {
         const s = state.settings || {};
-        if (s.primary) themeRoot.style.setProperty("--primary", s.primary);
-        if (s.secondary) themeRoot.style.setProperty("--secondary", s.secondary);
-        if (s.background) themeRoot.style.setProperty("--background", s.background);
-        if (s.frame) themeRoot.style.setProperty("--frame", s.frame);
-        if (s.colorPhotos) themeRoot.setAttribute("data-color-photos", "1");
-        else themeRoot.removeAttribute("data-color-photos");
+        if (s.primary != null && s.primary !== "") themeRoot.style.setProperty("--primary", s.primary);
+        if (s.secondary != null && s.secondary !== "") {
+          themeRoot.style.setProperty("--secondary", s.secondary);
+        }
+        if (s.background != null && s.background !== "") {
+          themeRoot.style.setProperty("--background", s.background);
+        }
+        if (s.frame != null && s.frame !== "") themeRoot.style.setProperty("--frame", s.frame);
+        applyPhotoStyle(themeRoot, s);
+        const ps = photoStyleOf(s);
+        let filt = "grayscale(1) contrast(1.08)";
+        if (ps === "color") filt = "contrast(1.05)";
+        else if (ps === "sepia") filt = "sepia(0.88) contrast(1.08) brightness(0.92) saturate(0.85)";
+        themeRoot.querySelectorAll(".sr-well img").forEach((img) => {
+          img.style.filter = filt;
+        });
+        if (s.frame != null && s.frame !== "") {
+          themeRoot.querySelectorAll(".sr-row .sr-slot .dyn-card").forEach((card) => {
+            card.style.background = s.frame;
+          });
+        }
       };
 
       const clearTimers = () => {
@@ -490,17 +528,29 @@
     },
 
     applySettings(themeRoot, state, settings) {
-      if (!state) return;
-      state.settings = settings || {};
-      if (state._applyColors) state._applyColors();
-      if (state._applyScale) state._applyScale();
-      if (themeRoot && settings) {
-        if (settings.primary) themeRoot.style.setProperty("--primary", settings.primary);
-        if (settings.secondary) themeRoot.style.setProperty("--secondary", settings.secondary);
-        if (settings.background) themeRoot.style.setProperty("--background", settings.background);
-        if (settings.frame) themeRoot.style.setProperty("--frame", settings.frame);
-        if (settings.colorPhotos) themeRoot.setAttribute("data-color-photos", "1");
-        else themeRoot.removeAttribute("data-color-photos");
+      const s = settings || {};
+      if (state) {
+        state.settings = s;
+        if (state._applyColors) state._applyColors();
+        if (state._applyScale) state._applyScale();
+      }
+      if (!themeRoot) return;
+      if (s.primary != null && s.primary !== "") themeRoot.style.setProperty("--primary", s.primary);
+      if (s.secondary != null && s.secondary !== "") themeRoot.style.setProperty("--secondary", s.secondary);
+      if (s.background != null && s.background !== "") themeRoot.style.setProperty("--background", s.background);
+      if (s.frame != null && s.frame !== "") themeRoot.style.setProperty("--frame", s.frame);
+      applyPhotoStyle(themeRoot, s);
+      const ps = photoStyleOf(s);
+      let filt = "grayscale(1) contrast(1.08)";
+      if (ps === "color") filt = "contrast(1.05)";
+      else if (ps === "sepia") filt = "sepia(0.88) contrast(1.08) brightness(0.92) saturate(0.85)";
+      themeRoot.querySelectorAll(".sr-well img").forEach((img) => {
+        img.style.filter = filt;
+      });
+      if (s.frame != null && s.frame !== "") {
+        themeRoot.querySelectorAll(".sr-row .sr-slot .dyn-card").forEach((card) => {
+          card.style.background = s.frame;
+        });
       }
     },
 

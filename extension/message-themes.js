@@ -41,6 +41,11 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
   visibility: hidden !important;
   opacity: 0 !important;
 }
+#dyn-message-theme[data-theme="message-grunge-poster"].on:not(.off).dyn-grunge-paste-lock .photo-paste,
+#dyn-message-theme[data-theme="message-grunge-poster"].on:not(.off).dyn-grunge-paste-lock .msg-paste,
+#dyn-message-theme[data-theme="message-grunge-poster"].on:not(.off).dyn-grunge-paste-lock .name-stamp {
+  opacity: 1 !important;
+}
 #dyn-message-theme,
 #dyn-message-theme * { box-sizing: border-box; }
 #dyn-message-theme .dyn-fit-stage {
@@ -2311,29 +2316,115 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
     });
   }
 
+  function resetGrungePasteInline(themeRoot) {
+    if (!themeRoot) return;
+    themeRoot
+      .querySelectorAll(".photo-paste, .msg-paste, .name-stamp, .scrap-a, .scrap-b")
+      .forEach((el) => {
+        el.style.removeProperty("opacity");
+        el.style.removeProperty("animation");
+        el.style.removeProperty("transform");
+      });
+  }
+
+  function prepGrungeMessageTransition(themeRoot) {
+    if (!themeRoot || themeRoot.dataset.theme !== "message-grunge-poster") return;
+    themeRoot.classList.remove("dyn-grunge-paste-lock");
+    resetGrungePasteInline(themeRoot);
+  }
+
+  function ensurePosterPasteVisible(themeRoot) {
+    if (!themeRoot || themeRoot.dataset.theme !== "message-grunge-poster") return;
+    if (!themeRoot.classList.contains("on") || themeRoot.classList.contains("off")) return;
+    themeRoot.querySelectorAll(".photo-paste, .msg-paste, .name-stamp").forEach((el) => {
+      if (themeRoot.classList.contains("no-photo") && el.classList.contains("photo-paste")) return;
+      const opacity = Number.parseFloat(root.getComputedStyle(el).opacity || "0");
+      if (opacity < 0.05) themeRoot.classList.add("dyn-grunge-paste-lock");
+    });
+  }
+
+  function replayEnterMotion(themeRoot) {
+    if (!themeRoot || !themeRoot.classList.contains("on")) return;
+    const targets = themeRoot.querySelectorAll(
+      ".photo-paste, .msg-paste, .name-stamp, .scrap-a, .scrap-b"
+    );
+    targets.forEach((el) => {
+      el.style.animation = "none";
+    });
+    void themeRoot.offsetWidth;
+    targets.forEach((el) => {
+      el.style.animation = "";
+    });
+    root.setTimeout(() => ensurePosterPasteVisible(themeRoot), 920);
+  }
+
+  function photoStyleOf(settings) {
+    const rules = root.BGExtensionRules;
+    const raw =
+      settings && settings.photoStyle != null
+        ? settings.photoStyle
+        : settings && typeof settings.colorPhotos === "boolean"
+          ? settings.colorPhotos
+          : undefined;
+    if (rules && typeof rules.normalizePhotoStyle === "function") {
+      return rules.normalizePhotoStyle(raw, "bw");
+    }
+    if (raw === true || raw === "true") return "color";
+    if (PHOTO_STYLE_MODES.includes(raw)) return raw;
+    return "bw";
+  }
+
+  const PHOTO_STYLE_MODES = ["bw", "color", "sepia"];
+
+  function applyPhotoStyle(themeRoot, settings) {
+    if (!themeRoot) return;
+    const ps = photoStyleOf(settings || {});
+    themeRoot.setAttribute("data-photo-style", ps);
+    themeRoot.removeAttribute("data-color-photos");
+    if (themeRoot.dataset.theme === "message-grunge-poster") {
+      let filt = "grayscale(1) contrast(1.2) brightness(0.95)";
+      if (ps === "color") filt = "contrast(1.05) brightness(0.98)";
+      else if (ps === "sepia") filt = "sepia(0.88) contrast(1.08) brightness(0.92) saturate(0.85)";
+      themeRoot.querySelectorAll(".photo-mat img").forEach((img) => {
+        img.style.filter = filt;
+      });
+    }
+  }
+
   function applyVars(themeRoot, settings) {
     if (!themeRoot || !settings) return;
-    if (settings.primary) {
+    const wasOn = themeRoot.classList.contains("on");
+    const prevMotion = themeRoot.getAttribute("data-motion") || "";
+    const isGrunge = themeRoot.dataset.theme === "message-grunge-poster";
+    if (settings.primary != null && settings.primary !== "") {
       themeRoot.style.setProperty("--primary", settings.primary);
       themeRoot.style.setProperty("--ink", settings.primary);
+      if (isGrunge) themeRoot.style.setProperty("--stamp-ink", settings.primary);
     }
-    if (settings.secondary) {
+    if (settings.secondary != null && settings.secondary !== "") {
       themeRoot.style.setProperty("--secondary", settings.secondary);
       themeRoot.style.setProperty("--paper", settings.secondary);
     }
-    if (settings.background) {
+    if (settings.background != null && settings.background !== "") {
       themeRoot.style.setProperty("--background", settings.background);
       themeRoot.style.setProperty("--wall", settings.background);
+    } else if (isGrunge) {
+      themeRoot.style.removeProperty("--background");
+      themeRoot.style.setProperty("--wall", "#2a211c");
     }
-    if (settings.frame) themeRoot.style.setProperty("--frame", settings.frame);
-    if (settings.colorPhotos) themeRoot.setAttribute("data-color-photos", "1");
-    else themeRoot.removeAttribute("data-color-photos");
+    if (settings.frame != null && settings.frame !== "") {
+      themeRoot.style.setProperty("--frame", settings.frame);
+    }
+    applyPhotoStyle(themeRoot, settings);
     themeRoot.style.setProperty("--reveal-ms", (settings.revealMs || 1000) + "ms");
-    if (settings.motion) themeRoot.setAttribute("data-motion", settings.motion);
+    const nextMotion = settings.motion || "";
+    if (nextMotion) themeRoot.setAttribute("data-motion", nextMotion);
     else themeRoot.removeAttribute("data-motion");
+    if (wasOn && nextMotion !== prevMotion) replayEnterMotion(themeRoot);
   }
 
   function commonShowPrep(themeRoot, state, extraClasses) {
+    prepGrungeMessageTransition(themeRoot);
     themeRoot.classList.remove("on", "off", "idle", "held", "no-copy");
     (extraClasses || []).forEach((cls) => themeRoot.classList.remove(cls));
     if (state && state.idleTimer) {
@@ -2348,6 +2439,9 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
     layoutFitStage(themeRoot);
     void themeRoot.offsetWidth;
     themeRoot.classList.add("on");
+    if (themeRoot.dataset.theme === "message-grunge-poster") {
+      root.setTimeout(() => ensurePosterPasteVisible(themeRoot), 980);
+    }
   }
 
   function armIdle(themeRoot, state, delayMs, className, onIdle) {
@@ -2369,6 +2463,7 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
 
   function hideTheme(themeRoot, state, waitMs, extraClasses) {
     if (!themeRoot.classList.contains("on")) return Promise.resolve();
+    prepGrungeMessageTransition(themeRoot);
     if (state && state.idleTimer) {
       clearTimeout(state.idleTimer);
       state.idleTimer = 0;
@@ -4024,6 +4119,7 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
     fitText: fitPx,
     ensureFitStage,
     applyVars,
+    ensurePosterPasteVisible,
     commonShowPrep,
     finishShow,
     hideTheme,

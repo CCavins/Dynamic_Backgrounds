@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en" data-dyn-harness="1">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Theme settings check</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #07070c; color: #e8e8ef; font: 13px/1.45 ui-sans-serif, system-ui; }
+    body { display: grid; grid-template-columns: 1fr 360px; }
+    .output-page { position: relative; background: #111; overflow: hidden; min-height: 100vh; }
+    .output-wrapper, .v2-app-wrapper { position: absolute; inset: 0; }
+    .mosaic-layout { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .capture-content-layer, .message-layer { position: absolute; inset: 0; }
+    .well img, [data-photo] { width: 100%; height: 100%; object-fit: cover; }
+    #log { overflow: auto; padding: 16px; border-left: 1px solid #2a2a36; background: #0c0c12; }
+    #log h1 { font-size: 15px; margin: 0 0 12px; }
+    .row { margin: 0 0 8px; }
+    .ok { color: #5ee0a0; }
+    .fail { color: #ff6b7a; }
+    .info { color: #9aa0b5; }
+  </style>
+</head>
+<body>
+  <div class="output-page">
+    <div class="output-wrapper v2-app-wrapper">
+      <div class="mosaic-layout" id="vixi-mosaic"></div>
+      <div class="capture-content-layer">
+        <div class="well"><img id="msg-photo" src="../samples/patriots/patriots_001.jpg" alt=""></div>
+        <div class="grunge-msg" data-message>HELLO WORLD</div>
+        <div class="name-stamp" data-name>Patriots Fan</div>
+      </div>
+    </div>
+  </div>
+  <aside id="log"><h1>Settings check</h1><div id="rows"></div></aside>
+
+  <script>
+    (function mockChrome() {
+      const store = {
+        enabled: true,
+        mosaicTheme: "mosaic-slant-rows",
+        messageTheme: "message-grunge-poster",
+        messageThemeSettings: {},
+        mosaicThemeSettings: {},
+        stageAspect: "16:9",
+        rules: [],
+        anyOutputIframeHtml: "",
+        customThemes: [],
+        mosaicShowBackground: false,
+        mosaicShowQr: false,
+        mosaicShowLogo: false,
+        messageShowBackground: false,
+        messageShowQr: false,
+        messageShowLogo: false,
+        bgMode: "auto",
+        bgFit: "cover",
+        bgMediaId: "",
+      };
+      const listeners = [];
+      window.chrome = {
+        runtime: {
+          id: "dyn-harness",
+          getURL(path) {
+            return "../extension/" + String(path || "").replace(/^\//, "");
+          },
+        },
+        storage: {
+          local: {
+            get(defaults, cb) {
+              const out = Object.assign({}, defaults || {}, store);
+              if (typeof defaults === "function") cb = defaults;
+              if (cb) cb(out);
+              return Promise.resolve(out);
+            },
+            set(values, cb) {
+              const changes = {};
+              Object.keys(values || {}).forEach((key) => {
+                changes[key] = { oldValue: store[key], newValue: values[key] };
+                store[key] = values[key];
+              });
+              listeners.forEach((fn) => fn(changes, "local"));
+              if (cb) cb();
+            },
+          },
+          onChanged: { addListener(fn) { listeners.push(fn); } },
+        },
+      };
+      window.__testStore = store;
+    })();
+  </script>
+  <script src="../extension/rules.js"></script>
+  <script src="../extension/handoff.js"></script>
+  <script src="../extension/mosaic-themes.js"></script>
+  <script src="../extension/message-themes.js"></script>
+  <script src="../extension/engines/api.js"></script>
+  <script src="../extension/engines/mosaic-slant-rows-engine.js"></script>
+  <script src="../extension/custom-themes.js"></script>
+  <script src="../extension/mosaic.js"></script>
+  <script src="../extension/message.js"></script>
+  <script>
+    (async function run() {
+      const SAMPLE = "../samples/patriots/";
+      const PHOTOS = ["patriots_001.jpg","patriots_002.jpg","patriots_003.jpg","patriots_004.jpg","patriots_005.jpg","patriots_006.jpg"];
+      const rows = document.getElementById("rows");
+      const results = [];
+
+      function log(ok, label, detail) {
+        const el = document.createElement("div");
+        el.className = "row " + (ok === true ? "ok" : ok === false ? "fail" : "info");
+        el.textContent = (ok === true ? "PASS  " : ok === false ? "FAIL  " : "···  ") + label + (detail ? " — " + detail : "");
+        rows.appendChild(el);
+        results.push({ ok, label, detail });
+      }
+
+      function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+      function setStorage(values) {
+        return new Promise((resolve) => chrome.storage.local.set(values, resolve));
+      }
+
+      function seedMosaic() {
+        const mosaic = document.getElementById("vixi-mosaic");
+        mosaic.replaceChildren();
+        PHOTOS.forEach((name) => {
+          const slot = document.createElement("div");
+          slot.className = "mosaic-tile-slot";
+          const img = document.createElement("img");
+          img.className = "mosaic-image";
+          img.src = SAMPLE + name;
+          slot.appendChild(img);
+          mosaic.appendChild(slot);
+        });
+      }
+
+      seedMosaic();
+      await sleep(3500);
+
+      const rules = window.BGExtensionRules;
+      await window.BGCustomThemes.whenReady();
+
+      // --- Mosaic / Slant Rows ---
+      const mosaicRoot = document.getElementById("dyn-mosaic-theme");
+      log(Boolean(mosaicRoot), "Slant rows overlay mounted", mosaicRoot && mosaicRoot.dataset.theme);
+      log(mosaicRoot && mosaicRoot.dataset.theme === "mosaic-slant-rows", "Slant theme id on overlay");
+
+      await setStorage({
+        mosaicThemeSettings: {
+          "mosaic-slant-rows": {
+            scale: 1,
+            primary: "#e31b23",
+            secondary: "#f36c1b",
+            background: "#141414",
+            frame: "#00ff00",
+            photoStyle: "color",
+          },
+        },
+      });
+      await sleep(1200);
+
+      const frameAfter = mosaicRoot && mosaicRoot.style.getPropertyValue("--frame");
+      const photoStyleAfter = mosaicRoot && mosaicRoot.getAttribute("data-photo-style");
+      const imgFilter = mosaicRoot && mosaicRoot.querySelector(".sr-well img");
+      const filterVal = imgFilter ? getComputedStyle(imgFilter).filter : "no img";
+      log(frameAfter === "#00ff00" || frameAfter === "rgb(0, 255, 0)", "Slant frame var applied", frameAfter || "empty");
+      log(photoStyleAfter === "color", "Slant photoStyle attribute", photoStyleAfter || "empty");
+      log(!/grayscale/i.test(filterVal), "Slant photo not grayscale", filterVal.slice(0, 60));
+
+      // --- Message / Grunge ---
+      document.documentElement.classList.add("dyn-message-on");
+      await setStorage({ messageTheme: "message-grunge-poster", mosaicTheme: "off" });
+      await sleep(3500);
+
+      const msgRoot = document.getElementById("dyn-message-theme");
+      log(Boolean(msgRoot), "Grunge overlay mounted", msgRoot && msgRoot.dataset.theme);
+
+      await setStorage({
+        messageThemeSettings: {
+          "message-grunge-poster": {
+            primary: "#111111",
+            secondary: "#ff00ff",
+            photoStyle: "color",
+          },
+        },
+      });
+      await sleep(1200);
+
+      const paper = msgRoot && msgRoot.style.getPropertyValue("--paper");
+      const msgPhotoStyle = msgRoot && msgRoot.getAttribute("data-photo-style");
+      const msgImg = msgRoot && msgRoot.querySelector(".photo-mat img");
+      const msgFilter = msgImg ? getComputedStyle(msgImg).filter : "";
+      log(paper === "#ff00ff" || paper === "rgb(255, 0, 255)", "Grunge paper var", paper || "empty");
+      log(msgPhotoStyle === "color", "Grunge photoStyle", msgPhotoStyle || "empty");
+      log(!/grayscale/i.test(msgFilter), "Grunge photo not grayscale", msgFilter.slice(0, 60));
+
+      const failed = results.filter((r) => r.ok === false).length;
+      log(failed === 0, failed === 0 ? "All settings checks passed" : failed + " failed");
+      document.title = (failed === 0 ? "PASS" : "FAIL") + " — settings check";
+      window.__settingsCheckDone = true;
+      window.__settingsCheckFailed = failed;
+    })().catch((err) => {
+      const el = document.createElement("div");
+      el.className = "row fail";
+      el.textContent = "FAIL  " + (err && err.message ? err.message : err);
+      document.getElementById("rows").appendChild(el);
+      window.__settingsCheckDone = true;
+      window.__settingsCheckFailed = 1;
+    });
+  </script>
+</body>
+</html>

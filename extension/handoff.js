@@ -289,7 +289,7 @@
         : ""
       : nativeBeat
         ? "native"
-        : mode && kind && mode !== kind && !html.classList.contains("dyn-handoff")
+        : mode && kind && mode !== kind && !html.classList.contains("dyn-handoff") && !html.classList.contains("dyn-hold")
           ? mode
           : kind;
     const chromeKind =

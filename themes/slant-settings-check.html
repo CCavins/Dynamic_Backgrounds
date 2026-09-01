@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en" data-dyn-harness="1">
+<head>
+  <meta charset="UTF-8">
+  <title>Slant settings check</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #111; }
+    .output-wrapper, .v2-app-wrapper { position: absolute; inset: 0; }
+    .mosaic-layout { position: absolute; width: 0; height: 0; overflow: hidden; }
+    #log { position: fixed; right: 0; top: 0; bottom: 0; width: 340px; background: #0c0c12; color: #eee; font: 12px monospace; padding: 12px; overflow: auto; }
+    .fail { color: #f66; } .ok { color: #6f6; }
+  </style>
+</head>
+<body>
+  <div class="output-page"><div class="output-wrapper v2-app-wrapper"><div class="mosaic-layout" id="vixi-mosaic"></div></div></div>
+  <aside id="log"></aside>
+  <script>
+    (function() {
+      const store = {
+        enabled: true, mosaicTheme: "mosaic-slant-rows", messageTheme: "off",
+        messageThemeSettings: {}, mosaicThemeSettings: {},
+        stageAspect: "16:9", rules: [], anyOutputIframeHtml: "", customThemes: [],
+        mosaicShowBackground: false, mosaicShowQr: false, mosaicShowLogo: false,
+        messageShowBackground: false, messageShowQr: false, messageShowLogo: false,
+        bgMode: "auto", bgFit: "cover", bgMediaId: "",
+      };
+      const listeners = [];
+      window.chrome = { runtime: { id: "h", getURL: (p) => "../extension/" + p, onMessage: { addListener() {} } }, storage: {
+        local: { get(d, cb) { const o = Object.assign({}, d||{}, store); if (cb) cb(o); }, set(v, cb) {
+          const ch = {}; Object.keys(v||{}).forEach(k => { ch[k] = { newValue: v[k] }; store[k] = v[k]; });
+          listeners.forEach(fn => fn(ch, "local")); if (cb) cb();
+        }},
+        onChanged: { addListener(fn) { listeners.push(fn); } },
+      }};
+    })();
+  </script>
+  <script src="../extension/rules.js"></script>
+  <script src="../extension/handoff.js"></script>
+  <script src="../extension/mosaic-themes.js"></script>
+  <script src="../extension/message-themes.js"></script>
+  <script src="../extension/engines/api.js"></script>
+  <script src="../extension/engines/mosaic-slant-rows-engine.js"></script>
+  <script src="../extension/custom-themes.js"></script>
+  <script src="../extension/mosaic.js"></script>
+  <script src="../extension/message.js"></script>
+  <script>
+    (async () => {
+      const log = document.getElementById("log");
+      const L = (ok, t, d) => { const el = document.createElement("div"); el.className = ok ? "ok" : "fail"; el.textContent = (ok?"PASS ":"FAIL ")+t+(d?" — "+d:""); log.appendChild(el); return ok; };
+      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+      const set = (v) => new Promise(r => chrome.storage.local.set(v, r));
+      const SAMPLE = "../samples/patriots/";
+      const names = ["patriots_001.jpg","patriots_002.jpg","patriots_003.jpg","patriots_004.jpg","patriots_005.jpg","patriots_006.jpg"];
+      const m = document.getElementById("vixi-mosaic");
+      names.forEach(n => { const s = document.createElement("div"); s.className = "mosaic-tile-slot"; const i = document.createElement("img"); i.className = "mosaic-image"; i.src = SAMPLE+n; s.appendChild(i); m.appendChild(s); });
+      await sleep(4000);
+      const root = document.getElementById("dyn-mosaic-theme");
+      L(!!root, "mounted", root && root.dataset.theme);
+      await set({ mosaicThemeSettings: { "mosaic-slant-rows": { scale:1, primary:"#e31b23", secondary:"#f36c1b", background:"#141414", frame:"#00ff00", photoStyle:"color" } } });
+      await sleep(1500);
+      const r = document.getElementById("dyn-mosaic-theme");
+      const frame = r && r.style.getPropertyValue("--frame");
+      const ps = r && r.getAttribute("data-photo-style");
+      const img = r && r.querySelector(".sr-well img");
+      const filt = img ? getComputedStyle(img).filter : "no-img";
+      L(frame === "#00ff00", "frame var", frame);
+      L(ps === "color", "photoStyle", ps);
+      L(!/grayscale/i.test(filt), "photo color", filt.slice(0,40));
+      document.title = [...log.querySelectorAll(".fail")].length ? "FAIL" : "PASS";
+    })();
+  </script>
+</body>
+</html>

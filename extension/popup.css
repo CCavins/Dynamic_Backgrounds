@@ -374,6 +374,15 @@ textarea {
   background: var(--v2-surface);
 }
 
+.theme-settings-title {
+  margin: 0 0 var(--v2-xs);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--v2-light-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .media-row {
   margin-top: 10px;
   padding: 10px;
@@ -537,6 +546,12 @@ textarea {
   border-color: var(--v2-border);
 }
 
+.ext-version {
+  color: var(--v2-light-gray);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
 .setting-row {
   display: grid;
   grid-template-columns: 1fr 88px 42px;
@@ -546,6 +561,17 @@ textarea {
 
 .setting-row + .setting-row {
   margin-top: var(--v2-xs);
+}
+
+.setting-row.toggle {
+  grid-template-columns: 1fr auto;
+}
+
+.setting-row.toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--v2-primary);
 }
 
 .setting-row.select {

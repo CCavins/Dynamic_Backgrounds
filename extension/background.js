@@ -3,7 +3,8 @@
  * so Import packs… (JSON + engine.js) works on Vixi without editing the manifest.
  */
 const SIDELOAD_ID = "dyn-bg-sideload";
-const MATCHES = ["*://*.thefamousgroup.com/*"];
+const OUTPUT_TAB_MATCHES = ["*://*.thefamousgroup.com/*", "*://*.vixisuite.com/*"];
+const MATCHES = OUTPUT_TAB_MATCHES;
 
 function userScriptsEnableHint() {
   const match = String(navigator.userAgent || "").match(/(Chrome|Chromium)\/(\d+)/i);
@@ -130,15 +131,43 @@ chrome.runtime.onInstalled.addListener((details) => {
     });
 });
 
+function pushSettingsToTabs(settings) {
+  if (!settings) return;
+  chrome.tabs.query({ url: OUTPUT_TAB_MATCHES }, (tabs) => {
+    (tabs || []).forEach((tab) => {
+      if (tab && tab.id != null) {
+        chrome.tabs
+          .sendMessage(tab.id, { type: "dyn-bg-apply-settings", settings })
+          .catch(() => {});
+      }
+    });
+  });
+}
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
   if (changes.customEngines) {
     syncSideloadEngines().catch(() => {});
   }
+  if (changes.mosaicThemeSettings || changes.messageThemeSettings) {
+    chrome.storage.local.get(null, (stored) => {
+      if (stored && typeof stored === "object") pushSettingsToTabs(stored);
+    });
+  }
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (!message || typeof message !== "object") return;
+  if (message.type === "dyn-bg-push-settings") {
+    const settings = message.settings;
+    if (!settings) {
+      sendResponse({ ok: false });
+      return;
+    }
+    pushSettingsToTabs(settings);
+    sendResponse({ ok: true });
+    return true;
+  }
   if (message.type === "dyn-bg-sync-sideload") {
     syncSideloadEngines()
       .then((result) => sendResponse(result))

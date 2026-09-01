@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" data-dyn-harness="1">
+<head>
+  <meta charset="UTF-8">
+  <title>Grunge settings check</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #111; }
+    .output-wrapper, .v2-app-wrapper { position: absolute; inset: 0; }
+    .capture-content-layer { position: absolute; inset: 0; }
+    .well img { width: 100%; height: 100%; object-fit: cover; }
+    #log { position: fixed; right: 0; top: 0; bottom: 0; width: 340px; background: #0c0c12; color: #eee; font: 12px monospace; padding: 12px; overflow: auto; }
+    .fail { color: #f66; } .ok { color: #6f6; }
+  </style>
+</head>
+<body>
+  <div class="output-page"><div class="output-wrapper v2-app-wrapper">
+    <div class="capture-content-layer">
+      <div class="well"><img src="../samples/patriots/patriots_001.jpg" alt=""></div>
+      <div class="grunge-msg" data-message>HELLO WORLD</div>
+      <div class="name-stamp" data-name>Patriots Fan</div>
+    </div>
+  </div></div>
+  <aside id="log"></aside>
+  <script>
+    (function() {
+      const store = {
+        enabled: true, messageTheme: "message-grunge-poster", mosaicTheme: "off",
+        messageThemeSettings: {}, mosaicThemeSettings: {},
+        stageAspect: "16:9", rules: [], anyOutputIframeHtml: "", customThemes: [],
+        mosaicShowBackground: false, mosaicShowQr: false, mosaicShowLogo: false,
+        messageShowBackground: false, messageShowQr: false, messageShowLogo: false,
+        bgMode: "auto", bgFit: "cover", bgMediaId: "",
+      };
+      const listeners = [];
+      window.chrome = { runtime: { id: "h", getURL: (p) => "../extension/" + p, onMessage: { addListener() {} } }, storage: {
+        local: { get(d, cb) { const o = Object.assign({}, d||{}, store); if (cb) cb(o); }, set(v, cb) {
+          const ch = {}; Object.keys(v||{}).forEach(k => { ch[k] = { newValue: v[k] }; store[k] = v[k]; });
+          listeners.forEach(fn => fn(ch, "local")); if (cb) cb();
+        }},
+        onChanged: { addListener(fn) { listeners.push(fn); } },
+      }};
+    })();
+  </script>
+  <script src="../extension/rules.js"></script>
+  <script src="../extension/handoff.js"></script>
+  <script src="../extension/mosaic-themes.js"></script>
+  <script src="../extension/message-themes.js"></script>
+  <script src="../extension/engines/api.js"></script>
+  <script src="../extension/custom-themes.js"></script>
+  <script src="../extension/mosaic.js"></script>
+  <script src="../extension/message.js"></script>
+  <script>
+    (async () => {
+      const log = document.getElementById("log");
+      const L = (ok, t, d) => { const el = document.createElement("div"); el.className = ok ? "ok" : "fail"; el.textContent = (ok?"PASS ":"FAIL ")+t+(d?" — "+d:""); log.appendChild(el); return ok; };
+      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+      const set = (v) => new Promise(r => chrome.storage.local.set(v, r));
+      document.documentElement.classList.add("dyn-message-on");
+      if (window.BGCustomThemes && BGCustomThemes.whenReady) await BGCustomThemes.whenReady();
+      await sleep(2500);
+      const root = document.getElementById("dyn-message-theme");
+      L(!!root, "mounted", root && root.dataset.theme);
+      await set({ messageThemeSettings: { "message-grunge-poster": {
+        primary: "#111111", secondary: "#ff00ff", photoStyle: "color",
+      } } });
+      await sleep(1500);
+      const r = document.getElementById("dyn-message-theme");
+      const paper = r && r.style.getPropertyValue("--paper");
+      const ps = r && r.getAttribute("data-photo-style");
+      const img = r && r.querySelector(".photo-mat img");
+      const filt = img ? getComputedStyle(img).filter : "no-img";
+      L(paper === "#ff00ff", "paper var", paper);
+      L(ps === "color", "photoStyle", ps);
+      L(!/grayscale/i.test(filt), "photo color", filt.slice(0,40));
+      const mat = r && r.querySelector(".photo-mat");
+      const stamp = r && r.querySelector(".name-stamp");
+      const matBg = mat ? getComputedStyle(mat).backgroundColor : "";
+      const stampBg = stamp ? getComputedStyle(stamp).backgroundColor : "";
+      L(matBg !== "rgba(0, 0, 0, 0)" && matBg !== "transparent", "photo-mat uses paper", matBg);
+      document.title = [...log.querySelectorAll(".fail")].length ? "FAIL" : "PASS";
+    })();
+  </script>
+</body>
+</html>

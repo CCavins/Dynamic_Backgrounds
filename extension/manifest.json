@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dynamic Backgrounds",
-  "version": "1.23.6",
+  "version": "1.24.21",
   "minimum_chrome_version": "120",
   "description": "Apply a Dynamic Backgrounds iframe, mosaic themes, and message themes to matching output URLs.",
   "action": {
@@ -19,15 +19,18 @@
   "permissions": [
     "storage",
     "unlimitedStorage",
-    "userScripts"
+    "userScripts",
+    "tabs"
   ],
   "host_permissions": [
-    "*://*.thefamousgroup.com/*"
+    "*://*.thefamousgroup.com/*",
+    "*://*.vixisuite.com/*"
   ],
   "content_scripts": [
     {
       "matches": [
-        "*://*.thefamousgroup.com/*"
+        "*://*.thefamousgroup.com/*",
+        "*://*.vixisuite.com/*"
       ],
       "js": [
         "early.js"
@@ -36,7 +39,8 @@
     },
     {
       "matches": [
-        "*://*.thefamousgroup.com/*"
+        "*://*.thefamousgroup.com/*",
+        "*://*.vixisuite.com/*"
       ],
       "js": [
         "rules.js",

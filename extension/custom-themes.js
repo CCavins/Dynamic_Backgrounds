@@ -52,7 +52,17 @@
     "packs/message-grunge-poster.json",
     "packs/mosaic-slant-rows.json",
   ];
+  const BUNDLED_PACK_IDS = {
+    message: ["message-grunge-poster"],
+    mosaic: ["mosaic-slant-rows"],
+  };
   const RESERVED = new Set(["off", ...MESSAGE_ENGINES, ...MOSAIC_ENGINES]);
+
+  const rulesApi = root.BGExtensionRules;
+  if (rulesApi && typeof rulesApi.registerBundledThemeIds === "function") {
+    rulesApi.registerBundledThemeIds("message", BUNDLED_PACK_IDS.message);
+    rulesApi.registerBundledThemeIds("mosaic", BUNDLED_PACK_IDS.mosaic);
+  }
 
   let registeredIds = { message: [], mosaic: [] };
   const changeListeners = [];
@@ -149,7 +159,8 @@
     const engineDefaults = engineThemeDefaults(data.kind, engine);
     const settings = {};
     const srcSettings = data.settings && typeof data.settings === "object" ? data.settings : {};
-    ["primary", "secondary", "background", "motion", "scale"].forEach((key) => {
+    const coreSettingKeys = ["primary", "secondary", "background", "motion", "scale"];
+    coreSettingKeys.forEach((key) => {
       const spec = srcSettings[key];
       const inherited = engineDefaults && engineDefaults[key];
       if ((!spec || typeof spec !== "object") && !inherited) return;
@@ -167,6 +178,36 @@
       else if (key === "primary") next.default = "#d52265";
       else if (key === "secondary") next.default = "#fec651";
       else return;
+      settings[key] = next;
+    });
+    Object.keys(srcSettings).forEach((key) => {
+      if (coreSettingKeys.includes(key)) return;
+      const spec = srcSettings[key];
+      if (!spec || typeof spec !== "object") return;
+      const next = {
+        label: String(spec.label || key).slice(0, 40),
+      };
+      if (spec.type === "toggle") {
+        next.type = "toggle";
+        next.default = Boolean(spec.default);
+      } else if (spec.type === "select" && Array.isArray(spec.options) && spec.options.length) {
+        next.type = "select";
+        next.default =
+          spec.default != null ? String(spec.default) : String(spec.options[0].value || "");
+        next.options = spec.options
+          .map((option) => ({
+            value: String(option.value),
+            label: String(option.label || option.value).slice(0, 60),
+          }))
+          .filter((option) => option.value);
+        if (!next.options.length) return;
+      } else if (isHex(spec.default)) {
+        next.default = String(spec.default).toLowerCase();
+      } else if (spec.default != null) {
+        next.default = spec.default;
+      } else {
+        return;
+      }
       settings[key] = next;
     });
     const fit = Array.isArray(data.fit)
@@ -717,14 +758,71 @@
     registeredIds = { message: [], mosaic: [] };
   }
 
+  function photoStyleOf(settings) {
+    const rules = root.BGExtensionRules;
+    const raw =
+      settings && settings.photoStyle != null
+        ? settings.photoStyle
+        : settings && typeof settings.colorPhotos === "boolean"
+          ? settings.colorPhotos
+          : undefined;
+    if (rules && typeof rules.normalizePhotoStyle === "function") {
+      return rules.normalizePhotoStyle(raw, "bw");
+    }
+    if (raw === true || raw === "true") return "color";
+    if (raw === "color" || raw === "sepia") return raw;
+    return "bw";
+  }
+
+  function slantPhotoFilter(photoStyle) {
+    if (photoStyle === "color") return "contrast(1.05)";
+    if (photoStyle === "sepia") return "sepia(0.88) contrast(1.08) brightness(0.92) saturate(0.85)";
+    return "grayscale(1) contrast(1.08)";
+  }
+
+  function applySlantRowsPresentation(rootEl, settings) {
+    if (!rootEl) return false;
+    const isSlant =
+      rootEl.dataset.theme === "mosaic-slant-rows" ||
+      rootEl.dataset.engine === "mosaic-slant-rows-engine";
+    if (!isSlant) return false;
+    const s = settings || {};
+    const ps = photoStyleOf(s);
+    rootEl.setAttribute("data-photo-style", ps);
+    rootEl.removeAttribute("data-color-photos");
+    if (s.primary != null && s.primary !== "") rootEl.style.setProperty("--primary", s.primary);
+    if (s.secondary != null && s.secondary !== "") rootEl.style.setProperty("--secondary", s.secondary);
+    if (s.background != null && s.background !== "") {
+      rootEl.style.setProperty("--background", s.background);
+    }
+    if (s.frame != null && s.frame !== "") rootEl.style.setProperty("--frame", s.frame);
+    const filt = slantPhotoFilter(ps);
+    rootEl.querySelectorAll(".sr-well img").forEach((img) => {
+      img.style.filter = filt;
+    });
+    if (s.frame != null && s.frame !== "") {
+      rootEl.querySelectorAll(".sr-row .sr-slot .dyn-card").forEach((card) => {
+        card.style.background = s.frame;
+      });
+    }
+    return true;
+  }
+
   function applyMosaicVars(rootEl, settings) {
     if (!rootEl || !rootEl.style) return;
-    const n = Number(settings && settings.scale);
+    const s = settings || {};
+    const n = Number(s.scale);
     const scale = isFinite(n) ? Math.max(0.7, Math.min(1.5, n)) : 1;
     rootEl.style.setProperty("--scale", String(scale));
-    if (settings && settings.primary) rootEl.style.setProperty("--primary", settings.primary);
-    if (settings && settings.secondary) rootEl.style.setProperty("--secondary", settings.secondary);
-    if (settings && settings.background) rootEl.style.setProperty("--background", settings.background);
+    if (s.primary != null && s.primary !== "") rootEl.style.setProperty("--primary", s.primary);
+    if (s.secondary != null && s.secondary !== "") rootEl.style.setProperty("--secondary", s.secondary);
+    if (s.background != null && s.background !== "") {
+      rootEl.style.setProperty("--background", s.background);
+    }
+    if (s.frame != null && s.frame !== "") rootEl.style.setProperty("--frame", s.frame);
+    rootEl.setAttribute("data-photo-style", photoStyleOf(s));
+    rootEl.removeAttribute("data-color-photos");
+    applySlantRowsPresentation(rootEl, s);
   }
 
   const US_CALL = "dyn-bg-us-call";
@@ -896,6 +994,8 @@
           });
         },
         applySettings(themeRoot, state, settings) {
+          const helpers = root.BGMessageThemes || {};
+          if (helpers.applyVars) helpers.applyVars(themeRoot, settings || {});
           if (isSideloadState(state)) {
             usCall("applySettings", {
               engineId: pack.engine,
@@ -1061,6 +1161,7 @@
       },
       async show(themeRoot, capture, state, settings) {
         if (helpers().commonShowPrep) helpers().commonShowPrep(themeRoot, state);
+        if (helpers().applyVars && settings) helpers().applyVars(themeRoot, settings);
         (state.photos || []).forEach((img) => {
           img.src = capture.src || "";
         });
@@ -1243,7 +1344,16 @@
       chrome.runtime &&
       typeof chrome.runtime.getURL === "function"
         ? (path) => chrome.runtime.getURL(path)
-        : (path) => path;
+        : (path) => {
+            try {
+              return new URL(
+                "../extension/" + String(path || "").replace(/^\//, ""),
+                location.href
+              ).href;
+            } catch {
+              return "../extension/" + String(path || "").replace(/^\//, "");
+            }
+          };
     for (let i = 0; i < BUNDLED_PACK_FILES.length; i += 1) {
       const rel = BUNDLED_PACK_FILES[i];
       try {
@@ -1288,8 +1398,8 @@
       ]);
       registerSideloadEngines(engines);
       const merged = mergePackLists(bundled, packs);
-      registerPacks(merged, fontsMap);
-      return merged;
+    registerPacks(merged, fontsMap);
+    return merged;
     } finally {
       markReady();
     }
@@ -1490,6 +1600,8 @@
     MAX_HTML,
     MAX_ENGINE_JS,
     MAX_FONT_BYTES,
+    applyMosaicVars,
+    refreshSlantRows: applySlantRowsPresentation,
     parsePack,
     peekEngineMeta,
     ingestFontFile,

@@ -19,6 +19,7 @@
   const messageShowLogo = document.getElementById("message-show-logo");
   const messageThemeSettings = document.getElementById("message-theme-settings");
   const mosaicThemeSettings = document.getElementById("mosaic-theme-settings");
+  const extVersionEl = document.getElementById("ext-version");
   const anyOutput = document.getElementById("any-output");
   const bgMode = document.getElementById("bg-mode");
   const bgFit = document.getElementById("bg-fit");
@@ -639,6 +640,23 @@
     return row;
   }
 
+  function selectRow(key, label, value, options) {
+    const row = document.createElement("label");
+    row.className = "setting-row select";
+    const opts = (options || [])
+      .map(
+        (option) =>
+          `<option value="${option.value}">${option.label || option.value}</option>`
+      )
+      .join("");
+    row.innerHTML =
+      `<span>${label}</span>` +
+      `<select class="theme-select" data-key="${key}">${opts}</select>`;
+    const select = row.querySelector("select");
+    if (select) select.value = value || (options[0] && options[0].value) || "";
+    return row;
+  }
+
   function motionRow(value) {
     const row = document.createElement("label");
     row.className = "setting-row select";
@@ -665,13 +683,31 @@
     const skip = new Set(["primary", "secondary", "background", "scale", "motion", "wallpaper", "revealMs"]);
     const labels = (meta && meta.labels) || {};
     const defaults = (meta && meta.defaults) || {};
+    const selects = (meta && meta.selects) || {};
     Object.keys(defaults).forEach((key) => {
       if (skip.has(key)) return;
-      if (typeof defaults[key] === "boolean") {
+      if (selects[key] && selects[key].length) {
+        container.appendChild(
+          selectRow(key, labels[key] || key, values[key] || defaults[key], selects[key])
+        );
+      } else if (typeof defaults[key] === "boolean") {
         container.appendChild(toggleRow(key, labels[key] || key, Boolean(values[key])));
       } else if (/^#[0-9a-fA-F]{6}$/.test(defaults[key])) {
         container.appendChild(colorRow(key, labels[key] || key, values[key] || defaults[key]));
       }
+    });
+  }
+
+  function bindSelectInputs(container, onChange) {
+    container.querySelectorAll(".theme-select").forEach((input) => {
+      input.addEventListener("change", onChange);
+      enhanceSelect(input);
+    });
+  }
+
+  function readSelectSettings(container, raw) {
+    container.querySelectorAll(".theme-select").forEach((input) => {
+      raw[input.dataset.key] = input.value;
     });
   }
 
@@ -684,6 +720,12 @@
   function readToggleSettings(container, raw) {
     container.querySelectorAll(".theme-toggle").forEach((input) => {
       raw[input.dataset.key] = input.checked;
+    });
+  }
+
+  function readHexSettings(container, raw) {
+    container.querySelectorAll(".theme-hex").forEach((input) => {
+      if (input.dataset.key) raw[input.dataset.key] = input.value;
     });
   }
 
@@ -807,6 +849,13 @@
     return wrap;
   }
 
+  function themeSettingsTitle() {
+    const title = document.createElement("p");
+    title.className = "theme-settings-title";
+    title.textContent = "Theme settings";
+    return title;
+  }
+
   function renderThemeSettings(id) {
     messageThemeSettings.replaceChildren();
     const allMeta = rulesApi.messageThemeMetaAll ? rulesApi.messageThemeMetaAll() : rulesApi.MESSAGE_THEME_META || {};
@@ -816,6 +865,7 @@
       return;
     }
 
+    messageThemeSettings.appendChild(themeSettingsTitle());
     const values = themeSettingsFor(id);
     const labels = meta.labels || {};
     if (meta.defaults.primary) {
@@ -854,8 +904,9 @@
     });
     messageThemeSettings.appendChild(reset);
 
-    bindColorInputs(messageThemeSettings, schedulePersist);
+    bindColorInputs(messageThemeSettings, persist);
     bindToggleInputs(messageThemeSettings, persist);
+    bindSelectInputs(messageThemeSettings, persist);
     messageThemeSettings.querySelectorAll(".theme-motion").forEach((input) => {
       input.addEventListener("change", persist);
       enhanceSelect(input);
@@ -880,6 +931,7 @@
 
     const values = mosaicSettingsFor(id);
     const labels = meta.labels || {};
+    mosaicThemeSettings.appendChild(themeSettingsTitle());
     if (meta.defaults.scale != null) {
       mosaicThemeSettings.appendChild(scaleRow(labels.scale || "Photo size", values.scale));
     }
@@ -909,8 +961,9 @@
     });
     mosaicThemeSettings.appendChild(reset);
 
-    bindColorInputs(mosaicThemeSettings, schedulePersist);
+    bindColorInputs(mosaicThemeSettings, persist);
     bindToggleInputs(mosaicThemeSettings, persist);
+    bindSelectInputs(mosaicThemeSettings, persist);
     mosaicThemeSettings.querySelectorAll(".theme-scale").forEach((input) => {
       const valueEl = mosaicThemeSettings.querySelector(".theme-scale-value");
       input.addEventListener("input", () => {
@@ -924,15 +977,11 @@
 
   function readThemeForm(id) {
     if (!id || id === "off") return {};
-    const get = (sel) => messageThemeSettings.querySelector(sel);
-    const raw = {
-      primary: get('.theme-hex[data-key="primary"]')?.value,
-      secondary: get('.theme-hex[data-key="secondary"]')?.value,
-    };
-    const bg = get('.theme-hex[data-key="background"]');
-    const motion = get(".theme-motion");
-    const wallpaper = get(".theme-wallpaper");
-    if (bg) raw.background = bg.value;
+    const raw = {};
+    readHexSettings(messageThemeSettings, raw);
+    readSelectSettings(messageThemeSettings, raw);
+    const motion = messageThemeSettings.querySelector(".theme-motion");
+    const wallpaper = messageThemeSettings.querySelector(".theme-wallpaper");
     if (motion) raw.motion = motion.value;
     if (wallpaper) raw.wallpaper = wallpaper.value;
     readToggleSettings(messageThemeSettings, raw);
@@ -942,15 +991,10 @@
   function readMosaicForm(id) {
     if (!id || id === "off" || !mosaicThemeSettings) return {};
     const storeId = mosaicStoreId(id) || id;
-    const get = (sel) => mosaicThemeSettings.querySelector(sel);
     const raw = {};
-    const primary = get('.theme-hex[data-key="primary"]');
-    const secondary = get('.theme-hex[data-key="secondary"]');
-    const bg = get('.theme-hex[data-key="background"]');
-    const scale = get(".theme-scale");
-    if (primary) raw.primary = primary.value;
-    if (secondary) raw.secondary = secondary.value;
-    if (bg) raw.background = bg.value;
+    readHexSettings(mosaicThemeSettings, raw);
+    readSelectSettings(mosaicThemeSettings, raw);
+    const scale = mosaicThemeSettings.querySelector(".theme-scale");
     if (scale) raw.scale = Number(scale.value) / 100;
     readToggleSettings(mosaicThemeSettings, raw);
     return rulesApi.normalizeOneThemeSettings(storeId, raw);
@@ -1026,8 +1070,54 @@
   function persist() {
     return rulesApi.saveSettings(collectSettings()).then(() => {
       cachedSettings = rulesApi.normalizeSettings(collectSettings());
+      pushSettingsToOutputTabs(cachedSettings);
     });
   }
+
+  function pushSettingsToOutputTabs(settings) {
+    if (!settings) return;
+    if (chrome.runtime && chrome.runtime.sendMessage) {
+      try {
+        chrome.runtime.sendMessage({ type: "dyn-bg-push-settings", settings });
+      } catch {
+        /* popup closing */
+      }
+    }
+    if (chrome.tabs && chrome.tabs.query) {
+      try {
+        chrome.tabs.query(
+          { url: ["*://*.thefamousgroup.com/*", "*://*.vixisuite.com/*"] },
+          (tabs) => {
+            (tabs || []).forEach((tab) => {
+              if (tab && tab.id != null) {
+                chrome.tabs
+                  .sendMessage(tab.id, { type: "dyn-bg-apply-settings", settings })
+                  .catch(() => {});
+              }
+            });
+          }
+        );
+      } catch {
+        /* no tab access */
+      }
+    }
+  }
+
+  function flushPersist() {
+    if (persistTimer) {
+      clearTimeout(persistTimer);
+      persistTimer = 0;
+    }
+    return persist();
+  }
+
+  window.addEventListener("pagehide", () => {
+    if (persistTimer) {
+      clearTimeout(persistTimer);
+      persistTimer = 0;
+      rulesApi.saveSettings(collectSettings());
+    }
+  });
 
   function schedulePersist() {
     if (persistTimer) clearTimeout(persistTimer);
@@ -1582,14 +1672,17 @@
     });
   }
 
-  Promise.all([
+  if (extVersionEl && chrome.runtime && chrome.runtime.getManifest) {
+    extVersionEl.textContent = "v" + chrome.runtime.getManifest().version;
+  }
+
+  const packsReady =
     customApi && typeof customApi.loadAndRegister === "function"
       ? customApi.loadAndRegister()
       : rulesApi.loadCustomThemes
         ? rulesApi.loadCustomThemes()
-        : Promise.resolve([]),
-    rulesApi.loadSettings(),
-  ]).then(([packs, settings]) => {
+        : Promise.resolve([]);
+  Promise.all([packsReady, packsReady.then(() => rulesApi.loadSettings())]).then(([packs, settings]) => {
     fillMosaicThemeOptions();
     fillMessageThemeOptions();
     cachedSettings = settings;
