@@ -1522,6 +1522,13 @@
 
   if (typeof handoff.onLiveKind === "function") {
     handoff.onLiveKind((kind) => {
+      // Park immediately on message/native so mosaic cards cannot linger
+      // blown-up during handoff until a click triggers MutationObserver.
+      if (kind === "message" || kind === "native") {
+        parkOverlay();
+        scheduleApply(0);
+        return;
+      }
       if (kind !== "mosaic") return;
       watchSettle();
       pendingRebuild = true;

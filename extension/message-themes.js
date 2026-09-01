@@ -2210,13 +2210,28 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
 
   let stageScale = 1;
   let currentThemeRoot = null;
+  let stageResizeObserver = null;
 
   function layoutFitStage(themeRoot) {
+    if (!themeRoot || !themeRoot.isConnected) return false;
     const stage = themeRoot.querySelector(":scope > .dyn-fit-stage");
     if (!stage) return false;
     const rect = themeRoot.getBoundingClientRect();
-    const rw = rect.width || window.innerWidth || 1920;
-    const rh = rect.height || window.innerHeight || 1080;
+    const rw = rect.width;
+    const rh = rect.height;
+    // Host often settles after mosaic→message handoff without a window resize.
+    // Never fall back to innerWidth/Height — that locks an oversized scale and
+    // looks like the capture "blew up" until something forces a reflow.
+    if (rw < 8 || rh < 8) {
+      if (!stage.dataset.dynFitPending) {
+        stage.dataset.dynFitPending = "1";
+        requestAnimationFrame(() => {
+          delete stage.dataset.dynFitPending;
+          if (themeRoot.isConnected) layoutFitStage(themeRoot);
+        });
+      }
+      return false;
+    }
     const rules = root.BGExtensionRules;
     const size =
       rules && typeof rules.resolveStageSize === "function"
@@ -2249,6 +2264,20 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
     return Boolean(flipped);
   }
 
+  function watchFitStage(themeRoot) {
+    currentThemeRoot = themeRoot;
+    if (typeof ResizeObserver === "undefined") return;
+    if (!stageResizeObserver) {
+      stageResizeObserver = new ResizeObserver(() => {
+        if (currentThemeRoot && currentThemeRoot.isConnected) {
+          layoutFitStage(currentThemeRoot);
+        }
+      });
+    }
+    stageResizeObserver.disconnect();
+    stageResizeObserver.observe(themeRoot);
+  }
+
   function ensureFitStage(themeRoot) {
     let stage = themeRoot.querySelector(":scope > .dyn-fit-stage");
     if (!stage) {
@@ -2256,7 +2285,7 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
       stage.className = "dyn-fit-stage";
       themeRoot.appendChild(stage);
     }
-    currentThemeRoot = themeRoot;
+    watchFitStage(themeRoot);
     layoutFitStage(themeRoot);
     return stage;
   }
@@ -2299,10 +2328,12 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
       clearTimeout(state.idleTimer);
       state.idleTimer = 0;
     }
+    layoutFitStage(themeRoot);
   }
 
   async function finishShow(themeRoot, images) {
     await Promise.all((images || []).filter(Boolean).map(whenDecoded));
+    layoutFitStage(themeRoot);
     void themeRoot.offsetWidth;
     themeRoot.classList.add("on");
   }
