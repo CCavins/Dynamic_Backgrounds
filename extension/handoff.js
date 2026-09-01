@@ -22,23 +22,35 @@
     "html.dyn-cover-mosaic .v2-asset-tile{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
-    "html.dyn-theme-on.dyn-kind-mosaic .v2-qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on.dyn-kind-mosaic .qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on.dyn-kind-mosaic .qr-code-wrapper:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on.dyn-kind-mosaic .qr-code-img:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on.dyn-kind-mosaic .v2-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on.dyn-kind-mosaic .v2-logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on.dyn-kind-mosaic .event-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on.dyn-kind-mosaic .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on.dyn-kind-mosaic .mosaic-layout > .asset-view:not(#dyn-theme-host *)," +
-    "html.dyn-theme-on.dyn-kind-message .v2-qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on.dyn-kind-message .qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on.dyn-kind-message .qr-code-wrapper:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on.dyn-kind-message .qr-code-img:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on.dyn-kind-message .v2-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on.dyn-kind-message .v2-logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on.dyn-kind-message .event-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on.dyn-kind-message .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *){" +
+    "html.dyn-theme-on:not(.dyn-kind-native) .v2-qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native) .qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native) .qr-code-wrapper:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native) .qr-code-img:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native) .v2-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native) .v2-logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native) .event-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native) .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native) .mosaic-layout > .asset-view:not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message:not(:has(#dyn-message-theme.on)) .capture-content-layer," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message:not(:has(#dyn-message-theme.on)) .message-layer," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message:not(:has(#dyn-message-theme.on)) .message-content," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message:not(:has(#dyn-message-theme.on)) .v2-message," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-cover-message:not(.dyn-kind-mosaic):not(:has(#dyn-message-theme)) .capture-content-layer," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-cover-message:not(.dyn-kind-mosaic):not(:has(#dyn-message-theme)) .message-layer," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-cover-message:not(.dyn-kind-mosaic):not(:has(#dyn-message-theme)) .message-content," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-cover-message:not(.dyn-kind-mosaic):not(:has(#dyn-message-theme)) .v2-message," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic:not(:has(#dyn-mosaic-theme.on)) .mosaic-layout," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic:not(:has(#dyn-mosaic-theme.on)) .mosaic-tile-slot," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic:not(:has(#dyn-mosaic-theme.on)) .mosaic-asset," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic:not(:has(#dyn-mosaic-theme.on)) .mosaic-image," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-cover-mosaic:not(.dyn-kind-message):not(:has(#dyn-mosaic-theme)) .mosaic-layout," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-cover-mosaic:not(.dyn-kind-message):not(:has(#dyn-mosaic-theme)) .mosaic-tile-slot," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-cover-mosaic:not(.dyn-kind-message):not(:has(#dyn-mosaic-theme)) .mosaic-asset," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-cover-mosaic:not(.dyn-kind-message):not(:has(#dyn-mosaic-theme)) .mosaic-image," +
+    "#dyn-message-theme:not(.on) > .dyn-brand-chrome," +
+    "#dyn-mosaic-theme:not(.on) > .dyn-brand-chrome," +
+    "#dyn-message-theme.dyn-awaiting-show > .dyn-brand-chrome," +
+    "#dyn-mosaic-theme.dyn-awaiting-show > .dyn-brand-chrome{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
     "html.dyn-theme-on.dyn-kind-mosaic:not(.dyn-show-bg) .v2-app-wrapper__bg-image," +
