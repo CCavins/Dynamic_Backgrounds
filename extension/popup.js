@@ -42,6 +42,11 @@
   const customThemeCount = document.getElementById("custom-theme-count");
   const importInput = document.getElementById("import-theme");
   const importStatus = document.getElementById("import-status");
+  const sideloadStatus = document.getElementById("sideload-status");
+  const sideloadActions = document.getElementById("sideload-actions");
+  const sideloadOpenDetails = document.getElementById("sideload-open-details");
+  const sideloadRecheck = document.getElementById("sideload-recheck");
+  const setupCallout = document.getElementById("setup-callout");
   const mediaApi = globalThis.BGMediaStore;
   const folderApi = globalThis.BGFolder;
   const BG_MEDIA_ID = "bg-any-output";
@@ -64,6 +69,73 @@
     importStatus.classList.remove("is-ok", "is-error", "is-warn");
     if (tone) importStatus.classList.add(tone);
   }
+
+  function queryUserScriptsStatus() {
+    return new Promise((resolve) => {
+      try {
+        chrome.runtime.sendMessage({ type: "dyn-bg-user-scripts-status" }, (result) => {
+          if (chrome.runtime.lastError) {
+            resolve({
+              available: false,
+              hint:
+                chrome.runtime.lastError.message ||
+                "Open chrome://extensions → Dynamic Backgrounds → details → Allow User Scripts.",
+            });
+            return;
+          }
+          resolve(result || { available: false, hint: "" });
+        });
+      } catch (err) {
+        resolve({
+          available: false,
+          hint: String((err && err.message) || err || "Could not check User Scripts."),
+        });
+      }
+    });
+  }
+
+  async function refreshSideloadStatus() {
+    if (!sideloadStatus) return;
+    const status = await queryUserScriptsStatus();
+    sideloadStatus.classList.remove("is-ok", "is-error");
+    if (status && status.available) {
+      if (setupCallout) setupCallout.hidden = true;
+      sideloadStatus.classList.add("is-ok");
+      sideloadStatus.textContent =
+        "User Scripts are on — imported engine packs can run on output pages.";
+      if (sideloadActions) sideloadActions.hidden = true;
+      try {
+        chrome.storage.local.set({ setupComplete: true, showSetup: false });
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    if (setupCallout) setupCallout.hidden = false;
+    sideloadStatus.classList.add("is-error");
+    sideloadStatus.textContent =
+      (status && status.hint) ||
+      "Allow User Scripts is off. Engine packs will show a black screen until you enable it.";
+    if (sideloadActions) sideloadActions.hidden = false;
+  }
+
+  if (sideloadOpenDetails) {
+    sideloadOpenDetails.addEventListener("click", () => {
+      const url = "chrome://extensions/?id=" + chrome.runtime.id;
+      chrome.tabs.create({ url }).catch(() => {
+        chrome.tabs.create({ url: "chrome://extensions/" });
+      });
+    });
+  }
+  if (sideloadRecheck) {
+    sideloadRecheck.addEventListener("click", async () => {
+      if (customApi && customApi.requestSideloadSync) {
+        await customApi.requestSideloadSync();
+      }
+      await refreshSideloadStatus();
+    });
+  }
+  refreshSideloadStatus();
 
   function setMediaStatus(el, message, tone) {
     if (!el) return;
@@ -208,7 +280,7 @@
       folderSelectedFile = fileName;
       await folderApi.setSelectedFile(fileName);
       cachedSettings.bgMediaId = saved;
-      if (bgMode && bgMode.value === "link") {
+      if (bgMode && (bgMode.value === "link" || bgMode.value === "vixi")) {
         bgMode.value = "media";
         if (typeof syncSelectUI === "function") syncSelectUI(bgMode);
       }
@@ -1041,8 +1113,9 @@
       const saved = await handleMediaUpload(file, BG_MEDIA_ID, bgMediaName, bgMediaStatus);
       if (saved) {
         cachedSettings.bgMediaId = saved;
-        if (bgMode && bgMode.value === "auto") {
-          /* keep auto */
+        if (bgMode && (bgMode.value === "link" || bgMode.value === "vixi")) {
+          bgMode.value = "media";
+          if (typeof syncSelectUI === "function") syncSelectUI(bgMode);
         }
         persist();
       }
@@ -1430,11 +1503,37 @@
         }
         const extras = plan.notes.concat(failed).slice(0, 3);
         if (extras.length) message += " " + extras.join(" ");
+
         const okCount = imported.length + replaced.length;
-        setImportStatus(
-          message,
-          failed.length && !okCount ? "is-error" : failed.length ? "is-warn" : "is-ok"
-        );
+        const hadEngine = plan.jobs.some((job) => job.engineSource);
+        let tone = failed.length && !okCount ? "is-error" : failed.length ? "is-warn" : "is-ok";
+        if (hadEngine && okCount) {
+          let sync = { ok: false };
+          try {
+            sync = customApi.requestSideloadSync
+              ? await customApi.requestSideloadSync()
+              : await new Promise((resolve) => {
+                  chrome.runtime.sendMessage({ type: "dyn-bg-sync-sideload" }, (result) => {
+                    resolve(result || { ok: false });
+                  });
+                });
+          } catch {
+            sync = { ok: false };
+          }
+          if (!sync || sync.ok === false) {
+            tone = "is-warn";
+            message +=
+              " " +
+              (sync && sync.hint
+                ? sync.hint
+                : "Enable Allow User Scripts on the extension details page, then reload the output tab.");
+          } else {
+            message += " Engine registered — hard-refresh the output tab if it was already open.";
+          }
+        }
+
+        setImportStatus(message, tone);
+        refreshSideloadStatus();
       } catch (err) {
         setImportStatus(err && err.message ? err.message : "Import failed.", "is-error");
       }

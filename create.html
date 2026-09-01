@@ -19,7 +19,7 @@
                 <a href="extension.html">Extension</a>
                 <a href="create.html" aria-current="page">Create</a>
             </nav>
-            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.20.3</span></a>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.23.2</span></a>
         </header>
 
         <div class="page-intro">
@@ -38,15 +38,19 @@
 
             <h2>Import from the popup</h2>
             <ol>
-                <li>Reload the unpacked extension (or reinstall <code>extension.zip</code>).</li>
+                <li>Reload the unpacked extension (or reinstall <code>extension.zip</code>). On first install, complete the <strong>Finish setup</strong> tab Chrome opens.</li>
+                <li>If the pack includes a <code>*-engine.js</code> file: open extension details → turn on <strong>Allow User Scripts</strong> (Chrome&nbsp;138+), or keep <strong>Developer mode</strong> on for older Chrome. The popup shows a red <strong>Finish setup</strong> banner until this is done. JSON-only packs can skip this.</li>
                 <li>Open the extension popup.</li>
                 <li>Under <strong>Imported themes</strong>, click <strong>Import packs…</strong>.</li>
                 <li>Select one or many theme <code>.json</code> files, plus each pack’s <code>*-engine.js</code> if it has one, plus optional custom font files (<code>.woff2</code> / <code>.woff</code> / <code>.ttf</code> / <code>.otf</code>). Matching is automatic: engines by <code>engine</code> / filename; fonts by each JSON <code>fontFile</code> / <code>fontFaces[].fontFile</code>. A pack can use several custom fonts plus Google Fonts; shared files are stored once.</li>
                 <li>Select the imported theme in <strong>Message theme</strong> or <strong>Mosaic theme</strong>.</li>
                 <li>Under Stage, Match Vixi follows Vixi’s canvas (the default). Match the window fills the browser. Under Mosaic and Message, turn Show background / QR / logo on only for that kind.</li>
-                <li>Open a Vixi output page.</li>
+                <li>Open a Vixi output page and hard-refresh it after enabling User Scripts or importing an engine.</li>
             </ol>
-            <p>A pack that includes JS runs on matching output pages. Only import engines you wrote or trust. The popup warns the first time. Re-importing the same theme <code>id</code> (or the same engine / font file) replaces the previous copy. Remove an imported theme from the same section — if it was selected, the dropdown returns to Off.</p>
+            <p>A pack that includes JS runs on matching output pages only after Allow User Scripts is on. Only import engines you wrote or trust. The popup warns the first time. Re-importing the same theme <code>id</code> (or the same engine / font file) replaces the previous copy. Remove an imported theme from the same section — if it was selected, the dropdown returns to Off.</p>
+
+            <h2>Why engine packs need Allow User Scripts</h2>
+            <p>Chrome blocks running imported JavaScript inside the extension’s normal content scripts (page CSP / MV3). The extension registers your engine with Chrome’s <strong>user scripts</strong> API instead. That API stays off until you opt in on the extension details page. Without the opt-in, mosaic/message mounts fail and the stage stays black. Built-in themes shipped in the extension do not need this step.</p>
 
             <h2>Custom fonts</h2>
             <p>Google Fonts and imported files can both be used on the same pack. For Google Fonts, set <code>"fonts"</code> to a CSS URL (several families in one URL is fine) or an array of URLs, then use those families in CSS.</p>
@@ -76,6 +80,12 @@
                     +
                     <a href="themes/mosaic-orbit-swap-engine.js" download><code>mosaic-orbit-swap-engine.js</code></a>
                     — orbiting mosaic with photo swaps
+                </li>
+                <li>
+                    <a href="themes/mosaic-slant-rows.json" download><code>mosaic-slant-rows.json</code></a>
+                    +
+                    <a href="themes/mosaic-slant-rows-engine.js" download><code>mosaic-slant-rows-engine.js</code></a>
+                    — slanted photo rows (sideload example; needs Allow User Scripts)
                 </li>
                 <li>
                     <a href="themes/message-xmas-bauble.json" download><code>message-xmas-bauble.json</code></a>

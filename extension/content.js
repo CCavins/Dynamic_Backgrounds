@@ -51,16 +51,26 @@
     return Boolean(chrome && chrome.showBackground);
   }
 
-  /** Live theme root when Show background is on; otherwise the Vixi wrapper. */
-  function findBgMountParent(settings) {
+  /** Live theme root when Show background is on; otherwise the Vixi wrapper.
+   *  forcedKind: pin mount to message/mosaic during handoff before kind classes flip.
+   *  useWrapper: CTA / no live theme — keep media on the page wrapper.
+   *  forceShowBg: when set, skip chrome lookup (handoff already computed it). */
+  function findBgMountParent(settings, forcedKind, useWrapper, forceShowBg) {
     const wrapper = rules.findWrapper();
+    if (useWrapper) return wrapper;
     const themeOn = rules.liveThemeIsOn
       ? rules.liveThemeIsOn(settings)
       : false;
-    if (!themeOn || !showBackgroundWanted(settings)) {
+    const wantBg = forceShowBg == null ? showBackgroundWanted(settings) : Boolean(forceShowBg);
+    if (!themeOn || !wantBg) {
       return wrapper;
     }
-    const kind = rules.activeThemeKind ? rules.activeThemeKind(settings) : "";
+    const kind =
+      forcedKind === "message" || forcedKind === "mosaic"
+        ? forcedKind
+        : rules.activeThemeKind
+          ? rules.activeThemeKind(settings)
+          : "";
     const themeId = kind === "message" ? "dyn-message-theme" : kind === "mosaic" ? "dyn-mosaic-theme" : "";
     if (themeId) {
       const themeRoot = document.getElementById(themeId);
@@ -104,8 +114,8 @@
     }
   }
 
-  function injectIframe(src, settings) {
-    const parent = findBgMountParent(settings);
+  function injectIframe(src, settings, mountParent) {
+    const parent = mountParent || findBgMountParent(settings);
     if (!parent) return false;
     const wrapper = rules.findWrapper();
     if (wrapper) hideOriginalBackground(wrapper);
@@ -136,12 +146,10 @@
     el.style.display = "block";
   }
 
-  async function injectMedia(mediaId, fit, settings) {
-    if (!mediaApi || typeof mediaApi.getMedia !== "function") return false;
-    const asset = await mediaApi.getMedia(mediaId);
-    if (!asset || !asset.dataUrl) return false;
+  function injectRemoteAsset(asset, fit, settings, mountParent) {
+    if (!asset || !asset.src) return false;
 
-    const parent = findBgMountParent(settings);
+    const parent = mountParent || findBgMountParent(settings);
     if (!parent) return false;
     const wrapper = rules.findWrapper();
     if (wrapper) hideOriginalBackground(wrapper);
@@ -155,8 +163,8 @@
     // Reparent without destroy so CTA → theme handoff does not blank a frame.
     moveIntoParent(host, parent, mediaHostStyle(parent));
 
-    const key = mediaId + "|" + (asset.mime || "") + "|" + (fit || "cover") + "|" + asset.dataUrl.length;
-    const wantVideo = mediaApi.isVideoMime && mediaApi.isVideoMime(asset.mime);
+    const wantVideo = asset.kind === "video";
+    const key = "url|" + asset.kind + "|" + (fit || "cover") + "|" + asset.src;
     let node = host.firstElementChild;
     const tag = wantVideo ? "VIDEO" : "IMG";
     if (!node || node.tagName !== tag || lastMediaKey !== key) {
@@ -171,7 +179,7 @@
       }
       node.alt = "";
       host.appendChild(node);
-      node.src = asset.dataUrl;
+      node.src = asset.src;
       lastMediaKey = key;
     }
     applyFit(node, fit);
@@ -181,6 +189,90 @@
     }
     markCustomBg(true);
     return true;
+  }
+
+  async function injectMedia(mediaId, fit, settings, mountParent) {
+    if (!mediaApi || typeof mediaApi.getMedia !== "function") return false;
+    const asset = await mediaApi.getMedia(mediaId);
+    if (!asset || !asset.dataUrl) return false;
+
+    return injectRemoteAsset(
+      {
+        src: asset.dataUrl,
+        kind: mediaApi.isVideoMime && mediaApi.isVideoMime(asset.mime) ? "video" : "image",
+      },
+      fit,
+      settings,
+      mountParent
+    );
+  }
+
+  /**
+   * Synchronously keep custom bg mounted on the incoming theme (or host) BEFORE
+   * handoff flips dyn-kind-* classes. Avoids one frame where #dyn-bg-media is
+   * still inside the outgoing (now-hidden) theme and Vixi’s original bg shows.
+   */
+  function syncMount(settings, opts) {
+    const s = settings;
+    if (!s || !rules.usesCustomBackground || !rules.usesCustomBackground(s)) return false;
+
+    const liveOn = Boolean(opts && opts.liveOn);
+    const showBackground = Boolean(opts && opts.showBackground);
+    const nativeBeat = Boolean(opts && opts.nativeBeat);
+    const forcedKind = opts && opts.kind;
+
+    const wrapper = rules.findWrapper();
+    if (wrapper) hideOriginalBackground(wrapper);
+    if (rules.silenceReplacedMedia) rules.silenceReplacedMedia();
+    markCustomBg(true);
+
+    if (liveOn && !showBackground) {
+      removeIframe();
+      removeMedia();
+      return true;
+    }
+
+    const useWrapper = nativeBeat || !liveOn;
+    const parent = findBgMountParent(
+      s,
+      useWrapper ? "" : forcedKind,
+      useWrapper,
+      liveOn ? showBackground : true
+    );
+    if (!parent) return false;
+
+    // Fast path: reparent existing media/iframe first so it never sits in a
+    // theme about to be hidden by dyn-kind-* CSS.
+    const media = document.getElementById(MEDIA_ID);
+    const iframe = document.getElementById(IFRAME_ID);
+    if (media) moveIntoParent(media, parent, mediaHostStyle(parent));
+    if (iframe) moveIntoParent(iframe, parent, IFRAME_STYLE);
+
+    if (s.bgMode === "vixi") {
+      const asset =
+        typeof rules.resolveVixiBackgroundAsset === "function"
+          ? rules.resolveVixiBackgroundAsset()
+          : null;
+      if (asset && asset.src) return injectRemoteAsset(asset, s.bgFit || "cover", s, parent);
+      return Boolean(media);
+    }
+
+    const href = typeof location !== "undefined" ? location.href : "";
+    const mediaId =
+      typeof rules.resolveBackgroundMediaId === "function"
+        ? rules.resolveBackgroundMediaId(s, href)
+        : "";
+    if (mediaId) {
+      // Async fill if empty; reparent above already kept the prior frame up.
+      if (!media || !media.firstElementChild) {
+        injectMedia(mediaId, s.bgFit || "cover", s, parent).catch(() => {});
+      }
+      return true;
+    }
+
+    const src = rules.resolveIframeSrc ? rules.resolveIframeSrc(s, href) : "";
+    if (src) return injectIframe(src, s, parent);
+    return Boolean(media || iframe);
   }
 
   async function apply() {
@@ -206,6 +298,23 @@
       } else {
         restoreOriginalBackground();
       }
+      return;
+    }
+
+    // Source = Vixi: copy the event bg URL into #dyn-bg-media (same path as a
+    // pasted asset URL), then hide Vixi’s live layers so logo/QR do not ride along.
+    if (settings && settings.bgMode === "vixi") {
+      const asset =
+        typeof rules.resolveVixiBackgroundAsset === "function"
+          ? rules.resolveVixiBackgroundAsset()
+          : null;
+      if (asset && asset.src && injectRemoteAsset(asset, settings.bgFit || "cover", settings)) {
+        return;
+      }
+      // Keep layers hidden while waiting for the event asset to appear.
+      const wrapper = rules.findWrapper();
+      if (wrapper) hideOriginalBackground(wrapper);
+      markCustomBg(true);
       return;
     }
 
@@ -257,6 +366,7 @@
 
   globalThis.BGCustomBackground = {
     scheduleApply,
+    syncMount,
     applyNow() {
       return apply();
     },

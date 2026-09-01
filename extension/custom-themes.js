@@ -712,14 +712,151 @@
     registeredIds = { message: [], mosaic: [] };
   }
 
-  function applyMosaicVars(root, settings) {
-    if (!root || !root.style) return;
+  function applyMosaicVars(rootEl, settings) {
+    if (!rootEl || !rootEl.style) return;
     const n = Number(settings && settings.scale);
     const scale = isFinite(n) ? Math.max(0.7, Math.min(1.5, n)) : 1;
-    root.style.setProperty("--scale", String(scale));
-    if (settings && settings.primary) root.style.setProperty("--primary", settings.primary);
-    if (settings && settings.secondary) root.style.setProperty("--secondary", settings.secondary);
-    if (settings && settings.background) root.style.setProperty("--background", settings.background);
+    rootEl.style.setProperty("--scale", String(scale));
+    if (settings && settings.primary) rootEl.style.setProperty("--primary", settings.primary);
+    if (settings && settings.secondary) rootEl.style.setProperty("--secondary", settings.secondary);
+    if (settings && settings.background) rootEl.style.setProperty("--background", settings.background);
+  }
+
+  const US_CALL = "dyn-bg-us-call";
+  const US_RESULT = "dyn-bg-us-result";
+  const US_READY_ATTR = "data-dyn-sideload";
+
+  function sideloadReady() {
+    try {
+      return document.documentElement.getAttribute(US_READY_ATTR) === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  function waitForSideloadHost(ms) {
+    if (sideloadReady()) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      let settled = false;
+      const done = (ok) => {
+        if (settled) return;
+        settled = true;
+        document.documentElement.removeEventListener("dyn-bg-sideload-ready", onReady);
+        window.removeEventListener("message", onMsg);
+        clearTimeout(timer);
+        resolve(ok);
+      };
+      const onReady = () => done(true);
+      const onMsg = (event) => {
+        if (event.source !== window) return;
+        const data = event.data;
+        if (data && data.source === "dyn-bg-sideload" && data.type === "ready") done(true);
+      };
+      const timer = setTimeout(() => done(sideloadReady()), ms || 2500);
+      document.documentElement.addEventListener("dyn-bg-sideload-ready", onReady);
+      window.addEventListener("message", onMsg);
+    });
+  }
+
+  function usCall(method, payload) {
+    return new Promise((resolve, reject) => {
+      const requestId = "r" + Math.random().toString(36).slice(2, 10);
+      const timer = setTimeout(() => {
+        window.removeEventListener("message", onMsg);
+        document.documentElement.removeEventListener(US_RESULT, onDom);
+        reject(
+          new Error(
+            "Sideloaded engine did not respond. On chrome://extensions open Dynamic Backgrounds → details and turn on Allow User Scripts, then reload this page."
+          )
+        );
+      }, 8000);
+      function finish(detail) {
+        clearTimeout(timer);
+        window.removeEventListener("message", onMsg);
+        document.documentElement.removeEventListener(US_RESULT, onDom);
+        if (!detail || detail.ok === false || detail.error) {
+          reject(new Error(String((detail && detail.error) || "Sideload engine call failed.")));
+          return;
+        }
+        resolve(detail);
+      }
+      function onMsg(event) {
+        if (event.source !== window) return;
+        const data = event.data;
+        if (!data || data.source !== "dyn-bg-sideload" || data.type !== "result") return;
+        if (data.requestId !== requestId) return;
+        finish(data);
+      }
+      function onDom(event) {
+        const detail = event && event.detail;
+        if (!detail || detail.requestId !== requestId) return;
+        finish(detail);
+      }
+      window.addEventListener("message", onMsg);
+      document.documentElement.addEventListener(US_RESULT, onDom);
+      const body = Object.assign({ requestId, method }, payload || {});
+      window.postMessage(
+        Object.assign({ source: "dyn-bg-sideload", type: "call" }, body),
+        "*"
+      );
+      document.documentElement.dispatchEvent(new CustomEvent(US_CALL, { detail: body }));
+    });
+  }
+
+  async function ensureSideloadEngine(engineId) {
+    await waitForSideloadHost(3000);
+    if (!sideloadReady()) {
+      throw new Error(
+        "Sideloaded engines need Allow User Scripts (extension details). Enable it, reload the extension, then reload this page."
+      );
+    }
+    const check = await usCall("has", { engineId });
+    if (!check || !check.has) {
+      try {
+        if (chrome.runtime && chrome.runtime.sendMessage) {
+          await chrome.runtime.sendMessage({ type: "dyn-bg-sync-sideload" });
+          await wait(400);
+          await waitForSideloadHost(3000);
+        }
+      } catch {
+        /* background may be unavailable */
+      }
+      const again = await usCall("has", { engineId });
+      if (!again || !again.has) {
+        throw new Error(
+          'Sideload engine "' +
+            engineId +
+            '" is not registered. Re-import the .js with the JSON, enable Allow User Scripts, and reload the page.'
+        );
+      }
+    }
+  }
+
+  function isSideloadState(state) {
+    return Boolean(state && state.__sideload && state.handle);
+  }
+
+  function requestSideloadSync() {
+    try {
+      if (!chrome.runtime || !chrome.runtime.sendMessage) {
+        return Promise.resolve({ ok: false, reason: "no-runtime" });
+      }
+      return new Promise((resolve) => {
+        try {
+          chrome.runtime.sendMessage({ type: "dyn-bg-sync-sideload" }, (result) => {
+            if (chrome.runtime.lastError) {
+              resolve({ ok: false, reason: "error", hint: chrome.runtime.lastError.message });
+              return;
+            }
+            resolve(result || { ok: false, reason: "empty" });
+          });
+        } catch (err) {
+          resolve({ ok: false, reason: "error", hint: String((err && err.message) || err) });
+        }
+      });
+    } catch {
+      return Promise.resolve({ ok: false, reason: "error" });
+    }
   }
 
   function compileFromEngine(pack, kind) {
@@ -728,14 +865,8 @@
       return {
         engine: pack.engine,
         mount(themeRoot, settings) {
-          const def = source();
-          if (!def || typeof def.mount !== "function") {
-            throw new Error(
-              'Message engine "' + pack.engine + '" is not loaded. Update/reload the extension.'
-            );
-          }
           themeRoot.dataset.engine = pack.engine;
-          if (registryEngine(kind, pack.engine) && pack.html) {
+          if (pack.html) {
             const helpers = root.BGMessageThemes || {};
             const stage = helpers.ensureFitStage
               ? helpers.ensureFitStage(themeRoot)
@@ -744,16 +875,47 @@
               stage.innerHTML = pack.html;
             }
           }
-          return def.mount(themeRoot, settings);
+          const def = source();
+          if (def && typeof def.mount === "function") {
+            return def.mount(themeRoot, settings);
+          }
+          // Sideload fallback (USER_SCRIPT world). Returns a Promise — mosaic/message await it.
+          return ensureSideloadEngine(pack.engine).then(async () => {
+            if (!themeRoot.id) themeRoot.id = "dyn-message-theme";
+            const result = await usCall("mountMessage", {
+              engineId: pack.engine,
+              rootId: themeRoot.id,
+              settings: settings || {},
+            });
+            return { __sideload: true, handle: result.handle, engineId: pack.engine };
+          });
         },
         applySettings(themeRoot, state, settings) {
+          if (isSideloadState(state)) {
+            usCall("applySettings", {
+              engineId: pack.engine,
+              handle: state.handle,
+              rootId: themeRoot && themeRoot.id,
+              settings: settings || {},
+            }).catch(() => {});
+            return;
+          }
           const def = source();
           if (def && def.applySettings) def.applySettings(themeRoot, state, settings);
         },
         async show(themeRoot, capture, state, settings) {
-          const def = source();
-          const result = def.show(themeRoot, capture, state, settings);
-          await Promise.resolve(result);
+          if (isSideloadState(state)) {
+            await usCall("show", {
+              engineId: pack.engine,
+              handle: state.handle,
+              rootId: themeRoot && themeRoot.id,
+              capture: capture || {},
+              settings: settings || {},
+            });
+          } else {
+            const def = source();
+            if (def && def.show) await Promise.resolve(def.show(themeRoot, capture, state, settings));
+          }
           const helpers = root.BGMessageThemes || {};
           if (document.fonts && document.fonts.ready) {
             await Promise.race([document.fonts.ready.catch(() => {}), wait(800)]);
@@ -768,11 +930,27 @@
           }
         },
         hide(themeRoot, state) {
-          return source().hide(themeRoot, state);
+          if (isSideloadState(state)) {
+            return usCall("hide", {
+              engineId: pack.engine,
+              handle: state.handle,
+              rootId: themeRoot && themeRoot.id,
+            });
+          }
+          const def = source();
+          return def && def.hide ? def.hide(themeRoot, state) : Promise.resolve();
         },
         unmount(themeRoot, state) {
-          const def = source();
-          if (def && def.unmount) def.unmount(themeRoot, state);
+          if (isSideloadState(state)) {
+            usCall("unmount", {
+              engineId: pack.engine,
+              handle: state.handle,
+              rootId: themeRoot && themeRoot.id,
+            }).catch(() => {});
+          } else {
+            const def = source();
+            if (def && def.unmount) def.unmount(themeRoot, state);
+          }
           if (themeRoot && themeRoot.removeAttribute) themeRoot.removeAttribute("data-engine");
         },
       };
@@ -781,14 +959,6 @@
       engine: pack.engine,
       interval: Number(pack.interval) || 2500,
       mount(mosaicRoot, pool, api, settings) {
-        const def = source();
-        if (!def || typeof def.mount !== "function") {
-          throw new Error(
-            'Mosaic engine "' +
-              pack.engine +
-              '" is not loaded. Update/reload the extension — output pages cannot eval sideloaded engines.'
-          );
-        }
         mosaicRoot.dataset.engine = pack.engine;
         if (pack.html) {
           const wrap = document.createElement("div");
@@ -797,22 +967,63 @@
           mosaicRoot.appendChild(wrap);
         }
         applyMosaicVars(mosaicRoot, settings);
-        return def.mount(mosaicRoot, pool, api, settings);
+        const def = source();
+        // Bundled / already-defined engines: same sync path as before.
+        if (def && typeof def.mount === "function") {
+          return def.mount(mosaicRoot, pool, api, settings);
+        }
+        // Sideload-only engines: Promise path (awaited by mosaic.js).
+        return ensureSideloadEngine(pack.engine).then(async () => {
+          if (!mosaicRoot.id) mosaicRoot.id = "dyn-mosaic-theme";
+          const result = await usCall("mount", {
+            engineId: pack.engine,
+            rootId: mosaicRoot.id,
+            pool: Array.isArray(pool) ? pool.slice() : [],
+            settings: settings || {},
+          });
+          return { __sideload: true, handle: result.handle, engineId: pack.engine };
+        });
       },
       tick(mosaicRoot, pool, state, api) {
+        if (isSideloadState(state)) {
+          usCall("tick", {
+            engineId: pack.engine,
+            handle: state.handle,
+            rootId: mosaicRoot && mosaicRoot.id,
+            pool: Array.isArray(pool) ? pool.slice() : [],
+          }).catch(() => {});
+          return;
+        }
         const def = source();
         if (def && def.tick) def.tick(mosaicRoot, pool, state, api);
       },
       applySettings(mosaicRoot, state, settings) {
         applyMosaicVars(mosaicRoot, settings);
+        if (isSideloadState(state)) {
+          usCall("applySettings", {
+            engineId: pack.engine,
+            handle: state.handle,
+            rootId: mosaicRoot && mosaicRoot.id,
+            settings: settings || {},
+          }).catch(() => {});
+          return;
+        }
         const def = source();
         if (def && typeof def.applySettings === "function") {
           def.applySettings(mosaicRoot, state, settings);
         }
       },
       unmount(mosaicRoot, state) {
-        const def = source();
-        if (def && def.unmount) def.unmount(mosaicRoot, state);
+        if (isSideloadState(state)) {
+          usCall("unmount", {
+            engineId: pack.engine,
+            handle: state.handle,
+            rootId: mosaicRoot && mosaicRoot.id,
+          }).catch(() => {});
+        } else {
+          const def = source();
+          if (def && def.unmount) def.unmount(mosaicRoot, state);
+        }
         if (mosaicRoot && mosaicRoot.removeAttribute) mosaicRoot.removeAttribute("data-engine");
       },
     };
@@ -1250,5 +1461,6 @@
     onChange,
     importPack,
     removePack,
+    requestSideloadSync,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

@@ -370,13 +370,15 @@ html.dyn-mosaic-on .mosaic-tile-slot,
 html.dyn-mosaic-on .mosaic-asset {
   visibility: hidden !important;
 }
-html.dyn-mosaic-on .mosaic-layout > .asset-view,
-html.dyn-mosaic-on .v2-qr-tile,
-html.dyn-mosaic-on .qr-tile,
-html.dyn-mosaic-on .v2-logo,
-html.dyn-mosaic-on .v2-logo-tile,
-html.dyn-mosaic-on .event-logo,
-html.dyn-mosaic-on .logo-tile {
+html.dyn-mosaic-on .mosaic-layout > .asset-view:not(#dyn-theme-host *),
+html.dyn-mosaic-on .v2-qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *),
+html.dyn-mosaic-on .qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *),
+html.dyn-mosaic-on .qr-code-wrapper:not(.dyn-brand-clone):not(#dyn-theme-host *),
+html.dyn-mosaic-on .qr-code-img:not(.dyn-brand-clone):not(#dyn-theme-host *),
+html.dyn-mosaic-on .v2-logo:not(.dyn-brand-clone):not(#dyn-theme-host *),
+html.dyn-mosaic-on .v2-logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *),
+html.dyn-mosaic-on .event-logo:not(.dyn-brand-clone):not(#dyn-theme-host *),
+html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
   visibility: hidden !important;
   opacity: 0 !important;
 }

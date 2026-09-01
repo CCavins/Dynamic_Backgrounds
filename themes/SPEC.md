@@ -391,7 +391,18 @@ BGThemeEngines.define({
 The same file works:
 
 - shipped as `extension/engines/my-theme-engine.js` (listed in `extension/engines.json`, then `node scripts/sync-engine-manifest.cjs`)
-- sideloaded: stored in Chrome storage. Output pages use a bundled file if the engine id is already in the extension (`engines/*.js`). `new Function` is only used on pages that allow it (local preview). Chrome’s extension CSP blocks eval in the popup and in content scripts.
+- sideloaded via **Import packs…** (JSON + engine.js): stored in Chrome storage (`customEngines`). On matching output pages the service worker registers them with `chrome.userScripts` (CSP-exempt `USER_SCRIPT` world) plus a small host that talks to content scripts over `window.postMessage`.
+
+### Sideload / Allow User Scripts (required)
+
+Chrome MV3 blocks running imported engine source inside normal content scripts. Sideloaded engines therefore need an explicit opt-in:
+
+1. First install opens `extension/setup.html` (**Finish setup**).
+2. **Chrome 138+:** `chrome://extensions` → Dynamic Backgrounds → **Details** → turn on **Allow User Scripts**.
+3. **Older Chrome:** keep **Developer mode** on at `chrome://extensions`.
+4. Reload the extension if you just changed the toggle, confirm the popup setup banner is clear, then hard-refresh the Vixi output tab.
+
+Without that opt-in, mount fails and the stage stays black. JSON-only packs do not need it. Bundled engines in `engines/*.js` still win when the same id is shipped. `new Function` is only used on pages that allow it (local preview). Chrome’s extension CSP blocks eval in the popup and in content scripts.
 
 `id` and `kind` must be string literals in the define object so the importer can peek them.
 

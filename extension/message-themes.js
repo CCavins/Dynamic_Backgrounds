@@ -16,13 +16,15 @@ html.dyn-message-on .message-layer {
   visibility: hidden !important;
   opacity: 0 !important;
 }
-html.dyn-message-on .v2-qr-tile,
-html.dyn-message-on .qr-tile,
-html.dyn-message-on .v2-logo,
-html.dyn-message-on .v2-logo-tile,
-html.dyn-message-on .event-logo,
-html.dyn-message-on .logo-tile,
-html.dyn-message-on .mosaic-layout > .asset-view {
+html.dyn-message-on .v2-qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *),
+html.dyn-message-on .qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *),
+html.dyn-message-on .qr-code-wrapper:not(.dyn-brand-clone):not(#dyn-theme-host *),
+html.dyn-message-on .qr-code-img:not(.dyn-brand-clone):not(#dyn-theme-host *),
+html.dyn-message-on .v2-logo:not(.dyn-brand-clone):not(#dyn-theme-host *),
+html.dyn-message-on .v2-logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *),
+html.dyn-message-on .event-logo:not(.dyn-brand-clone):not(#dyn-theme-host *),
+html.dyn-message-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *),
+html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
   visibility: hidden !important;
   opacity: 0 !important;
 }

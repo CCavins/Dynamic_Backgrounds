@@ -145,7 +145,7 @@
       scheduleApply(80);
       return false;
     }
-    const ok = mountTheme(id, themeSettings);
+    const ok = await mountTheme(id, themeSettings);
     if (ok) {
       const host = rules.findOverlayHost && rules.findOverlayHost();
       mountedHostKey = hostSizeKey(host);
@@ -153,7 +153,7 @@
     return ok;
   }
 
-  function mountTheme(id, themeSettings) {
+  async function mountTheme(id, themeSettings) {
     const def = themeApi.themes[id];
     if (!def) return false;
     const host = rules.findOverlayHost && rules.findOverlayHost();
@@ -164,7 +164,9 @@
     root.dataset.theme = id;
     if (def.engine) root.dataset.engine = def.engine;
     else root.removeAttribute("data-engine");
-    const state = def.mount(root, themeSettings) || {};
+    const mounted = def.mount(root, themeSettings);
+    const state =
+      mounted && typeof mounted.then === "function" ? await mounted : mounted || {};
     if (typeof def.applySettings === "function") {
       def.applySettings(root, state, themeSettings);
     }
@@ -202,6 +204,7 @@
 
   function unparkOverlay(root) {
     if (root) root.classList.remove("is-parked");
+    if (typeof handoff.applyCovers === "function") handoff.applyCovers();
   }
 
   function leftoverAfterNative(key) {
@@ -305,6 +308,9 @@
     }
     root.classList.remove("dyn-awaiting-show");
     unparkOverlay(root);
+    // Theme root is mountable now — pull #dyn-bg-media out of the host/wrapper
+    // into this theme before show() paints (avoids a late overlay flash).
+    if (typeof handoff.applyCovers === "function") handoff.applyCovers();
     try {
       if (typeof active.def.show === "function") {
         await active.def.show(root, next, active.state, themeSettings);
@@ -312,6 +318,7 @@
     } finally {
       root.classList.remove("dyn-awaiting-show");
       unparkOverlay(root);
+      if (typeof handoff.applyCovers === "function") handoff.applyCovers();
     }
   }
 
@@ -562,11 +569,26 @@
         changes.enabled ||
         changes.stageAspect ||
         changes.messageThemeSettings ||
-        changes.messageShowBackground ||
-        changes.messageShowQr ||
-        changes.messageShowLogo
+        changes.customThemes ||
+        changes.customEngines
       ) {
         requestRebuild();
+      }
+      // Chrome toggles only — refresh slots without remounting (remount was
+      // racing Vixi’s message DOM and losing the live QR source).
+      if (
+        changes.messageShowQr ||
+        changes.messageShowLogo ||
+        changes.messageShowBackground ||
+        changes.showQr ||
+        changes.showLogo ||
+        changes.showBackground
+      ) {
+        const live = document.getElementById(OVERLAY_ID);
+        if (live && typeof rules.ensureBrandChrome === "function") {
+          rules.ensureBrandChrome(live, "message");
+        }
+        if (typeof handoff.applyCovers === "function") handoff.applyCovers();
       }
       scheduleApply();
     });

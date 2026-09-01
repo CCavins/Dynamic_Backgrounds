@@ -25,6 +25,8 @@
     "}" +
     "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .v2-qr-tile," +
     "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .qr-tile," +
+    "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .qr-code-wrapper," +
+    "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .qr-code-img," +
     "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .v2-logo," +
     "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .v2-logo-tile," +
     "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .event-logo," +

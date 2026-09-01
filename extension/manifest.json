@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Dynamic Backgrounds",
-  "version": "1.20.3",
+  "version": "1.23.2",
+  "minimum_chrome_version": "120",
   "description": "Apply a Dynamic Backgrounds iframe, mosaic themes, and message themes to matching output URLs.",
   "action": {
     "default_popup": "popup.html",
@@ -12,9 +13,13 @@
       "128": "icons/icon128.png"
     }
   },
+  "background": {
+    "service_worker": "background.js"
+  },
   "permissions": [
     "storage",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "userScripts"
   ],
   "host_permissions": [
     "*://*.thefamousgroup.com/*"

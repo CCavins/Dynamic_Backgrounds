@@ -25,15 +25,16 @@ You are writing a Dynamic Backgrounds theme pack. Read themes/SPEC.md and clone 
 
 ## Import
 
-1. Reload the unpacked extension (or reinstall `extension.zip`).
-2. Open the extension popup.
-3. Under **Imported themes**, click **Import packs…**.
-4. Select one or many theme `.json` files, plus each pack’s `*-engine.js` if it has one. Matching is automatic by `engine` / filename.
-5. Select the imported theme in **Message theme** or **Mosaic theme**.
-6. Under **Stage**, pick a canvas ratio (or Custom width:height). Under **Mosaic theme** and **Message theme**, turn **Show background** / **Show QR code** / **Show logo** on only for that kind. Mosaic and message chrome stay separate.
-7. Open a Vixi output page.
+1. Reload the unpacked extension (or reinstall `extension.zip`). On first install, complete the **Finish setup** tab.
+2. **If the pack includes `*-engine.js`:** open extension details → turn on **Allow User Scripts** (Chrome 138+), or keep **Developer mode** on for older Chrome. The popup shows a red **Finish setup** banner until this is done. JSON-only packs can skip this. Without the opt-in, engine themes mount as a black screen on Vixi.
+3. Open the extension popup.
+4. Under **Imported themes**, click **Import packs…**.
+5. Select one or many theme `.json` files, plus each pack’s `*-engine.js` if it has one. Matching is automatic by `engine` / filename.
+6. Select the imported theme in **Message theme** or **Mosaic theme**.
+7. Under **Stage**, pick a canvas ratio (or Custom width:height). Under **Mosaic theme** and **Message theme**, turn **Show background** / **Show QR code** / **Show logo** on only for that kind. Mosaic and message chrome stay separate.
+8. Open a Vixi output page and hard-refresh after enabling User Scripts or importing an engine.
 
-A pack that includes JS runs on matching output pages. Only import engines you wrote or trust. The popup warns the first time.
+A pack that includes JS runs on matching output pages only after Allow User Scripts is on. Only import engines you wrote or trust. The popup warns the first time.
 
 Examples to try:
 
@@ -42,6 +43,7 @@ Examples to try:
 - `mosaic-ribbon.json` — diagonal photo ribbon (JSON only)
 - `message-aurora.json` + `message-aurora-engine.js` — message card with a canvas aurora (same JS as `extension/engines/message-aurora-engine.js`)
 - `mosaic-orbit-swap.json` + `mosaic-orbit-swap-engine.js` — orbiting mosaic with photo swaps (same JS as `extension/engines/mosaic-orbit-swap-engine.js`)
+- `mosaic-slant-rows.json` + `mosaic-slant-rows-engine.js` — slanted photo rows (sideload-only example; needs Allow User Scripts)
 - `message-xmas-bauble.json` (+ `message-xmas-bauble-engine`) / `message-xmas-postcard.json` / `message-xmas-mantel.json` — Christmas message options
 - `mosaic-xmas-snowfall.json` (+ `mosaic-xmas-snowfall-engine`) — scatter mosaic with particles.js–style canvas snow
 - `mosaic-xmas-wreath.json` + `mosaic-xmas-wreath-engine.js` — Christmas wreath mosaic

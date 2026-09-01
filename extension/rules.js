@@ -65,7 +65,7 @@
   };
 
   const MOTION_MODES = ["slow", "drift", "fizz"];
-  const BG_MODES = ["auto", "link", "media"];
+  const BG_MODES = ["auto", "vixi", "link", "media"];
   const BG_FITS = ["cover", "contain", "fill", "center"];
   const MOSAIC_SCALE_MIN = 0.7;
   const MOSAIC_SCALE_MAX = 1.5;
@@ -767,12 +767,34 @@
     return lastGoodSettings.stageAspect;
   }
 
-  const QR_SELECTORS = ".v2-qr-tile, .qr-tile";
+  const QR_SELECTORS = [
+    ".v2-qr-tile",
+    ".qr-tile",
+    ".v2-qr",
+    ".event-qr",
+    ".output-qr",
+    // Current Vixi Suite output markup (message + mosaic).
+    ".qr-code-wrapper",
+    ".qr-code-wrapper-inner",
+    ".qr-code-img",
+    "img.qr-code-img",
+    "[class*='qr-tile' i]",
+    "[class*='qr_tile' i]",
+    "[class*='qr-code' i]",
+    "img[alt='qr' i]",
+    "img[alt*='qr' i]",
+    "canvas[class*='qr' i]",
+  ].join(", ");
   const MESSAGE_CHROME_SCOPE =
     ".message-layer, .capture-content-layer, .message-content, .v2-message";
   const MOSAIC_CHROME_SCOPE =
     ".mosaic-layout, .mosaic-tile-slot, .mosaic-asset, .v2-mosaic-swap-tile, .v2-mosaic-face, .v2-asset-tile";
   const lastBrand = {
+    message: { qr: null, logo: null },
+    mosaic: { qr: null, logo: null },
+  };
+  /** Per-kind raster cache. Message and mosaic QR/logo never share. */
+  const lastBrandAsset = {
     message: { qr: null, logo: null },
     mosaic: { qr: null, logo: null },
   };
@@ -1038,12 +1060,111 @@
     });
   }
 
-  /** True when the popup Background is a custom upload/iframe (not Vixi's event art). */
+  /**
+   * True when Background should run through #dyn-bg-media / #dyn-bg-embed
+   * (upload, link, or Vixi event art) instead of leaving Vixi’s live DOM layers visible.
+   */
   function usesCustomBackground(settings, pageUrl) {
     const href = pageUrl || (typeof location !== "undefined" ? location.href : "");
+    const state = normalizeSettings(settings);
+    // Vixi source always uses the inject path (URL copied from the event asset).
+    if (state.bgMode === "vixi") return true;
     if (resolveBackgroundMediaId(settings, href)) return true;
     const src = typeof resolveIframeSrc === "function" ? resolveIframeSrc(settings, href) : "";
     return Boolean(src);
+  }
+
+  let lastVixiBgAsset = null;
+
+  function cssBackgroundImageUrl(el) {
+    if (!el || !el.ownerDocument) return "";
+    try {
+      const bg = getComputedStyle(el).backgroundImage || "";
+      const match = bg.match(/url\(\s*(['"]?)([^'")]+)\1\s*\)/i);
+      return match ? String(match[2] || "").trim() : "";
+    } catch {
+      return "";
+    }
+  }
+
+  function mediaElementSrc(el) {
+    if (!el) return "";
+    if (el.tagName === "SOURCE") {
+      return String(el.src || el.getAttribute("src") || "").trim();
+    }
+    if (el.tagName === "PICTURE") {
+      const img = el.querySelector("img");
+      return mediaElementSrc(img);
+    }
+    const direct = String(el.currentSrc || el.src || "").trim();
+    if (direct) return direct;
+    if (el.tagName === "VIDEO") {
+      const source = el.querySelector("source[src]");
+      if (source) return String(source.src || source.getAttribute("src") || "").trim();
+    }
+    return cssBackgroundImageUrl(el);
+  }
+
+  function mediaElementArea(el) {
+    if (!el) return 0;
+    try {
+      const r = el.getBoundingClientRect();
+      const box = Math.max(0, r.width) * Math.max(0, r.height);
+      if (box >= 4) return box;
+    } catch {
+      /* ignore */
+    }
+    const w = Math.max(Number(el.naturalWidth) || 0, Number(el.videoWidth) || 0, el.clientWidth || 0);
+    const h = Math.max(Number(el.naturalHeight) || 0, Number(el.videoHeight) || 0, el.clientHeight || 0);
+    return w * h;
+  }
+
+  /**
+   * Read the event’s current background asset the same way a pasted URL would
+   * work: pick the largest non-logo/QR media inside Vixi’s bg layers.
+   * Returns { src, kind: "image"|"video" } or null.
+   * Caches the last good asset so CTA / theme swaps do not briefly lose the URL.
+   */
+  function resolveVixiBackgroundAsset(root) {
+    const layers = backgroundLayers(root);
+    let best = null;
+    let bestArea = -1;
+
+    const consider = (el, srcHint) => {
+      if (!el || !el.tagName) return;
+      if (el.closest && el.closest("#dyn-bg-media, #dyn-bg-embed, #dyn-theme-host")) return;
+      if (isBrandNode(el)) return;
+      if (el.closest && (el.closest(QR_SELECTORS) || el.closest(LOGO_SELECTORS))) return;
+      const src = String(srcHint || mediaElementSrc(el) || "").trim();
+      if (!src || src === "about:blank") return;
+      if (/^(data:text\/html|javascript:)/i.test(src)) return;
+      const tag = el.tagName;
+      const kind =
+        tag === "VIDEO" || /\.(mp4|webm|mov|m4v|ogv|ogg)(\?|$)/i.test(src) ? "video" : "image";
+      const area = mediaElementArea(el);
+      if (area < bestArea) return;
+      bestArea = area;
+      best = { src, kind };
+    };
+
+    layers.forEach((layer) => {
+      if (!layer) return;
+      const nodes = [
+        layer,
+        ...layer.querySelectorAll("img, video, picture, source, canvas"),
+      ];
+      nodes.forEach((el) => {
+        if (el === layer) {
+          const cssUrl = cssBackgroundImageUrl(layer);
+          if (cssUrl) consider(layer, cssUrl);
+          return;
+        }
+        consider(el);
+      });
+    });
+
+    if (best && best.src) lastVixiBgAsset = best;
+    return best || lastVixiBgAsset;
   }
 
   function silenceReplacedMedia() {
@@ -1138,6 +1259,16 @@
     if (!el || !el.closest) return "shared";
     if (el.closest(MESSAGE_CHROME_SCOPE)) return "message";
     if (el.closest(MOSAIC_CHROME_SCOPE)) return "mosaic";
+    // Vixi’s message QR is `.qr-code-wrapper` under `.output-app`, outside
+    // `.message-layer`. Mosaic’s QR uses the same classes but lives inside
+    // `.mosaic-layout` (caught above). When message chrome is on screen and
+    // this node is not under mosaic, treat it as the message QR.
+    const qrChrome = el.closest(
+      ".qr-code-wrapper, .qr-code-img, .v2-qr-tile, .qr-tile, .v2-qr, .event-qr, .output-qr"
+    );
+    if (qrChrome || (el.matches && el.matches(QR_SELECTORS))) {
+      if (document.querySelector(MESSAGE_CHROME_SCOPE)) return "message";
+    }
     let node = el.parentElement;
     while (node && node !== document.documentElement && node !== document.body) {
       if (!node.querySelector) {
@@ -1168,10 +1299,12 @@
 
   function pickChromeNode(nodes, kind) {
     const list = [...nodes].filter(Boolean);
+    if (!list.length || (kind !== "message" && kind !== "mosaic")) return null;
     const exact = list.find((el) => classifyChrome(el) === kind);
     if (exact) return exact;
-    const opposite = kind === "message" ? "mosaic" : kind === "mosaic" ? "message" : "";
-    if (opposite && list.some((el) => classifyChrome(el) === opposite)) return null;
+    const opposite = kind === "message" ? "mosaic" : "message";
+    // If the other kind’s tile is present, never borrow it or an ambiguous shared node.
+    if (list.some((el) => classifyChrome(el) === opposite)) return null;
     return list.find((el) => classifyChrome(el) === "shared") || null;
   }
 
@@ -1185,8 +1318,39 @@
 
   function findBrandNodes(kind) {
     const mode = kind === "message" || kind === "mosaic" ? kind : activeThemeKind();
-    const qr = pickChromeNode(document.querySelectorAll(QR_SELECTORS), mode);
+    if (mode !== "message" && mode !== "mosaic") {
+      return { qr: null, logo: null, kind: mode };
+    }
+    let qrNodes = [...document.querySelectorAll(QR_SELECTORS)].filter((el) => {
+      if (!el || (el.closest && el.closest("#dyn-theme-host, .dyn-brand-chrome"))) return false;
+      return true;
+    });
+    // Fallback: square canvases / imgs that look like QR chrome (bottom-ish).
+    // Never pick canvases inside our own themes (LED matrices, etc.).
+    if (!qrNodes.length) {
+      qrNodes = [...document.querySelectorAll("canvas, img")].filter((el) => {
+        if (
+          !el ||
+          (el.closest &&
+            el.closest(
+              "#dyn-theme-host, #dyn-message-theme, #dyn-mosaic-theme, .dyn-brand-chrome, #dyn-bg-media"
+            ))
+        ) {
+          return false;
+        }
+        if (el.closest && el.closest(LOGO_SELECTORS)) return false;
+        const r = el.getBoundingClientRect();
+        if (r.width < 24 || r.height < 24 || r.width > 420 || r.height > 420) return false;
+        const ratio = r.width / Math.max(r.height, 1);
+        if (ratio < 0.75 || ratio > 1.35) return false;
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        return cx > window.innerWidth * 0.45 && cy > window.innerHeight * 0.35;
+      });
+    }
+    const qr = pickChromeNode(qrNodes, mode);
     let logos = [...document.querySelectorAll(LOGO_SELECTORS)].filter((el) => {
+      if (!el || (el.closest && el.closest("#dyn-theme-host, .dyn-brand-chrome"))) return false;
       if (qr && (el === qr || (el.closest && el.closest(QR_SELECTORS)))) return false;
       return true;
     });
@@ -1195,18 +1359,43 @@
       const views = document.querySelectorAll(".mosaic-layout > .asset-view");
       views.forEach((el) => {
         if (logo || (qr && (el === qr || el.contains(qr) || (qr.contains && qr.contains(el))))) return;
+        // Mosaic logo fallback stays mosaic-scoped.
+        if (classifyChrome(el) === "message") return;
         logo = el;
       });
     }
-    if (mode === "message" || mode === "mosaic") {
-      if (qr) lastBrand[mode].qr = qr;
-      if (logo) lastBrand[mode].logo = logo;
-    }
+    if (qr) lastBrand[mode].qr = qr;
+    if (logo) lastBrand[mode].logo = logo;
     return {
-      qr: qr || (mode && lastBrand[mode] && lastBrand[mode].qr) || null,
-      logo: logo || (mode && lastBrand[mode] && lastBrand[mode].logo) || null,
+      qr: qr || lastBrand[mode].qr || null,
+      logo: logo || lastBrand[mode].logo || null,
       kind: mode,
     };
+  }
+
+  function rememberBrandAsset(mode, type, source) {
+    if ((mode !== "message" && mode !== "mosaic") || (type !== "qr" && type !== "logo")) return;
+    const painted = brandMediaFromSource(source);
+    if (!painted) return;
+    let src = "";
+    if (painted.tagName === "IMG" || painted.tagName === "VIDEO") {
+      src = String(painted.currentSrc || painted.src || "");
+    } else if (painted.tagName === "CANVAS") {
+      const img = canvasToImage(painted);
+      src = img ? String(img.src || "") : "";
+    }
+    if (src && src.length > 16) lastBrandAsset[mode][type] = { src, kind: "image" };
+  }
+
+  function assetElementFromCache(mode, type) {
+    if ((mode !== "message" && mode !== "mosaic") || (type !== "qr" && type !== "logo")) return null;
+    const asset = lastBrandAsset[mode][type];
+    if (!asset || !asset.src) return null;
+    const img = document.createElement("img");
+    img.className = "dyn-brand-clone";
+    img.alt = "";
+    img.src = asset.src;
+    return img;
   }
 
   function fillBrandSlot(slot, source) {
@@ -1217,22 +1406,150 @@
       return;
     }
     slot.hidden = false;
+
+    // Prefer a real paintablesource. Canvas cloneNode is empty (no pixels);
+    // CSS background-image on the tile is lost when we rewrite style.cssText.
+    const painted = brandMediaFromSource(source);
+    if (painted) {
+      painted.classList.add("dyn-brand-clone");
+      painted.alt = painted.alt || "";
+      painted.style.cssText =
+        "display:block!important;width:100%!important;height:auto!important;" +
+        "max-width:100%;max-height:100%;aspect-ratio:1/1;object-fit:contain;" +
+        "visibility:visible!important;opacity:1!important;pointer-events:none;";
+      slot.appendChild(painted);
+      return;
+    }
+
     const clone = source.cloneNode(true);
     clone.removeAttribute("id");
-    clone.classList.add("dyn-brand-clone");
+    const stripBrandClass = (el) => {
+      if (!el || !el.classList) return;
+      [
+        "v2-qr-tile",
+        "qr-tile",
+        "v2-qr",
+        "event-qr",
+        "output-qr",
+        "qr-code-wrapper",
+        "qr-code-wrapper-inner",
+        "qr-code-img",
+        "v2-logo",
+        "v2-logo-tile",
+        "event-logo",
+        "logo-tile",
+        "output-logo",
+        "brand-logo",
+        "v2-app-wrapper__logo",
+      ].forEach((c) => el.classList.remove(c));
+      el.classList.add("dyn-brand-clone");
+    };
+    stripBrandClass(clone);
+    clone.querySelectorAll("*").forEach(stripBrandClass);
     clone.style.cssText =
       "position:relative;inset:auto;left:auto;top:auto;right:auto;bottom:auto;" +
-      "width:100%;height:100%;max-width:100%;max-height:100%;" +
-      "visibility:visible;opacity:1;display:block;transform:none;pointer-events:none;";
+      "width:100%;height:auto;max-width:100%;max-height:100%;aspect-ratio:1/1;" +
+      "visibility:visible!important;opacity:1!important;display:block!important;" +
+      "transform:none;pointer-events:none;";
     const media = clone.matches("img,canvas,svg,video")
       ? [clone]
       : [...clone.querySelectorAll("img,canvas,svg,video")];
     media.forEach((el) => {
+      if (el.tagName === "CANVAS") {
+        const srcCanvas =
+          source.tagName === "CANVAS"
+            ? source
+            : source.querySelector
+              ? source.querySelector("canvas")
+              : null;
+        const img = canvasToImage(srcCanvas) || canvasToImage(el);
+        if (img) {
+          el.replaceWith(img);
+          return;
+        }
+      }
       el.style.width = "100%";
-      el.style.height = "100%";
+      el.style.height = "auto";
+      el.style.aspectRatio = "1 / 1";
       el.style.objectFit = "contain";
+      el.style.setProperty("visibility", "visible", "important");
+      el.style.setProperty("opacity", "1", "important");
+      el.style.setProperty("display", "block", "important");
     });
+    // If the source tile used a CSS background QR, stamp it onto the clone.
+    const bgUrl = cssBackgroundImageUrl(source);
+    if (bgUrl && !slot.querySelector("img,canvas,svg")) {
+      const img = document.createElement("img");
+      img.className = "dyn-brand-clone";
+      img.alt = "";
+      img.src = bgUrl;
+      img.style.cssText =
+        "display:block!important;width:100%!important;height:auto!important;" +
+        "aspect-ratio:1/1;object-fit:contain;visibility:visible!important;opacity:1!important;";
+      slot.appendChild(img);
+      return;
+    }
     slot.appendChild(clone);
+  }
+
+  function canvasToImage(canvas) {
+    if (!canvas || canvas.tagName !== "CANVAS") return null;
+    try {
+      const w = canvas.width || 0;
+      const h = canvas.height || 0;
+      if (w < 2 || h < 2) return null;
+      const url = canvas.toDataURL("image/png");
+      if (!url || url.length < 32) return null;
+      const img = document.createElement("img");
+      img.className = "dyn-brand-clone";
+      img.alt = "";
+      img.src = url;
+      return img;
+    } catch {
+      // Tainted canvas — fall back to drawImage onto a fresh canvas.
+      try {
+        const copy = document.createElement("canvas");
+        copy.width = canvas.width;
+        copy.height = canvas.height;
+        copy.className = "dyn-brand-clone";
+        const ctx = copy.getContext("2d");
+        if (ctx) ctx.drawImage(canvas, 0, 0);
+        return copy;
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  function brandMediaFromSource(source) {
+    if (!source) return null;
+    if (source.tagName === "IMG" || source.tagName === "SVG" || source.tagName === "VIDEO") {
+      const clone = source.cloneNode(true);
+      clone.removeAttribute("id");
+      return clone;
+    }
+    if (source.tagName === "CANVAS") {
+      return canvasToImage(source);
+    }
+    const canvas = source.querySelector && source.querySelector("canvas");
+    if (canvas) {
+      const img = canvasToImage(canvas);
+      if (img) return img;
+    }
+    const img = source.querySelector && source.querySelector("img,svg,video");
+    if (img) {
+      const clone = img.cloneNode(true);
+      clone.removeAttribute("id");
+      return clone;
+    }
+    const bgUrl = cssBackgroundImageUrl(source);
+    if (bgUrl) {
+      const out = document.createElement("img");
+      out.alt = "";
+      out.src = bgUrl;
+      return out;
+    }
+    return null;
   }
 
   function ensureBrandChrome(themeRoot, kind) {
@@ -1264,16 +1581,54 @@
     }
 
     const nodes = findBrandNodes(mode);
+    // Snapshot only into this kind’s cache — never into the other kind.
+    if (mode === "message" || mode === "mosaic") {
+      if (nodes.qr && nodes.qr.isConnected) rememberBrandAsset(mode, "qr", nodes.qr);
+      if (nodes.logo && nodes.logo.isConnected) rememberBrandAsset(mode, "logo", nodes.logo);
+    }
+
     if (qrSlot) {
-      if (wantQr && nodes.qr) fillBrandSlot(qrSlot, nodes.qr);
-      else {
+      const liveQr = nodes.qr && nodes.qr.isConnected ? nodes.qr : null;
+      if (wantQr && liveQr) {
+        fillBrandSlot(qrSlot, liveQr);
+        if (mode === "message" || mode === "mosaic") rememberBrandAsset(mode, "qr", liveQr);
+      } else if (wantQr && (mode === "message" || mode === "mosaic") && lastBrandAsset[mode].qr) {
+        const cached = assetElementFromCache(mode, "qr");
+        if (cached) {
+          qrSlot.hidden = false;
+          qrSlot.replaceChildren(cached);
+          cached.style.cssText =
+            "display:block!important;width:100%!important;height:auto!important;" +
+            "max-width:100%;max-height:100%;aspect-ratio:1/1;object-fit:contain;" +
+            "visibility:visible!important;opacity:1!important;pointer-events:none;";
+        } else {
+          qrSlot.replaceChildren();
+          qrSlot.hidden = true;
+        }
+      } else {
         qrSlot.replaceChildren();
         qrSlot.hidden = true;
       }
     }
     if (logoSlot) {
-      if (wantLogo && nodes.logo) fillBrandSlot(logoSlot, nodes.logo);
-      else {
+      const liveLogo = nodes.logo && nodes.logo.isConnected ? nodes.logo : null;
+      if (wantLogo && liveLogo) {
+        fillBrandSlot(logoSlot, liveLogo);
+        if (mode === "message" || mode === "mosaic") rememberBrandAsset(mode, "logo", liveLogo);
+      } else if (wantLogo && (mode === "message" || mode === "mosaic") && lastBrandAsset[mode].logo) {
+        const cached = assetElementFromCache(mode, "logo");
+        if (cached) {
+          logoSlot.hidden = false;
+          logoSlot.replaceChildren(cached);
+          cached.style.cssText =
+            "display:block!important;width:100%!important;height:auto!important;" +
+            "max-width:100%;max-height:100%;object-fit:contain;" +
+            "visibility:visible!important;opacity:1!important;pointer-events:none;";
+        } else {
+          logoSlot.replaceChildren();
+          logoSlot.hidden = true;
+        }
+      } else {
         logoSlot.replaceChildren();
         logoSlot.hidden = true;
       }
@@ -1312,7 +1667,7 @@
   function resolveIframeSrc(settings, pageUrl) {
     const state = normalizeSettings(settings);
     if (!state.enabled) return "";
-    if (state.bgMode === "media") return "";
+    if (state.bgMode === "media" || state.bgMode === "vixi") return "";
 
     for (const rule of state.rules) {
       if (!rule.outputUrl || !rule.iframeHtml) continue;
@@ -1335,7 +1690,7 @@
   function resolveBackgroundMediaId(settings, pageUrl) {
     const state = normalizeSettings(settings);
     if (!state.enabled) return "";
-    if (state.bgMode === "link") return "";
+    if (state.bgMode === "link" || state.bgMode === "vixi") return "";
     // Per-rule iframe still wins over global media when a rule matches.
     for (const rule of state.rules) {
       if (!rule.outputUrl || !rule.iframeHtml) continue;
@@ -1973,6 +2328,7 @@
     restoreBackgroundLayers,
     hideBackgroundLayers,
     usesCustomBackground,
+    resolveVixiBackgroundAsset,
     silenceReplacedMedia,
     resumeBackgroundMedia,
     findBrandNodes,

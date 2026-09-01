@@ -1,4 +1,7 @@
 (function (root) {
+  // userScripts.execute may re-inject this file; keep one registry per world.
+  if (root.BGThemeEngines && root.BGThemeEngines.__dynApi) return;
+
   const registry = new Map();
 
   function attachBuiltin(def) {
@@ -105,5 +108,6 @@
     has,
     list,
     unregister,
+    __dynApi: true,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

@@ -28,6 +28,20 @@
     </label>
   </header>
 
+  <section class="setup-callout" id="setup-callout" hidden>
+    <h2>Finish setup</h2>
+    <p class="help">Required once so imported theme engines can run on Vixi. Without this, those themes show a black screen.</p>
+    <p class="sideload-status" id="sideload-status" role="status"></p>
+    <ol class="setup-steps-inline">
+      <li>Open extension details → turn on <strong>Allow User Scripts</strong> (older Chrome: Developer mode on <code>chrome://extensions</code>).</li>
+      <li>Click <strong>Recheck</strong>, then hard-refresh the Vixi output tab.</li>
+    </ol>
+    <div class="sideload-actions" id="sideload-actions" hidden>
+      <button type="button" class="v2-btn v2-btn-primary" id="sideload-open-details">Open extension details</button>
+      <button type="button" class="v2-btn v2-btn-secondary" id="sideload-recheck">Recheck</button>
+    </div>
+  </section>
+
   <section>
     <h2>Stage</h2>
     <p class="help">Match Vixi uses the canvas ratio Vixi is already showing. Match the window fills the browser and tracks its size. Other ratios grow until they hit an edge, then letterbox in black.</p>
@@ -120,11 +134,12 @@
 
   <section>
     <h2>Background</h2>
-    <p class="help">Used on output pages that do not match a specific row below. Link/iframe, one-off upload, or a local backgrounds folder. When a message or mosaic theme is on, turn on Show background for that theme: the selected media sits above the theme’s Background color (transparent PNG/GIF holes show that color) and below the theme’s cards and copy.</p>
+    <p class="help">Used on output pages that do not match a specific row below. Choose <strong>Vixi</strong> to pull the event’s own background URL into the same layer as a pasted asset (stored upload/folder files are kept for later). Link/iframe, upload, and folder still work when Source is Auto or Media. When a message or mosaic theme is on, turn on Show background for that theme: the selected media sits above the theme’s Background color (transparent PNG/GIF holes show that color) and below the theme’s cards and copy.</p>
     <label class="select-label">
       <span>Source</span>
       <select id="bg-mode">
         <option value="auto">Auto — media if set, otherwise link</option>
+        <option value="vixi">Vixi — event background</option>
         <option value="link">Link / iframe</option>
         <option value="media">Media (upload or folder)</option>
       </select>
@@ -206,6 +221,7 @@
         <li>Select theme <code>.json</code> files, optional <code>*-engine.js</code> files, and optional font files (<code>.woff2</code> / <code>.woff</code> / <code>.ttf</code> / <code>.otf</code>) from your themes folder.</li>
         <li>Matching is automatic: engines by <code>engine</code> / filename; fonts by each JSON <code>fontFile</code> / <code>fontFaces[].fontFile</code> basename. Shared fonts are stored once. A pack can use several custom fonts plus Google Fonts.</li>
         <li>Same theme <code>id</code> (or same font / engine id) replaces the previous import.</li>
+        <li>If the red <strong>Finish setup</strong> banner is showing above, turn on Allow User Scripts before expecting an engine pack to appear on Vixi.</li>
       </ol>
       <label class="v2-btn v2-btn-secondary import-btn">
         Import packs…

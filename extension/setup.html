@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finish setup — Dynamic Backgrounds</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+  <style>
+    body.setup-page {
+      width: auto;
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 28px 22px 40px;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    .setup-page h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+    }
+    .setup-page .lede {
+      margin: 0 0 22px;
+      color: var(--v2-light-gray);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .setup-steps {
+      margin: 0 0 18px;
+      padding-left: 1.25em;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .setup-steps li {
+      margin: 0 0 10px;
+    }
+    .setup-steps code {
+      font-size: 12px;
+    }
+    .setup-note {
+      margin: 0 0 18px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--v2-light-gray);
+    }
+    .setup-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 16px;
+    }
+  </style>
+</head>
+<body class="setup-page">
+  <h1>Finish setup</h1>
+  <p class="lede">
+    One Chrome setting is required before imported theme engines (JSON + <code>.js</code>) can run on Vixi.
+    Without it, those themes show a black screen.
+  </p>
+
+  <p class="sideload-status" id="sideload-status" role="status">Checking…</p>
+
+  <ol class="setup-steps" id="setup-steps">
+    <li>Click <strong>Open extension details</strong> below.</li>
+    <li>Find <strong>Allow User Scripts</strong> and turn it <strong>On</strong>.
+      <br><span class="setup-note" style="display:inline">Older Chrome: on <code>chrome://extensions</code>, turn on <strong>Developer mode</strong> instead.</span>
+    </li>
+    <li>Return here and click <strong>Recheck</strong>. This page should turn green.</li>
+    <li>Open a Vixi output tab and hard-refresh it (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd>).</li>
+  </ol>
+
+  <div class="setup-actions">
+    <button type="button" class="v2-btn v2-btn-primary" id="sideload-open-details">Open extension details</button>
+    <button type="button" class="v2-btn v2-btn-secondary" id="sideload-recheck">Recheck</button>
+  </div>
+
+  <p class="setup-note">
+    Built-in themes work without this. You only need Allow User Scripts for packs you import with an engine file.
+  </p>
+
+  <script>
+    (() => {
+      const statusEl = document.getElementById("sideload-status");
+      const stepsEl = document.getElementById("setup-steps");
+      const openBtn = document.getElementById("sideload-open-details");
+      const recheckBtn = document.getElementById("sideload-recheck");
+
+      function queryStatus() {
+        return new Promise((resolve) => {
+          try {
+            chrome.runtime.sendMessage({ type: "dyn-bg-user-scripts-status" }, (result) => {
+              if (chrome.runtime.lastError) {
+                resolve({ available: false, hint: chrome.runtime.lastError.message });
+                return;
+              }
+              resolve(result || { available: false, hint: "" });
+            });
+          } catch (err) {
+            resolve({ available: false, hint: String((err && err.message) || err) });
+          }
+        });
+      }
+
+      async function refresh() {
+        const status = await queryStatus();
+        statusEl.classList.remove("is-ok", "is-error");
+        if (status && status.available) {
+          statusEl.classList.add("is-ok");
+          statusEl.textContent = "Setup complete — User Scripts are on. You can close this tab.";
+          if (stepsEl) stepsEl.hidden = true;
+          try {
+            chrome.storage.local.set({ setupComplete: true, showSetup: false });
+          } catch {
+            /* ignore */
+          }
+          return;
+        }
+        statusEl.classList.add("is-error");
+        statusEl.textContent =
+          "Not ready yet. Turn on Allow User Scripts (or Developer mode on older Chrome), then Recheck.";
+        if (stepsEl) stepsEl.hidden = false;
+      }
+
+      openBtn.addEventListener("click", () => {
+        const url = "chrome://extensions/?id=" + chrome.runtime.id;
+        chrome.tabs.create({ url }).catch(() => {
+          chrome.tabs.create({ url: "chrome://extensions/" });
+        });
+      });
+      recheckBtn.addEventListener("click", async () => {
+        try {
+          await chrome.runtime.sendMessage({ type: "dyn-bg-sync-sideload" });
+        } catch {
+          /* ignore */
+        }
+        await refresh();
+      });
+
+      refresh();
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") refresh();
+      });
+    })();
+  </script>
+</body>
+</html>

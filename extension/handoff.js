@@ -22,19 +22,23 @@
     "html.dyn-cover-mosaic .v2-asset-tile{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
-    "html.dyn-theme-on.dyn-kind-mosaic .v2-qr-tile," +
-    "html.dyn-theme-on.dyn-kind-mosaic .qr-tile," +
-    "html.dyn-theme-on.dyn-kind-mosaic .v2-logo," +
-    "html.dyn-theme-on.dyn-kind-mosaic .v2-logo-tile," +
-    "html.dyn-theme-on.dyn-kind-mosaic .event-logo," +
-    "html.dyn-theme-on.dyn-kind-mosaic .logo-tile," +
-    "html.dyn-theme-on.dyn-kind-mosaic .mosaic-layout > .asset-view," +
-    "html.dyn-theme-on.dyn-kind-message .v2-qr-tile," +
-    "html.dyn-theme-on.dyn-kind-message .qr-tile," +
-    "html.dyn-theme-on.dyn-kind-message .v2-logo," +
-    "html.dyn-theme-on.dyn-kind-message .v2-logo-tile," +
-    "html.dyn-theme-on.dyn-kind-message .event-logo," +
-    "html.dyn-theme-on.dyn-kind-message .logo-tile{" +
+    "html.dyn-theme-on.dyn-kind-mosaic .v2-qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on.dyn-kind-mosaic .qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on.dyn-kind-mosaic .qr-code-wrapper:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on.dyn-kind-mosaic .qr-code-img:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on.dyn-kind-mosaic .v2-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on.dyn-kind-mosaic .v2-logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on.dyn-kind-mosaic .event-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on.dyn-kind-mosaic .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on.dyn-kind-mosaic .mosaic-layout > .asset-view:not(#dyn-theme-host *)," +
+    "html.dyn-theme-on.dyn-kind-message .v2-qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on.dyn-kind-message .qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on.dyn-kind-message .qr-code-wrapper:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on.dyn-kind-message .qr-code-img:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on.dyn-kind-message .v2-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on.dyn-kind-message .v2-logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on.dyn-kind-message .event-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on.dyn-kind-message .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *){" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
     "html.dyn-theme-on.dyn-kind-mosaic:not(.dyn-show-bg) .v2-app-wrapper__bg-image," +
@@ -189,9 +193,18 @@
     "}" +
     "#dyn-mosaic-theme{transition:opacity .42s ease;}" +
     "#dyn-mosaic-theme.is-leaving{opacity:0;}" +
-    ".dyn-brand-chrome{position:absolute;inset:0;z-index:40;pointer-events:none;}" +
+    ".dyn-brand-chrome{position:absolute;inset:0;z-index:120;pointer-events:none;}" +
     ".dyn-brand-logo{position:absolute;top:3.2%;left:3.2%;width:min(14%,180px);height:auto;}" +
-    ".dyn-brand-qr{position:absolute;right:3.2%;bottom:3.2%;width:min(12%,160px);aspect-ratio:1;}" +
+    ".dyn-brand-qr{position:absolute;right:3.2%;bottom:3.2%;width:min(12%,160px);height:auto;aspect-ratio:1;}" +
+    ".dyn-brand-logo img,.dyn-brand-logo canvas,.dyn-brand-logo svg,.dyn-brand-logo .dyn-brand-clone," +
+    ".dyn-brand-qr img,.dyn-brand-qr canvas,.dyn-brand-qr svg,.dyn-brand-qr .dyn-brand-clone," +
+    "[data-logo] img,[data-logo] canvas,[data-logo] svg,[data-logo] .dyn-brand-clone," +
+    "[data-qr] img,[data-qr] canvas,[data-qr] svg,[data-qr] .dyn-brand-clone{" +
+      "display:block!important;width:100%!important;height:auto!important;" +
+      "max-width:100%!important;max-height:100%!important;" +
+      "object-fit:contain!important;" +
+      "visibility:visible!important;opacity:1!important;" +
+    "}" +
     ".dyn-portrait .dyn-brand-logo{width:min(28%,200px);}" +
     ".dyn-portrait .dyn-brand-qr{width:min(22%,180px);bottom:4%;}" +
     "[data-qr][hidden],[data-logo][hidden]{display:none!important;}";
@@ -269,7 +282,6 @@
       "dyn-cover-mosaic",
       mosThemeOn || (msgThemeOn && (live === "message" || handingOff))
     );
-    const chrome = rules.chromeForKind ? rules.chromeForKind(s, kind) : { showBackground: false };
     html.classList.toggle("dyn-theme-on", liveOn);
     const shownKind = !liveOn
       ? nativeBeat
@@ -280,10 +292,32 @@
         : mode && kind && mode !== kind && !html.classList.contains("dyn-handoff")
           ? mode
           : kind;
+    const chromeKind =
+      shownKind === "message" || shownKind === "mosaic"
+        ? shownKind
+        : kind === "message" || kind === "mosaic"
+          ? kind
+          : "";
+    const chrome = rules.chromeForKind
+      ? rules.chromeForKind(s, chromeKind)
+      : { showBackground: false };
+    const wantCustomBg = Boolean(rules.usesCustomBackground && rules.usesCustomBackground(s));
+    const showBg = Boolean(chrome.showBackground);
+    // Reparent #dyn-bg-media onto the incoming theme/host BEFORE kind classes
+    // hide the outgoing theme (that was flashing Vixi’s original bg).
+    const bgApi = root.BGCustomBackground;
+    if (wantCustomBg && bgApi && typeof bgApi.syncMount === "function") {
+      bgApi.syncMount(s, {
+        kind: shownKind === "message" || shownKind === "mosaic" ? shownKind : kind,
+        liveOn,
+        nativeBeat,
+        showBackground: liveOn ? showBg : true,
+      });
+    }
     html.classList.toggle("dyn-kind-message", shownKind === "message");
     html.classList.toggle("dyn-kind-mosaic", shownKind === "mosaic");
     html.classList.toggle("dyn-kind-native", nativeBeat);
-    html.classList.toggle("dyn-show-bg", liveOn && Boolean(chrome.showBackground));
+    html.classList.toggle("dyn-show-bg", liveOn && showBg);
     if (!msgThemeOn) html.classList.remove("dyn-message-on");
     if (!mosThemeOn) html.classList.remove("dyn-mosaic-on");
     if (!liveOn) html.classList.remove("dyn-hold");
@@ -295,7 +329,7 @@
     if (!liveOn) {
       // Native/CTA: keep Vixi hidden when a custom Background is selected so
       // leaving CTA cannot flash the event art before #dyn-bg-media re-hides it.
-      if (rules.usesCustomBackground && rules.usesCustomBackground(s)) {
+      if (wantCustomBg) {
         if (rules.hideBackgroundLayers) rules.hideBackgroundLayers();
         if (rules.silenceReplacedMedia) rules.silenceReplacedMedia();
         html.classList.add("dyn-custom-bg");
@@ -304,8 +338,8 @@
         if (rules.resumeBackgroundMedia) rules.resumeBackgroundMedia();
         html.classList.remove("dyn-custom-bg");
       }
-    } else if (chrome.showBackground) {
-      if (rules.usesCustomBackground && rules.usesCustomBackground(s)) {
+    } else if (showBg) {
+      if (wantCustomBg) {
         if (rules.hideBackgroundLayers) rules.hideBackgroundLayers();
         if (rules.silenceReplacedMedia) rules.silenceReplacedMedia();
         html.classList.add("dyn-custom-bg");
@@ -318,7 +352,6 @@
       rules.silenceReplacedMedia();
       if (rules.hideBackgroundLayers) rules.hideBackgroundLayers();
     }
-    const bgApi = root.BGCustomBackground;
     if (bgApi && typeof bgApi.scheduleApply === "function") {
       bgApi.scheduleApply(0);
     }

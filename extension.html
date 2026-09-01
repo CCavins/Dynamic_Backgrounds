@@ -19,7 +19,7 @@
                 <a href="extension.html" aria-current="page">Extension</a>
                 <a href="create.html">Create</a>
             </nav>
-            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.20.3</span></a>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.23.2</span></a>
         </header>
 
         <div class="page-intro">
@@ -36,6 +36,17 @@
                 <li>Click <strong>Load unpacked</strong></li>
                 <li>Select the unzipped <code>extension</code> folder</li>
             </ol>
+            <p>On first install, Chrome opens a <strong>Finish setup</strong> tab. Complete that before importing theme engines.</p>
+
+            <h2>Finish setup (required for imported engines)</h2>
+            <p>Built-in mosaic and message themes work right away. Packs you import with a <code>*-engine.js</code> file need one extra Chrome setting, or they mount as a black screen on Vixi.</p>
+            <ol>
+                <li>Open <code>chrome://extensions</code> → <strong>Dynamic Backgrounds</strong> → <strong>Details</strong> (the popup and setup tab also have an <strong>Open extension details</strong> button).</li>
+                <li>Turn on <strong>Allow User Scripts</strong> (Chrome&nbsp;138+). On older Chrome, keep <strong>Developer mode</strong> on at <code>chrome://extensions</code> instead.</li>
+                <li>Click <strong>Reload</strong> on the extension card if you just toggled the setting.</li>
+                <li>In the popup (or the setup tab), confirm the status is green, then hard-refresh the Vixi output tab.</li>
+            </ol>
+            <p>If User Scripts is still off, the popup shows a red <strong>Finish setup</strong> banner at the top until it is fixed.</p>
             <p>After you change files in the folder, click Reload on the extension card. To rebuild the zip from the repo:</p>
             <pre>rm -f extension.zip &amp;&amp; zip -r extension.zip extension -x "*.DS_Store"</pre>
 
@@ -76,6 +87,7 @@
 
             <h2>Imported themes</h2>
             <p>The popup <strong>Imported themes</strong> section uses <strong>Import packs…</strong>. Select several <code>.json</code> files, optional engines, and optional font files (<code>.woff2</code> / <code>.woff</code> / <code>.ttf</code> / <code>.otf</code>) at once. Matching is by <code>engine</code> / filename and by each JSON <code>fontFile</code> / <code>fontFaces</code> entry. A pack can use several custom fonts plus Google Fonts. Shared fonts are stored once; re-importing the same ids replaces. Sample packs and the import walkthrough are on <a href="create.html">Create</a>.</p>
+            <p>Engine packs only run after <strong>Allow User Scripts</strong> is on (see Finish setup above). JSON-only packs do not need that setting.</p>
         </article>
 
         <footer>Reload the unpacked extension after you update files.</footer>

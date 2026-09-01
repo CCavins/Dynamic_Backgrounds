@@ -776,6 +776,58 @@ textarea {
   color: var(--v2-secondary);
 }
 
+.sideload-status {
+  margin: 0 0 var(--v2-sm);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  border: 1px solid transparent;
+}
+
+.sideload-status.is-ok {
+  color: var(--v2-success);
+  background: color-mix(in srgb, var(--v2-success) 12%, transparent);
+  border-color: color-mix(in srgb, var(--v2-success) 35%, transparent);
+}
+
+.sideload-status.is-error {
+  color: var(--v2-error);
+  background: color-mix(in srgb, var(--v2-error) 12%, transparent);
+  border-color: color-mix(in srgb, var(--v2-error) 35%, transparent);
+}
+
+.sideload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 var(--v2-sm);
+}
+
+.setup-callout {
+  margin: 0 0 4px;
+}
+
+.setup-callout .sideload-status {
+  margin: 0 0 10px;
+}
+
+.setup-steps-inline {
+  margin: 0 0 12px;
+  padding-left: 1.2em;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--v2-light-gray);
+}
+
+.setup-steps-inline li {
+  margin: 0 0 6px;
+}
+
+.setup-steps-inline code {
+  font-size: 11px;
+}
+
 .v2-select-group {
   padding: 8px 10px 4px;
   color: var(--v2-light-gray);

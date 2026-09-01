@@ -61,6 +61,18 @@ The site header has a **Download Chrome extension** link (`extension.zip`). Chro
 2. Turn on **Developer mode**
 3. Click **Load unpacked**
 4. Select the unzipped `extension` folder
+5. Complete **Finish setup** (Chrome opens a setup tab on first install)
+
+### Finish setup (required for imported engines)
+
+Built-in themes work immediately. Packs imported with a `*-engine.js` file need one Chrome opt-in, or they show a **black screen** on Vixi:
+
+1. Open `chrome://extensions` → **Dynamic Backgrounds** → **Details** (or use **Open extension details** in the popup / setup tab)
+2. Turn on **Allow User Scripts** (Chrome 138+). Older Chrome: keep **Developer mode** on
+3. Reload the extension if you just flipped the toggle
+4. Confirm the popup’s **Finish setup** banner is gone (or green on the setup tab), then hard-refresh the Vixi output tab
+
+JSON-only packs do not need Allow User Scripts. More detail: [Extension](https://ccavins.github.io/Dynamic_Backgrounds/extension.html) · [Create](https://ccavins.github.io/Dynamic_Backgrounds/create.html).
 
 The popup has a master **Replace Vixi themes** switch:
 
@@ -95,9 +107,12 @@ Message themes stay black until the first capture `show()` finishes, so a cold l
 
 The popup **Background** section can use:
 
-1. **Link / iframe** — paste a URL or iframe HTML  
-2. **Backgrounds folder** — pick a folder once on disk; add files in Finder and **Rescan** (no extension reload). Chrome remembers the folder path; each time you open the popup, click **Allow access** once before the file list can load (File System Access security).  
-3. **Upload file** — one-off import into extension storage  
+1. **Vixi — event background** — reads the live event background URL/asset from the page and injects it the same way as a pasted media URL (Vixi’s own logo/QR stay out of that layer)  
+2. **Link / iframe** — paste a URL or iframe HTML  
+3. **Backgrounds folder** — pick a folder once on disk; add files in Finder and **Rescan** (no extension reload). Chrome remembers the folder path; each time you open the popup, click **Allow access** once before the file list can load (File System Access security).  
+4. **Upload file** — one-off import into extension storage  
+
+Choosing a folder file or upload while Source is Vixi or Link switches Source to Media so that file is what actually shows. Stored files remain available if you switch back to Vixi later.
 
 **Size limits**
 
@@ -122,7 +137,7 @@ When a theme is on, turn on that theme’s **Show background** to keep the custo
 
 Build and import your own packs — see [themes/README.md](themes/README.md) and the contract in [themes/SPEC.md](themes/SPEC.md). The Create page on the live site walks through import. You can place QR/logo exactly with `data-qr` / `data-logo` and reflow layout with `dyn-show-qr` / `dyn-show-logo` CSS.
 
-**Import packs…** accepts a mixed selection from a themes folder: `.json`, optional `*-engine.js`, and optional font files (`.woff2` / `.woff` / `.ttf` / `.otf`). Engines match by `engine` / filename; fonts match by each JSON `fontFile` / `fontFaces[].fontFile`. Several packs can share one font file (stored once). Re-importing the same theme `id`, engine id, or font file replaces the previous copy.
+**Import packs…** accepts a mixed selection from a themes folder: `.json`, optional `*-engine.js`, and optional font files (`.woff2` / `.woff` / `.ttf` / `.otf`). Engines match by `engine` / filename; fonts match by each JSON `fontFile` / `fontFaces[].fontFile`. Several packs can share one font file (stored once). Re-importing the same theme `id`, engine id, or font file replaces the previous copy. Engine packs only run after **Allow User Scripts** is enabled (see Finish setup above).
 
 Google Fonts: JSON `fonts` as one CSS URL (multiple `family=` params OK) or an array of URLs. Custom faces:
 

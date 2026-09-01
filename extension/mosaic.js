@@ -961,7 +961,7 @@
           });
         }
         await decodeUrls(pool);
-        ok = mountTheme(target, resolveLiveMosaicSettings(loadedSettings, target));
+        ok = await mountTheme(target, resolveLiveMosaicSettings(loadedSettings, target));
         const host = rules.findOverlayHost && rules.findOverlayHost();
         if (ok) mountedHostKey = hostSizeKey(host);
         if (ok && token === rebuildGen && !pendingRebuild) {
@@ -982,7 +982,7 @@
     }
   }
 
-  function mountTheme(id, themeSettings) {
+  async function mountTheme(id, themeSettings) {
     const def = themeApi.themes[id];
     if (!def) return false;
     const host = rules.findOverlayHost();
@@ -999,22 +999,34 @@
     if (/-brand$/.test(id) && typeof rules.ensureBrandChrome === "function") {
       rules.ensureBrandChrome(root, "mosaic");
     }
-    const state = def.mount(root, pool, makeApi(), themeSettings) || {};
-    if (typeof def.applySettings === "function") {
-      def.applySettings(root, state, themeSettings);
+    try {
+      const mounted = def.mount(root, pool, makeApi(), themeSettings);
+      const state =
+        mounted && typeof mounted.then === "function" ? await mounted : mounted || {};
+      if (typeof def.applySettings === "function") {
+        def.applySettings(root, state, themeSettings);
+      }
+      active = { id, def, state, settings: themeSettings };
+      mountedTheme = id;
+      lastSettingsKey = mosaicSettingsKey(id, themeSettings);
+      lastThemeSettings = themeSettings;
+      mountedAspect = rules.currentStageAspect ? rules.currentStageAspect() : "auto";
+      mountedEmpty = pool.length === 0;
+      if (typeof rules.ensureBrandChrome === "function") rules.ensureBrandChrome(root, "mosaic");
+      mountedAt = performance.now();
+      mosaicNeedsFreshMount = false;
+      watchFeedImgs(root);
+      startTick(def.interval);
+      return true;
+    } catch (err) {
+      console.warn("[Dynamic Backgrounds] mosaic mount failed:", err);
+      try {
+        disposeMounted();
+      } catch {
+        /* overlay may already be gone */
+      }
+      return false;
     }
-    active = { id, def, state, settings: themeSettings };
-    mountedTheme = id;
-    lastSettingsKey = mosaicSettingsKey(id, themeSettings);
-    lastThemeSettings = themeSettings;
-    mountedAspect = rules.currentStageAspect ? rules.currentStageAspect() : "auto";
-    mountedEmpty = pool.length === 0;
-    if (typeof rules.ensureBrandChrome === "function") rules.ensureBrandChrome(root, "mosaic");
-    mountedAt = performance.now();
-    mosaicNeedsFreshMount = false;
-    watchFeedImgs(root);
-    startTick(def.interval);
-    return true;
   }
 
   function overlayIsStale(root) {
@@ -1047,6 +1059,7 @@
 
   function unparkOverlay(root) {
     if (root) root.classList.remove("is-leaving", "is-parked", "dyn-awaiting-show");
+    if (typeof handoff.applyCovers === "function") handoff.applyCovers();
   }
 
   function destroyOverlay() {
@@ -1463,11 +1476,25 @@
         changes.mosaicTheme ||
         changes.enabled ||
         changes.stageAspect ||
-        changes.mosaicShowBackground ||
-        changes.mosaicShowQr ||
-        changes.mosaicShowLogo
+        changes.mosaicThemeSettings ||
+        changes.customThemes ||
+        changes.customEngines
       ) {
         requestRebuild();
+      }
+      if (
+        changes.mosaicShowQr ||
+        changes.mosaicShowLogo ||
+        changes.mosaicShowBackground ||
+        changes.showQr ||
+        changes.showLogo ||
+        changes.showBackground
+      ) {
+        const live = document.getElementById(OVERLAY_ID);
+        if (live && typeof rules.ensureBrandChrome === "function") {
+          rules.ensureBrandChrome(live, "mosaic");
+        }
+        if (typeof handoff.applyCovers === "function") handoff.applyCovers();
       }
       scheduleApply(0);
     });
