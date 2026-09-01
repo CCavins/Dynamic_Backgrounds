@@ -2313,10 +2313,19 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
 
   function applyVars(themeRoot, settings) {
     if (!themeRoot || !settings) return;
-    themeRoot.style.setProperty("--primary", settings.primary);
-    themeRoot.style.setProperty("--secondary", settings.secondary);
+    if (settings.primary) {
+      themeRoot.style.setProperty("--primary", settings.primary);
+      themeRoot.style.setProperty("--ink", settings.primary);
+    }
+    if (settings.secondary) {
+      themeRoot.style.setProperty("--secondary", settings.secondary);
+      themeRoot.style.setProperty("--paper", settings.secondary);
+    }
+    if (settings.background) {
+      themeRoot.style.setProperty("--background", settings.background);
+      themeRoot.style.setProperty("--wall", settings.background);
+    }
     themeRoot.style.setProperty("--reveal-ms", (settings.revealMs || 1000) + "ms");
-    if (settings.background) themeRoot.style.setProperty("--background", settings.background);
     if (settings.motion) themeRoot.setAttribute("data-motion", settings.motion);
     else themeRoot.removeAttribute("data-motion");
   }

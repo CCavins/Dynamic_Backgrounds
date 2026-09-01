@@ -21,7 +21,7 @@
   const ENTER_MS = 900;
   const EXIT_MS = 850;
   const STAGGER_MS = 55;
-  const TOP_COUNT = 4;
+  const TOP_COUNT = 5;
   const BOTTOM_COUNT = 5;
 
   function makeFallbackCard(src) {
