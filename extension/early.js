@@ -23,15 +23,23 @@
     "html.dyn-cover-mosaic .v2-asset-tile{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
-    "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .v2-qr-tile," +
-    "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .qr-tile," +
-    "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .qr-code-wrapper," +
-    "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .qr-code-img," +
-    "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .v2-logo," +
-    "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .v2-logo-tile," +
-    "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .event-logo," +
-    "html.dyn-theme-on:not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .logo-tile," +
-    "html.dyn-theme-on .mosaic-layout > .asset-view{" +
+    "html.dyn-theme-on:not(.dyn-kind-native) .v2-qr-tile," +
+    "html.dyn-theme-on:not(.dyn-kind-native) .qr-tile," +
+    "html.dyn-theme-on:not(.dyn-kind-native) .qr-code-wrapper," +
+    "html.dyn-theme-on:not(.dyn-kind-native) .qr-code-img," +
+    "html.dyn-theme-on:not(.dyn-kind-native) .v2-logo," +
+    "html.dyn-theme-on:not(.dyn-kind-native) .v2-logo-tile," +
+    "html.dyn-theme-on:not(.dyn-kind-native) .event-logo," +
+    "html.dyn-theme-on:not(.dyn-kind-native) .logo-tile," +
+    "html.dyn-cover-message:not(.dyn-kind-native) .capture-content-layer," +
+    "html.dyn-cover-message:not(.dyn-kind-native) .message-layer," +
+    "html.dyn-cover-message:not(.dyn-kind-native) .message-content," +
+    "html.dyn-cover-message:not(.dyn-kind-native) .v2-message," +
+    "html.dyn-cover-mosaic:not(.dyn-kind-native) .mosaic-layout," +
+    "html.dyn-cover-mosaic:not(.dyn-kind-native) .mosaic-tile-slot," +
+    "html.dyn-cover-mosaic:not(.dyn-kind-native) .mosaic-asset," +
+    "html.dyn-cover-mosaic:not(.dyn-kind-native) .mosaic-image," +
+    "html.dyn-theme-on:not(.dyn-kind-native) .mosaic-layout > .asset-view{" +
       "visibility:hidden!important;opacity:0!important;" +
     "}" +
     "html.dyn-theme-on,html.dyn-theme-on body,html.dyn-theme-on .output-page{" +
