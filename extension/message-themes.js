@@ -2405,22 +2405,29 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
   }
 
   /** Grunge paper sits under multiply textures — CSS vars alone rarely repaint live. */
+  function ensureGrungeLiveStyle() {
+    let style = document.getElementById("dyn-grunge-live-style");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "dyn-grunge-live-style";
+      document.documentElement.appendChild(style);
+    }
+    style.textContent =
+      '#dyn-message-theme[data-theme="message-grunge-poster"] .msg-paper::before,' +
+      '#dyn-message-theme[data-theme="message-grunge-poster"] .msg-paper::after{display:none!important;}';
+  }
+
   function applyGrungePresentation(themeRoot, settings) {
     if (!themeRoot || themeRoot.dataset.theme !== "message-grunge-poster") return;
+    ensureGrungeLiveStyle();
     const paper = grungePaperColor(themeRoot, settings);
     themeRoot.querySelectorAll(".photo-mat, .msg-paper").forEach((el) => {
       el.style.setProperty("background-color", paper, "important");
+      el.style.setProperty("background-image", "none", "important");
     });
     const stampBg = "color-mix(in srgb, " + paper + " 88%, #fff)";
     themeRoot.querySelectorAll(".name-stamp").forEach((el) => {
       el.style.setProperty("background", stampBg, "important");
-    });
-    const wall =
-      settings && settings.background != null && settings.background !== ""
-        ? settings.background
-        : themeRoot.style.getPropertyValue("--wall").trim() || "#2a211c";
-    themeRoot.querySelectorAll(".wall").forEach((el) => {
-      el.style.setProperty("background-color", wall, "important");
     });
   }
 
