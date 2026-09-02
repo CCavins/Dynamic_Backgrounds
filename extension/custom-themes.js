@@ -1206,7 +1206,8 @@
         if (helpers().applyVars) helpers().applyVars(themeRoot, settings);
       },
       async show(themeRoot, capture, state, settings) {
-        if (helpers().commonShowPrep) helpers().commonShowPrep(themeRoot, state);
+        const fresh = !themeRoot.classList.contains("on");
+        if (fresh && helpers().commonShowPrep) helpers().commonShowPrep(themeRoot, state);
         if (helpers().applyVars && settings) helpers().applyVars(themeRoot, settings);
         (state.photos || []).forEach((img) => {
           img.src = capture.src || "";
@@ -1236,8 +1237,12 @@
         } else {
           themeRoot.classList.add("on");
         }
+        if (!fresh && helpers().replayGuestMotion) helpers().replayGuestMotion(themeRoot);
       },
       hide(themeRoot, state) {
+        if (themeRoot.classList.contains("on") && !themeRoot.classList.contains("is-parked")) {
+          return Promise.resolve();
+        }
         if (helpers().hideTheme) return helpers().hideTheme(themeRoot, state, pack.hideMs);
         themeRoot.classList.add("off");
         return wait(pack.hideMs).then(() => themeRoot.classList.remove("on", "off"));

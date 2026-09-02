@@ -11,9 +11,12 @@
 </head>
 <body>
   <header>
-    <div>
-      <h1>Replace Vixi themes</h1>
-      <p>On restyles matching output with the themes below. Off leaves Vixi as-is. <span class="ext-version" id="ext-version"></span></p>
+    <div class="header-title">
+      <h1>Dynamic Backgrounds</h1>
+      <span class="info-wrap">
+        <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-master" aria-label="About the master switch">i</button>
+      </span>
+      <span class="ext-version" id="ext-version">v1.29.26</span>
     </div>
     <label class="switch">
       <input type="checkbox" id="enabled" checked>
@@ -27,6 +30,7 @@
       <span class="switch-label" id="enabled-label">On</span>
     </label>
   </header>
+  <p class="info-popover" id="info-master" hidden role="tooltip">On applies the templates below. Off leaves Vixi as-is.</p>
 
   <section class="setup-callout" id="setup-callout" hidden>
     <h2>Finish setup</h2>
@@ -43,8 +47,13 @@
   </section>
 
   <section>
-    <h2>Stage</h2>
-    <p class="help">Match Vixi uses the canvas ratio Vixi is already showing. Match the window fills the browser and tracks its size. Other ratios grow until they hit an edge, then letterbox in black.</p>
+    <div class="section-head">
+      <h2>Stage</h2>
+      <span class="info-wrap">
+        <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-stage" aria-label="About Stage">i</button>
+      </span>
+    </div>
+    <p class="info-popover" id="info-stage" hidden role="tooltip">Match Vixi uses Vixi’s canvas. Match the window fills the browser. Other ratios letterbox in black.</p>
     <label class="select-label">
       <span>Aspect</span>
       <select id="stage-aspect">
@@ -78,17 +87,21 @@
   </section>
 
   <section>
-    <h2>Mosaic theme</h2>
-    <p class="help">Uses the live mosaic photos and restyles the grid. Off keeps Vixi’s layout.</p>
+    <div class="section-head">
+      <h2>Mosaic dynamic template</h2>
+      <span class="info-wrap">
+        <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-mosaic" aria-label="About Mosaic dynamic template">i</button>
+      </span>
+    </div>
+    <p class="info-popover" id="info-mosaic" hidden role="tooltip">Restyles the live photo grid. * templates leave a rail for QR/logo when those toggles are on. Chrome is mosaic-only.</p>
     <label class="select-label">
-      <span>Theme</span>
+      <span>Template</span>
       <select id="mosaic-theme">
         <option value="off">Off</option>
       </select>
     </label>
     <div id="mosaic-theme-settings" class="theme-settings" hidden></div>
-    <p class="help">* Themes marked with an asterisk leave a rail for the QR code and logo when those toggles are on, and use the full stage when they are off.</p>
-    <div class="chrome-toggles">
+    <div class="chrome-toggles" id="mosaic-chrome-toggles" hidden>
       <label class="check-row">
         <input type="checkbox" id="mosaic-show-background">
         <span>Show background</span>
@@ -102,20 +115,24 @@
         <span>Show logo</span>
       </label>
     </div>
-    <p class="help">Mosaic-only. Uses the mosaic item’s background, QR, and logo — not the message ones. Hidden unless turned on. Selected media paints above the theme Background color; * themes shift the mosaic to leave room for QR and logo.</p>
   </section>
 
   <section>
-    <h2>Message theme</h2>
-    <p class="help">Uses the live capture photo and caption. Off keeps Vixi’s layout.</p>
+    <div class="section-head">
+      <h2>Message dynamic template</h2>
+      <span class="info-wrap">
+        <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-message" aria-label="About Message dynamic template">i</button>
+      </span>
+    </div>
+    <p class="info-popover" id="info-message" hidden role="tooltip">Restyles the live capture. Chrome is message-only.</p>
     <label class="select-label">
-      <span>Theme</span>
+      <span>Template</span>
       <select id="message-theme">
         <option value="off">Off</option>
       </select>
     </label>
     <div id="message-theme-settings" class="theme-settings" hidden></div>
-    <div class="chrome-toggles">
+    <div class="chrome-toggles" id="message-chrome-toggles" hidden>
       <label class="check-row">
         <input type="checkbox" id="message-show-background">
         <span>Show background</span>
@@ -129,14 +146,18 @@
         <span>Show logo</span>
       </label>
     </div>
-    <p class="help">Message-only. Uses the capture item’s background, QR, and logo — not the mosaic ones. Hidden unless turned on. Selected media paints above the theme Background color; the theme places QR and logo.</p>
   </section>
 
   <section>
-    <h2>Leaderboard overlay</h2>
-    <p class="help">Applies only when the admin leaderboard overlay is ON (LEADERS view). Normal polling is always left untouched. Off keeps Vixi’s native leaderboard. Score colors every rank, including the podium. Highlight tints accents. Boxes tints glass panels, cards, and pedestals.</p>
+    <div class="section-head">
+      <h2>Leaderboard overlay dynamic template</h2>
+      <span class="info-wrap">
+        <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-leaderboard" aria-label="About Leaderboard overlay dynamic template">i</button>
+      </span>
+    </div>
+    <p class="info-popover" id="info-leaderboard" hidden role="tooltip">Applies only when the admin LEADERS overlay is on. Off keeps Vixi’s leaderboard.</p>
     <label class="select-label">
-      <span>Theme</span>
+      <span>Template</span>
       <select id="leaderboard-theme">
         <option value="off">Vixi (default)</option>
       </select>
@@ -145,8 +166,13 @@
   </section>
 
   <section>
-    <h2>Background</h2>
-    <p class="help">Used on output pages that do not match a specific row below. Choose <strong>Vixi</strong> to pull the event’s own background URL into the same layer as a pasted asset (stored upload/folder files are kept for later). Link/iframe, upload, and folder still work when Source is Auto or Media. When a message or mosaic theme is on, turn on Show background for that theme: the selected media sits above the theme’s Background color (transparent PNG/GIF holes show that color) and below the theme’s cards and copy.</p>
+    <div class="section-head">
+      <h2>Background</h2>
+      <span class="info-wrap">
+        <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-background" aria-label="About Background">i</button>
+      </span>
+    </div>
+    <p class="info-popover" id="info-background" hidden role="tooltip">Fallback for pages that do not match a specific URL. Folder files ~64 MB; one-off uploads ~3.5 MB. Chrome needs Allow access each time the popup opens.</p>
     <label class="select-label">
       <span>Source</span>
       <select id="bg-mode">
@@ -165,15 +191,6 @@
         <span>Backgrounds folder</span>
         <span class="media-file-name" id="bg-folder-name">No folder</span>
       </div>
-      <p class="help folder-help">
-        Pick a folder once (outside the extension). Add files in Finder, then Rescan — no extension reload.
-        <strong>Size limit: about 64&nbsp;MB per file</strong> from the folder.
-        Chrome remembers the folder, but each time you open this popup it needs one click on
-        <strong>Allow access</strong> before it can list files again (browser security — not a bug).
-      </p>
-      <p class="help folder-help" id="bg-format-help">
-        Formats: JPEG, PNG, WebP, GIF, BMP, AVIF, SVG · MP4, WebM, MOV, M4V, Ogg/OGV.
-      </p>
       <div class="media-row-actions" id="bg-folder-actions">
         <button type="button" class="v2-btn v2-btn-secondary" id="bg-folder-pick">Choose folder…</button>
         <button type="button" class="v2-btn v2-btn-secondary" id="bg-folder-allow" hidden>Allow access</button>
@@ -186,20 +203,16 @@
       </div>
       <p class="media-status" id="bg-folder-status" role="status"></p>
     </div>
-    <div class="media-row" id="bg-media-row">
-      <div class="media-row-head">
-        <span>Active media</span>
-        <span class="media-file-name" id="bg-media-name">No file</span>
-      </div>
-      <p class="help folder-help">
-        One-off upload max about <strong>3.5&nbsp;MB</strong> (stills are compressed). Prefer the folder above for larger video/GIF files (up to ~64&nbsp;MB).
-      </p>
-      <div class="media-row-actions">
-        <label class="v2-btn v2-btn-secondary media-upload-btn">
-          Upload file…
-          <input type="file" id="bg-media-file" accept="image/*,video/*,.gif,.bmp,.avif,.svg,.mp4,.webm,.mov,.m4v,.ogv,.ogg" hidden>
-        </label>
-        <button type="button" class="v2-btn v2-btn-secondary" id="bg-media-clear">Clear</button>
+    <div class="media-using" id="bg-media-row">
+      <div class="media-using-main">
+        <span class="media-using-label">Using: <span id="bg-media-name">none</span></span>
+        <div class="media-using-actions">
+          <label class="v2-btn v2-btn-secondary media-upload-btn" id="bg-media-upload-wrap">
+            Upload
+            <input type="file" id="bg-media-file" accept="image/*,video/*,.gif,.bmp,.avif,.svg,.mp4,.webm,.mov,.m4v,.ogv,.ogg" hidden>
+          </label>
+          <button type="button" class="v2-btn v2-btn-secondary" id="bg-media-clear">Clear</button>
+        </div>
       </div>
       <p class="media-status" id="bg-media-status" role="status"></p>
     </div>
@@ -217,8 +230,11 @@
   <section>
     <div class="section-head">
       <h2>Specific output URLs</h2>
+      <span class="info-wrap">
+        <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-urls" aria-label="About Specific output URLs">i</button>
+      </span>
     </div>
-    <p class="help">A matching output URL always wins, even if Any output URL is blank.</p>
+    <p class="info-popover" id="info-urls" hidden role="tooltip">A matching row always wins.</p>
     <div id="rules"></div>
     <button type="button" id="add-rule" class="v2-btn v2-btn-primary">Add output URL</button>
   </section>
@@ -226,15 +242,13 @@
   <section class="import-section">
     <div class="section-head">
       <h2>Imported themes</h2>
+      <span class="info-wrap">
+        <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-import" aria-label="About Imported themes">i</button>
+      </span>
       <span id="custom-theme-count" class="section-count" hidden></span>
     </div>
+    <p class="info-popover" id="info-import" hidden role="tooltip">Select JSON, optional *-engine.js, and fonts together. Same id replaces. Engine packs need Allow User Scripts.</p>
     <div class="import-panel">
-      <ol class="import-steps">
-        <li>Select theme <code>.json</code> files, optional <code>*-engine.js</code> files, and optional font files (<code>.woff2</code> / <code>.woff</code> / <code>.ttf</code> / <code>.otf</code>) from your themes folder.</li>
-        <li>Matching is automatic: engines by <code>engine</code> / filename; fonts by each JSON <code>fontFile</code> / <code>fontFaces[].fontFile</code> basename. Shared fonts are stored once. A pack can use several custom fonts plus Google Fonts.</li>
-        <li>Same theme <code>id</code> (or same font / engine id) replaces the previous import.</li>
-        <li>If the red <strong>Finish setup</strong> banner is showing above, turn on Allow User Scripts before expecting an engine pack to appear on Vixi.</li>
-      </ol>
       <label class="v2-btn v2-btn-secondary import-btn">
         Import packs…
         <input type="file" id="import-theme" accept=".json,.js,.woff,.woff2,.ttf,.otf,application/json,text/javascript,font/woff,font/woff2" multiple hidden>

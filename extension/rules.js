@@ -1576,12 +1576,10 @@
         el.style.setProperty("visibility", "hidden", "important");
         el.style.setProperty("opacity", "0", "important");
         el.style.setProperty("pointer-events", "none", "important");
-        el.style.setProperty("background-image", "none", "important");
       } else {
         el.style.removeProperty("visibility");
         el.style.removeProperty("opacity");
         el.style.removeProperty("pointer-events");
-        el.style.removeProperty("background-image");
       }
     });
     themeRoot.querySelectorAll(".dyn-stage, .dyn-fit-stage, .frame, .scene").forEach((el) => {

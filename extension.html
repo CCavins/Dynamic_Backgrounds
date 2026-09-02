@@ -19,7 +19,7 @@
                 <a href="extension.html" aria-current="page">Extension</a>
                 <a href="create.html">Create</a>
             </nav>
-            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.29.22</span></a>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.29.26</span></a>
         </header>
 
         <div class="page-intro">
@@ -50,11 +50,11 @@
             <p>After you change files in the folder, click Reload on the extension card. To rebuild the zip from the repo:</p>
             <pre>rm -f extension.zip &amp;&amp; zip -r extension.zip extension -x "*.DS_Store"</pre>
 
-            <h2>Replace Vixi themes</h2>
-            <p>The popup header is the kill switch. <strong>Off</strong> leaves every page alone. <strong>On</strong> applies the rest of the popup — mosaic and message themes, stage, chrome, and optional iframe rules — to matching output URLs.</p>
+            <h2>Dynamic Backgrounds switch</h2>
+            <p>The popup header is the kill switch. <strong>Off</strong> leaves every page alone. <strong>On</strong> applies the rest of the popup — mosaic and message dynamic templates, stage, chrome, and optional iframe rules — to matching output URLs.</p>
 
             <h2>Mosaic vs message</h2>
-            <p>Pick one mosaic theme and one message theme. Mosaic restyles the live photo grid. Message restyles a single capture with its caption and name. <strong>Off</strong> in either dropdown keeps Vixi’s own layout for that kind.</p>
+            <p>Pick one <strong>Mosaic dynamic template</strong> and one <strong>Message dynamic template</strong>. Mosaic restyles the live photo grid. Message restyles a single capture with its caption and name. <strong>Off</strong> in either dropdown keeps Vixi’s own layout for that kind.</p>
             <p>Some mosaic themes (Polaroid wall, Live mosaic, 3D flip wall, Cube field, Depth Field, Pedestals, and imported packs that declare size/color) show size and color controls under the dropdown. Message themes show color and, when declared, motion. Defaults match the original look (size 100%).</p>
             <p>Browse the looks on the <a href="index.html">Themes</a> page. Those tiles are a catalog, not a picker — you still choose the theme in the popup.</p>
             <p>Names ending in <strong>*</strong> are brand-aware mosaics: when Show QR / Show logo are on, they reflow to leave room for chrome; with both off they use the full stage. Mosaic feed changes update the photo <em>pool</em>; on-screen cards change through each theme’s own transitions rather than flashing everything at once.</p>

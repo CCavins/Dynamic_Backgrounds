@@ -184,7 +184,8 @@
     const root = document.getElementById(OVERLAY_ID);
     if (root) {
       root.classList.add("is-parked");
-      root.classList.remove("on", "off", "idle", "held");
+      root.classList.remove("on", "off", "idle", "held", "dyn-keep-chrome");
+      delete root.dataset.keepChrome;
       if (reason === "native") {
         root.classList.add("dyn-awaiting-show");
         const img =
@@ -326,9 +327,18 @@
     const token = ++cycle;
     const root = document.getElementById(OVERLAY_ID);
     if (!root) return;
-    // First mount / CTA return: stay fully hidden until the card is ready.
+    // First mount / CTA return: hide guest layers until the card is ready.
+    // Back-to-back: keep wall / TV / scraps and only cover photo + copy.
+    const keepChrome = Boolean(shouldHide && !hideStage);
+    if (keepChrome) {
+      root.dataset.keepChrome = "1";
+      root.classList.add("dyn-keep-chrome");
+    } else {
+      delete root.dataset.keepChrome;
+      root.classList.remove("dyn-keep-chrome");
+    }
     if (hideStage) root.classList.add("dyn-awaiting-show");
-    else root.classList.remove("dyn-awaiting-show");
+    else if (!keepChrome) root.classList.remove("dyn-awaiting-show");
     try {
       await decodeImage(capture.src);
       if (token !== cycle) return;
@@ -338,9 +348,9 @@
         await active.def.hide(root, active.state, themeSettings);
       }
       if (token !== cycle) return;
-      // Back-to-back messages: keep the overlay hidden while swapping media/copy
-      // so the previous guest cannot flash before the new enter animation.
-      if (shouldHide) root.classList.add("dyn-awaiting-show");
+      // Full leave / first paint: cover guest layers while swapping.
+      // Back-to-back keep-chrome: leave the wall up and swap in place.
+      if (shouldHide && !keepChrome) root.classList.add("dyn-awaiting-show");
       // Swap the photo while hidden so a CTA return cannot flash the
       // previous card, then reveal for the entrance of the new capture.
       // Never target #dyn-bg-media (selected Show-background asset) — a bare

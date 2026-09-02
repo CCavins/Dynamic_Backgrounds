@@ -37,17 +37,56 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
   overflow: hidden;
   background: #05050c;
 }
-#dyn-message-theme.dyn-awaiting-show,
+#dyn-message-theme.dyn-awaiting-show {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
 html.dyn-show-bg #dyn-message-theme:not(.on) {
   visibility: visible !important;
   opacity: 1 !important;
   background: transparent !important;
 }
-#dyn-message-theme.dyn-awaiting-show > *:not(#dyn-bg-media):not(#dyn-bg-embed):not(.dyn-brand-chrome),
-html.dyn-show-bg #dyn-message-theme:not(.on) > *:not(#dyn-bg-media):not(#dyn-bg-embed):not(.dyn-brand-chrome) {
+/* Custom selected background: hide the whole stage so #dyn-bg-media shows. */
+html.dyn-show-bg #dyn-message-theme:not(.on) > *:not(#dyn-bg-media):not(#dyn-bg-embed):not(.dyn-brand-chrome),
+#dyn-message-theme.dyn-awaiting-show.dyn-show-bg > *:not(#dyn-bg-media):not(#dyn-bg-embed):not(.dyn-brand-chrome) {
   visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
+}
+/* Back-to-back / first paint: keep wall, TV, grain, scraps. Hide guest layers. */
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .photo-paste,
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .msg-paste,
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .name-stamp,
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .program,
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .news,
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .well,
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .photo-panel,
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .msg-box,
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .name-row,
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .photo-holder,
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .name-script,
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .copy,
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .hero,
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .plaque,
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .slab,
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .rig,
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) [data-photo],
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) [data-message],
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) [data-name] {
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+#dyn-message-theme.dyn-keep-chrome.off .wall,
+#dyn-message-theme.dyn-keep-chrome.off .scrap,
+#dyn-message-theme.dyn-keep-chrome.off .grain,
+#dyn-message-theme.dyn-keep-chrome.off .tv,
+#dyn-message-theme.dyn-keep-chrome.off .dyn-stage {
+  opacity: 1 !important;
+  visibility: visible !important;
+  animation: none !important;
+}
+#dyn-message-theme[data-theme="message-grunge-poster"] .wall {
+  background-color: #3a322c;
 }
 #dyn-message-theme[data-theme="message-grunge-poster"].on:not(.off).dyn-grunge-paste-lock .photo-paste,
 #dyn-message-theme[data-theme="message-grunge-poster"].on:not(.off).dyn-grunge-paste-lock .msg-paste,
@@ -2355,6 +2394,21 @@ html.dyn-show-bg #dyn-message-theme:not(.on) > *:not(#dyn-bg-media):not(#dyn-bg-
     });
   }
 
+  function replayGuestMotion(themeRoot) {
+    if (!themeRoot || !themeRoot.classList.contains("on")) return;
+    const targets = themeRoot.querySelectorAll(".photo-paste, .msg-paste, .name-stamp");
+    targets.forEach((el) => {
+      el.style.animation = "none";
+    });
+    void themeRoot.offsetWidth;
+    targets.forEach((el) => {
+      el.style.animation = "";
+    });
+    if (themeRoot.dataset.theme === "message-grunge-poster") {
+      root.setTimeout(() => ensurePosterPasteVisible(themeRoot), 920);
+    }
+  }
+
   function replayEnterMotion(themeRoot) {
     if (!themeRoot || !themeRoot.classList.contains("on")) return;
     const targets = themeRoot.querySelectorAll(
@@ -2446,18 +2500,21 @@ html.dyn-show-bg #dyn-message-theme:not(.on) > *:not(#dyn-bg-media):not(#dyn-bg-
         el.style.setProperty("visibility", "hidden", "important");
         el.style.setProperty("opacity", "0", "important");
         el.style.setProperty("pointer-events", "none", "important");
-        el.style.setProperty("background-image", "none", "important");
         return;
       }
       el.style.removeProperty("visibility");
+      el.style.removeProperty("opacity");
       el.style.removeProperty("pointer-events");
       const url = grungeWallUrl();
+      if (el.getAttribute("data-dyn-wall") === url && (el.style.backgroundImage || "").indexOf("url(") !== -1) {
+        return;
+      }
+      el.setAttribute("data-dyn-wall", url);
+      el.style.setProperty("background-color", "#3a322c", "important");
       el.style.setProperty("background-image", 'url("' + url + '")', "important");
       el.style.setProperty("background-size", "cover", "important");
       el.style.setProperty("background-position", "center", "important");
       el.style.setProperty("background-repeat", "no-repeat", "important");
-      el.style.removeProperty("background-color");
-      el.style.removeProperty("opacity");
       el.style.removeProperty("mix-blend-mode");
     });
   }
@@ -2563,6 +2620,9 @@ html.dyn-show-bg #dyn-message-theme:not(.on) > *:not(#dyn-bg-media):not(#dyn-bg-
 
   function hideTheme(themeRoot, state, waitMs, extraClasses) {
     if (!themeRoot.classList.contains("on")) return Promise.resolve();
+    if (themeRoot.dataset.keepChrome === "1" && !themeRoot.classList.contains("is-parked")) {
+      return Promise.resolve();
+    }
     prepGrungeMessageTransition(themeRoot);
     if (state && state.idleTimer) {
       clearTimeout(state.idleTimer);
@@ -2571,6 +2631,7 @@ html.dyn-show-bg #dyn-message-theme:not(.on) > *:not(#dyn-bg-media):not(#dyn-bg-
     themeRoot.classList.remove("idle", "held");
     themeRoot.classList.add("off");
     return wait(Math.max(120, waitMs)).then(() => {
+      themeRoot.classList.add("dyn-awaiting-show");
       themeRoot.classList.remove("on", "off", "idle", "held");
       (extraClasses || []).forEach((cls) => themeRoot.classList.remove(cls));
     });
@@ -3678,7 +3739,9 @@ html.dyn-show-bg #dyn-message-theme:not(.on) > *:not(#dyn-bg-media):not(#dyn-bg-
       },
       async show(themeRoot, capture, state, settings) {
         const revealMs = (settings && settings.revealMs) || 1100;
-        themeRoot.classList.remove("off", "idle", "on");
+        const keepChrome = themeRoot.dataset.keepChrome === "1";
+        themeRoot.classList.remove("off", "idle");
+        if (!keepChrome) themeRoot.classList.remove("on");
         if (state.idleTimer) {
           clearTimeout(state.idleTimer);
           state.idleTimer = 0;
@@ -3701,11 +3764,13 @@ html.dyn-show-bg #dyn-message-theme:not(.on) > *:not(#dyn-bg-media):not(#dyn-bg-
         refit();
         activeRefit = refit;
         await whenDecoded(state.photo);
-        const fizz = Math.max(280, Math.round(revealMs * 0.32));
+        const fizz = keepChrome
+          ? Math.max(160, Math.round(revealMs * 0.18))
+          : Math.max(280, Math.round(revealMs * 0.32));
         await wait(fizz);
         void themeRoot.offsetWidth;
         themeRoot.classList.add("on");
-        await wait(160);
+        await wait(keepChrome ? 80 : 160);
         themeRoot.classList.remove("fizzing");
         armIdle(themeRoot, state, Math.max(200, revealMs - fizz), "idle", () => {
           // spin the tuning needle while idle
@@ -3714,12 +3779,19 @@ html.dyn-show-bg #dyn-message-theme:not(.on) > *:not(#dyn-bg-media):not(#dyn-bg-
       },
       hide(themeRoot, state, settings) {
         if (!themeRoot.classList.contains("on")) return Promise.resolve();
-        const revealMs = (settings && settings.revealMs) || 1100;
         if (state.idleTimer) {
           clearTimeout(state.idleTimer);
           state.idleTimer = 0;
         }
         themeRoot.classList.remove("idle");
+        if (themeRoot.dataset.keepChrome === "1") {
+          themeRoot.classList.add("ready", "fizzing");
+          return wait(160).then(() => {
+            themeRoot.classList.add("dyn-awaiting-show");
+            themeRoot.classList.remove("fizzing");
+          });
+        }
+        const revealMs = (settings && settings.revealMs) || 1100;
         state.tuneMode = "reset";
         state.tuneTravel = 0;
         if (state.tuneSpeed < 360 / 16) state.tuneSpeed = 360 / 16;
@@ -4227,6 +4299,8 @@ html.dyn-show-bg #dyn-message-theme:not(.on) > *:not(#dyn-bg-media):not(#dyn-bg-
     commonShowPrep,
     finishShow,
     hideTheme,
+    replayGuestMotion,
+    replayEnterMotion,
     whenDecoded,
     isBackgroundMediaNode,
     findMessagePhoto,

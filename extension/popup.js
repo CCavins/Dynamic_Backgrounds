@@ -15,9 +15,11 @@
   const mosaicShowBackground = document.getElementById("mosaic-show-background");
   const mosaicShowQr = document.getElementById("mosaic-show-qr");
   const mosaicShowLogo = document.getElementById("mosaic-show-logo");
+  const mosaicChromeToggles = document.getElementById("mosaic-chrome-toggles");
   const messageShowBackground = document.getElementById("message-show-background");
   const messageShowQr = document.getElementById("message-show-qr");
   const messageShowLogo = document.getElementById("message-show-logo");
+  const messageChromeToggles = document.getElementById("message-chrome-toggles");
   const messageThemeSettings = document.getElementById("message-theme-settings");
   const mosaicThemeSettings = document.getElementById("mosaic-theme-settings");
   const leaderboardThemeSettings = document.getElementById("leaderboard-theme-settings");
@@ -29,6 +31,7 @@
   const bgMediaClear = document.getElementById("bg-media-clear");
   const bgMediaName = document.getElementById("bg-media-name");
   const bgMediaStatus = document.getElementById("bg-media-status");
+  const bgMediaUploadWrap = document.getElementById("bg-media-upload-wrap");
   const bgFolderName = document.getElementById("bg-folder-name");
   const bgFolderStatus = document.getElementById("bg-folder-status");
   const bgFolderPick = document.getElementById("bg-folder-pick");
@@ -172,7 +175,7 @@
       const asset = await mediaApi.ingestFile(file, opts);
       const ok = await mediaApi.putMedia(mediaId, asset);
       if (!ok) throw new Error("Could not save that file. Try a smaller one.");
-      await refreshMediaName(nameEl, mediaId, "No file");
+      await refreshMediaName(nameEl, mediaId, nameEl === bgMediaName ? "none" : "No file");
       setMediaStatus(statusEl, "Saved.", "is-ok");
       return mediaId;
     } catch (err) {
@@ -198,6 +201,7 @@
     if (bgFolderRescan) bgFolderRescan.hidden = !(hasFolder && !needsGesture);
     if (bgFolderForget) bgFolderForget.hidden = !hasFolder;
     if (bgFolderListWrap) bgFolderListWrap.hidden = !(hasFolder && !needsGesture);
+    if (bgMediaUploadWrap) bgMediaUploadWrap.hidden = hasFolder;
   }
 
   function fillFolderList(files, selectedName) {
@@ -420,15 +424,52 @@
     select.addEventListener("change", () => syncSelectUI(select));
   }
 
+  function closeInfoPopovers(except) {
+    document.querySelectorAll(".info-btn[aria-expanded='true']").forEach((btn) => {
+      if (btn === except) return;
+      btn.setAttribute("aria-expanded", "false");
+      const id = btn.getAttribute("aria-controls");
+      const pop = id && document.getElementById(id);
+      if (pop) pop.hidden = true;
+    });
+  }
+
+  document.querySelectorAll(".info-btn").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const open = btn.getAttribute("aria-expanded") === "true";
+      closeInfoPopovers();
+      if (open) return;
+      btn.setAttribute("aria-expanded", "true");
+      const id = btn.getAttribute("aria-controls");
+      const pop = id && document.getElementById(id);
+      if (pop) pop.hidden = false;
+    });
+  });
+
   document.addEventListener("click", (event) => {
     if (!event.target.closest(".v2-select")) closeAllSelects();
+    if (!event.target.closest(".info-btn")) closeInfoPopovers();
   });
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeAllSelects();
+    if (event.key === "Escape") {
+      closeAllSelects();
+      closeInfoPopovers();
+    }
   });
 
   function setEnabledLabel() {
     enabledLabel.textContent = enabledInput.checked ? "On" : "Off";
+  }
+
+  function syncChromeToggles() {
+    if (mosaicChromeToggles) {
+      mosaicChromeToggles.hidden = !mosaicTheme || mosaicTheme.value === "off";
+    }
+    if (messageChromeToggles) {
+      messageChromeToggles.hidden = !messageTheme || messageTheme.value === "off";
+    }
   }
 
   function addThemeOption(select, id, label) {
@@ -600,6 +641,7 @@
       fillMessageThemeOptions();
       syncSelectUI(mosaicTheme);
       syncSelectUI(messageTheme);
+      syncChromeToggles();
       renderCustomList(next);
       persist();
       setImportStatus("Removed " + pack.label + ".", "is-warn");
@@ -1254,6 +1296,7 @@
     stashCurrentMosaicForm();
     lastMosaicTheme = mosaicTheme.value;
     renderMosaicThemeSettings(mosaicTheme.value);
+    syncChromeToggles();
     persist();
   });
   function readStageAspect() {
@@ -1344,6 +1387,7 @@
     stashCurrentThemeForm();
     lastMessageTheme = messageTheme.value;
     renderThemeSettings(messageTheme.value);
+    syncChromeToggles();
     persist();
   });
   if (leaderboardTheme) {
@@ -1385,7 +1429,7 @@
       if (mediaApi) await mediaApi.removeMedia(BG_MEDIA_ID);
       if (!cachedSettings) cachedSettings = {};
       cachedSettings.bgMediaId = "";
-      if (bgMediaName) bgMediaName.textContent = "No file";
+      if (bgMediaName) bgMediaName.textContent = "none";
       setMediaStatus(bgMediaStatus, "Cleared.");
       folderSelectedFile = "";
       if (folderApi) await folderApi.setSelectedFile("");
@@ -1744,6 +1788,7 @@
         }
         syncSelectUI(mosaicTheme);
         syncSelectUI(messageTheme);
+        syncChromeToggles();
         persist();
         const packs = await rulesApi.loadCustomThemes();
         renderCustomList(packs);
@@ -1838,6 +1883,7 @@
     renderThemeSettings(settings.messageTheme);
     renderMosaicThemeSettings(settings.mosaicTheme);
     renderLeaderboardThemeSettings(settings.leaderboardTheme || "off");
+    syncChromeToggles();
     if (anyOutput) anyOutput.value = settings.anyOutputIframeHtml || "";
     if (bgMode) {
       bgMode.value = settings.bgMode || "auto";
@@ -1848,7 +1894,7 @@
       syncSelectUI(bgFit);
     }
     cachedSettings.bgMediaId = settings.bgMediaId || "";
-    refreshMediaName(bgMediaName, settings.bgMediaId || "", "No file");
+    refreshMediaName(bgMediaName, settings.bgMediaId || "", "none");
     initBackgroundFolder();
     rulesRoot.replaceChildren();
     if (settings.rules.length === 0) addRuleRow({});
