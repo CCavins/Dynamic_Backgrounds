@@ -37,9 +37,17 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
   overflow: hidden;
   background: #05050c;
 }
-#dyn-message-theme.dyn-awaiting-show {
+#dyn-message-theme.dyn-awaiting-show,
+html.dyn-show-bg #dyn-message-theme:not(.on) {
+  visibility: visible !important;
+  opacity: 1 !important;
+  background: transparent !important;
+}
+#dyn-message-theme.dyn-awaiting-show > *:not(#dyn-bg-media):not(#dyn-bg-embed):not(.dyn-brand-chrome),
+html.dyn-show-bg #dyn-message-theme:not(.on) > *:not(#dyn-bg-media):not(#dyn-bg-embed):not(.dyn-brand-chrome) {
   visibility: hidden !important;
   opacity: 0 !important;
+  pointer-events: none !important;
 }
 #dyn-message-theme[data-theme="message-grunge-poster"].on:not(.off).dyn-grunge-paste-lock .photo-paste,
 #dyn-message-theme[data-theme="message-grunge-poster"].on:not(.off).dyn-grunge-paste-lock .msg-paste,
@@ -2261,7 +2269,11 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
       rules && typeof rules.stageAspectToken === "function"
         ? rules.stageAspectToken(size)
         : "auto";
-    const s = Math.min(rw / dw, rh / dh);
+    const mode = size.mode || "auto";
+    const s =
+      rules && typeof rules.stageContainScale === "function"
+        ? rules.stageContainScale(rw, rh, dw, dh, mode)
+        : Math.min(rw / dw, rh / dh, mode === "vixi" ? 1 : Infinity);
     stageScale = s;
     stage.style.left = ((rw - dw * s) / 2).toFixed(2) + "px";
     stage.style.top = ((rh - dh * s) / 2).toFixed(2) + "px";
@@ -2525,6 +2537,7 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
     await Promise.all((images || []).filter(Boolean).map(whenDecoded));
     layoutFitStage(themeRoot);
     void themeRoot.offsetWidth;
+    themeRoot.classList.remove("dyn-awaiting-show");
     themeRoot.classList.add("on");
     if (themeRoot.dataset.theme === "message-grunge-poster") {
       root.setTimeout(() => ensurePosterPasteVisible(themeRoot), 980);
@@ -2571,6 +2584,10 @@ html.dyn-message-on .mosaic-layout > .asset-view:not(#dyn-theme-host *) {
   window.addEventListener("resize", () => {
     let flipped = false;
     if (currentThemeRoot && currentThemeRoot.isConnected) {
+      const rulesApi = root.BGExtensionRules;
+      if (rulesApi && typeof rulesApi.applyStageFrame === "function") {
+        rulesApi.applyStageFrame(currentThemeRoot);
+      }
       flipped = layoutFitStage(currentThemeRoot);
     }
     if (!flipped) return;

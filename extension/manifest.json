@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dynamic Backgrounds",
-  "version": "1.24.32",
+  "version": "1.29.22",
   "minimum_chrome_version": "120",
   "description": "Apply a Dynamic Backgrounds iframe, mosaic themes, and message themes to matching output URLs.",
   "action": {
@@ -60,8 +60,10 @@
         "engines/message-xmas-bauble-engine.js",
         "engines/mosaic-slant-rows-engine.js",
         "custom-themes.js",
+        "leaderboard-themes.js",
         "mosaic.js",
-        "message.js"
+        "message.js",
+        "leaderboard.js"
       ],
       "run_at": "document_idle"
     }
@@ -73,7 +75,10 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["packs/assets/*"],
+      "resources": [
+        "packs/*.json",
+        "packs/assets/*"
+      ],
       "matches": [
         "*://*.thefamousgroup.com/*",
         "*://*.vixisuite.com/*"

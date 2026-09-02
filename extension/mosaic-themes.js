@@ -194,6 +194,8 @@
     return id;
   }
 
+  const stageRefits = new Map();
+
   function stopTimers(state) {
     (state.timers || []).forEach((id) => window.clearTimeout(id));
     state.timers = [];
@@ -205,13 +207,22 @@
       state.ro.disconnect();
       state.ro = null;
     }
+    stageRefits.delete(state);
   }
 
   function fitStage(stage, designW, designH, parent) {
     if (!stage || !parent) return;
     const vw = parent.clientWidth || 1;
     const vh = parent.clientHeight || 1;
-    const s = Math.min(vw / designW, vh / designH);
+    const rulesApi = root.BGExtensionRules;
+    const mode =
+      rulesApi && typeof rulesApi.currentStageAspect === "function"
+        ? rulesApi.currentStageAspect()
+        : "vixi";
+    const s =
+      rulesApi && typeof rulesApi.stageContainScale === "function"
+        ? rulesApi.stageContainScale(vw, vh, designW, designH, mode)
+        : Math.min(vw / designW, vh / designH, mode === "vixi" ? 1 : Infinity);
     stage.style.width = designW + "px";
     stage.style.height = designH + "px";
     stage.style.position = "absolute";
@@ -221,8 +232,19 @@
     stage.style.transform = "scale(" + s + ")";
   }
 
+  function refitStages() {
+    stageRefits.forEach((fit) => {
+      try {
+        fit();
+      } catch {
+        /* theme may be mid-unmount */
+      }
+    });
+  }
+
   function watchStage(state, stage, designW, designH, parent) {
     const fit = () => fitStage(stage, designW, designH, parent);
+    stageRefits.set(state, fit);
     fit();
     if (typeof ResizeObserver !== "undefined") {
       state.ro = new ResizeObserver(fit);
@@ -1995,10 +2017,13 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
         root.appendChild(stage);
         const center = 0;
         layoutCoverflow(cards, center);
-        return { cards, center };
+        return { cards, center, lastTickAt: 0 };
       },
       tick(root, pool, state, api) {
         if (!pool.length) return;
+        const now = performance.now();
+        if (state.lastTickAt && now - state.lastTickAt < TICK * 0.9) return;
+        state.lastTickAt = now;
         const n = state.cards.length;
         const centerMod = ((state.center % n) + n) % n;
         const hiddenI = (centerMod + Math.floor(n / 2)) % n;
@@ -3533,5 +3558,6 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
     STYLE,
     themes,
     makeCard,
+    refitStages,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

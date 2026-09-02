@@ -640,6 +640,7 @@
       theme === "decks" ||
       theme === "decks-brand" ||
       theme === "cascade" ||
+      theme === "coverflow" ||
       theme === "depthfield"
     ) {
       return true;
@@ -701,11 +702,12 @@
     }, 240);
   }
 
-  function runThemeTick(added) {
+  function runThemeTick(added, opts) {
     const root = document.getElementById(OVERLAY_ID);
     if (!root || !active) return;
     const theme = root.dataset ? root.dataset.theme : "";
     const managed = themeManagesFeed(theme);
+    const feedOnly = Boolean(opts && opts.feedOnly);
     if (managed) {
       // Pool already updated in syncFeed. Drop placement queues so add/remove
       // never rewrite on-screen cards for self-animated themes.
@@ -716,7 +718,7 @@
       placeAdded(root, added);
       placeMissingLive(root);
     }
-    if (typeof active.def.tick === "function") {
+    if (!feedOnly && typeof active.def.tick === "function") {
       active.def.tick(root, pool, active.state, makeApi());
     }
     watchFeedImgs(root);
@@ -1039,6 +1041,23 @@
           ok = false;
           break;
         }
+        const existing = document.getElementById(OVERLAY_ID);
+        if (
+          existing &&
+          active &&
+          mountedTheme === target &&
+          existing.classList.contains("on") &&
+          !existing.classList.contains("is-parked") &&
+          !mountedEmpty &&
+          pool.length > 0
+        ) {
+          ok = true;
+          if (token === rebuildGen && !pendingRebuild) {
+            pendingRebuild = false;
+            return true;
+          }
+          continue;
+        }
         const prevHostKey = mountedHostKey;
         snapshotOverlayPool();
         disposeMounted();
@@ -1117,6 +1136,8 @@
       mountedAspect = rules.currentStageAspect ? rules.currentStageAspect() : "auto";
       mountedEmpty = pool.length === 0;
       if (typeof rules.ensureBrandChrome === "function") rules.ensureBrandChrome(root, "mosaic");
+      root.classList.add("on");
+      root.classList.remove("off");
       mountedAt = performance.now();
       mosaicNeedsFreshMount = false;
       watchFeedImgs(root);
@@ -1154,6 +1175,7 @@
     if (root) {
       while (root.firstChild) root.removeChild(root.firstChild);
       root.classList.add("is-leaving", "is-parked", "dyn-awaiting-show");
+      root.classList.remove("on", "off");
     }
     active = null;
     mountedTheme = "";
@@ -1162,7 +1184,12 @@
   }
 
   function unparkOverlay(root) {
-    if (root) root.classList.remove("is-leaving", "is-parked", "dyn-awaiting-show");
+    if (root) {
+      root.classList.remove("is-leaving", "is-parked", "dyn-awaiting-show");
+      root.classList.add("on");
+      root.classList.remove("off");
+      if (typeof rules.ensureBrandChrome === "function") rules.ensureBrandChrome(root, "mosaic");
+    }
     if (typeof handoff.applyCovers === "function") handoff.applyCovers();
   }
 
@@ -1211,6 +1238,7 @@
       return wait(420);
     },
     teardown: teardownSoft,
+    standDown: teardownHard,
   });
 
   const customApi = globalThis.BGCustomThemes;
@@ -1244,6 +1272,11 @@
       if (applyMosaicSettingsLive(theme, settings, true)) return true;
     }
     const ok = await rebuildNow(theme);
+    const after = handoff.liveKind();
+    if (after === "message" || after === "native") {
+      parkOverlay();
+      return false;
+    }
     const liveEl = document.getElementById(OVERLAY_ID);
     unparkOverlay(liveEl);
     if (liveEl) {
@@ -1300,6 +1333,20 @@
       scheduleApply(80);
       return;
     }
+    let polling = Boolean(rules.pageLooksLikePolling && rules.pageLooksLikePolling());
+    const passthroughEarly = Boolean(
+      polling || (rules.pageLooksLikePassthrough && rules.pageLooksLikePassthrough())
+    );
+    if (passthroughEarly && !polling) {
+      const transitioning =
+        handoff.themeTransitionActive && handoff.themeTransitionActive();
+      const leaked = Boolean(
+        document.getElementById(OVERLAY_ID) ||
+        document.getElementById(handoff.HOST_ID) ||
+        document.documentElement.classList.contains("dyn-mosaic-on")
+      );
+      if (!transitioning && handoff.isStandingDown && handoff.isStandingDown() && !leaked) return;
+    }
     const gen = ++applyGen;
     applying = true;
     applyingSince = Date.now();
@@ -1314,8 +1361,56 @@
       // the chrome APIs; only a page refresh swaps in the new script.
       const settings = await rules.loadSettings();
       if (gen !== applyGen) return;
+      if (rules.leaderboardBeatActive && rules.leaderboardBeatActive(settings)) {
+        if (settleTimer) {
+          clearInterval(settleTimer);
+          settleTimer = 0;
+        }
+        const needsTear =
+          Boolean(document.getElementById(OVERLAY_ID)) ||
+          Boolean(document.getElementById(STYLE_ID)) ||
+          Boolean(document.getElementById(handoff.HOST_ID)) ||
+          handoff.currentMode() === "mosaic" ||
+          document.documentElement.classList.contains("dyn-mosaic-on");
+        parkOverlay();
+        if (needsTear) teardownHard();
+        handoff.clearMode("mosaic");
+        return;
+      }
+      polling = Boolean(rules.pageLooksLikePolling && rules.pageLooksLikePolling());
+      const passthrough = Boolean(
+        polling || (rules.pageLooksLikePassthrough && rules.pageLooksLikePassthrough())
+      );
+      if (
+        (polling ||
+          (passthrough && !(handoff.themeTransitionActive && handoff.themeTransitionActive()))) &&
+        !(rules.themeOverlayLive && rules.themeOverlayLive("mosaic"))
+      ) {
+        if (settleTimer) {
+          clearInterval(settleTimer);
+          settleTimer = 0;
+        }
+        const needsTear =
+          Boolean(document.getElementById(OVERLAY_ID)) ||
+          Boolean(document.getElementById(STYLE_ID)) ||
+          Boolean(document.getElementById(handoff.HOST_ID)) ||
+          handoff.currentMode() === "mosaic" ||
+          document.documentElement.classList.contains("dyn-mosaic-on");
+        parkOverlay();
+        if (needsTear) teardownHard();
+        handoff.clearMode("mosaic");
+        handoff.applyCovers(settings);
+        return;
+      }
       if (pendingRebuild) suppressResizeRebuild(1600);
-      handoff.applyCovers(settings);
+      const html = document.documentElement;
+      if (
+        !html.classList.contains("dyn-kind-mosaic") ||
+        !html.classList.contains("dyn-cover-mosaic") ||
+        !html.classList.contains("dyn-theme-on")
+      ) {
+        handoff.applyCovers(settings);
+      }
       if (pendingRebuild) suppressResizeRebuild(1600);
       const theme = settings.enabled ? rules.normalizeMosaicTheme(settings.mosaicTheme) : "off";
       const aspect = rules.normalizeStageAspect
@@ -1340,32 +1435,51 @@
       }
 
       let kind = handoff.liveKind();
-      const mosaicPage = Boolean(rules.pageLooksLikeMosaic && rules.pageLooksLikeMosaic());
-      const mode = handoff.currentMode();
       const msgThemeOn =
         settings.enabled !== false && rules.normalizeMessageTheme(settings.messageTheme) !== "off";
       // Stream / live / CTA / video / URL — anything that is not mosaic or
       // message. Drop our overlay and let Vixi show through.
       // After covers hide the stock mosaic, leftover native nodes can look
       // "live". If this is still a mosaic page, remount instead of parking.
+      // Native is native. Leftover .mosaic-layout chrome must not remount
+      // a blank mosaic wall over a CTA / stream after refresh.
       if (kind === "native") {
-        const reallyNative = Boolean(
-          rules.pageLooksLikeNative && rules.pageLooksLikeNative()
-        );
-        if (reallyNative || !mosaicPage) {
-          if (settleTimer) {
-            clearInterval(settleTimer);
-            settleTimer = 0;
-          }
-          parkOverlay();
-          handoff.applyCovers(settings);
-          return;
+        if (settleTimer) {
+          clearInterval(settleTimer);
+          settleTimer = 0;
         }
-        kind = "mosaic";
+        parkOverlay();
+        handoff.clearMode("mosaic");
+        handoff.applyCovers(settings);
+        return;
       }
+      const msgLayer =
+        document.querySelector(".capture-content-layer") ||
+        document.querySelector(".message-layer") ||
+        document.querySelector(".v2-message");
+      const mosaicLayer =
+        document.querySelector(".mosaic-layout") ||
+        document.querySelector(".v2-mosaic-swap-tile") ||
+        document.querySelector(".v2-asset-tile");
+      const shellPresent = (el) => {
+        if (!el) return false;
+        try {
+          if (el.hidden || el.getAttribute("aria-hidden") === "true") return false;
+          const st = getComputedStyle(el);
+          if (st.display === "none") return false;
+          const r = el.getBoundingClientRect();
+          return r.width > 2 && r.height > 2;
+        } catch {
+          return false;
+        }
+      };
+      const mosaicOnly = shellPresent(mosaicLayer) && !shellPresent(msgLayer);
+      const mosaicTileN =
+        typeof rules.mosaicContentCount === "function" ? rules.mosaicContentCount() : 0;
       // Never keep mosaic cards over a live message beat — even if we still owe
-      // a remount or Vixi left .mosaic-layout in the DOM.
-      if (kind === "message") {
+      // a remount or Vixi left .mosaic-layout in the DOM. Exclusive mosaic
+      // shell means Vixi switched; leftover overlay liveKind would miss that.
+      if (kind === "message" && !mosaicOnly) {
         stopTick();
         parkOverlay();
         if (settleTimer) {
@@ -1375,8 +1489,16 @@
         if (!msgThemeOn) await releaseForMessage();
         return;
       }
+      if (
+        kind === "message" &&
+        mosaicOnly &&
+        mosaicTileN > 0 &&
+        !(handoff.leftoverMosaicShouldYield && handoff.leftoverMosaicShouldYield())
+      ) {
+        kind = "mosaic";
+      }
       watchSettle();
-      if (kind === "mosaic" || (rules.pageLooksLikeMosaic && rules.pageLooksLikeMosaic())) {
+      if (kind === "mosaic") {
         const overlay = document.getElementById(OVERLAY_ID);
         const settingsChanged =
           overlay &&
@@ -1407,12 +1529,20 @@
       if (kind !== "mosaic") {
         // Ambiguous "" with message content: never remount mosaic over it just
         // because a hidden .mosaic-layout shell is still in the DOM.
-        if (hasMsg && kind === "") {
+        if (hasMsg && (kind === "" || kind === "message")) {
           parkOverlay();
           if (!msgThemeOn) await releaseForMessage();
           return;
         }
-        if (mosaicPage || oweMosaic || (kind === "" && (!mode || mode === "mosaic"))) {
+        // Empty liveKind is boot / unknown — not mosaic. Forcing mosaic here
+        // painted a blank wall over CTA and polling on refresh.
+        if (kind === "") return;
+        if (
+          oweMosaic &&
+          mosaicTileN > 0 &&
+          !hasMsg &&
+          !(handoff.leftoverMosaicShouldYield && handoff.leftoverMosaicShouldYield())
+        ) {
           kind = "mosaic";
         } else {
           return;
@@ -1516,9 +1646,9 @@
           applyMosaicSettingsLive(theme, themeSettings, true);
           watchFeedImgs(live);
           const liveTheme = live.dataset ? live.dataset.theme : "";
-          if (added.length || removed.length) runThemeTick(added);
+          if (added.length || removed.length) runThemeTick(added, { feedOnly: true });
           else if (retiring.size) {
-            if (themeManagesFeed(liveTheme)) runThemeTick([]);
+            if (themeManagesFeed(liveTheme)) runThemeTick([], { feedOnly: true });
             else reconcileOverlay(live);
           }
         },
@@ -1528,7 +1658,21 @@
     }
   }
 
+  function passthroughIsQuiet() {
+    return (
+      handoff.passthroughIsQuiet &&
+      typeof handoff.passthroughIsQuiet === "function" &&
+      handoff.passthroughIsQuiet()
+    );
+  }
+
   function scheduleApply(delay) {
+    if (
+      !(rules.pageLooksLikePolling && rules.pageLooksLikePolling()) &&
+      passthroughIsQuiet()
+    ) {
+      return;
+    }
     if (applyTimer) clearTimeout(applyTimer);
     applyTimer = setTimeout(() => {
       applyTimer = 0;
@@ -1642,10 +1786,27 @@
     /* extension reloaded */
   }
 
-  // Mosaic layouts are computed at mount from the canvas size. Rebuild so
-  // every tile re-lays out against the new canvas instead of patching.
+  // Live refit on resize; remount only when the design canvas itself changes.
   let resizeRemountTimer = 0;
+  let lastResizeDesignKey = "";
   window.addEventListener("resize", () => {
+    const root = document.getElementById(OVERLAY_ID);
+    if (root && typeof rules.applyStageFrame === "function") {
+      const size = rules.applyStageFrame(root);
+      if (themeApi && typeof themeApi.refitStages === "function") themeApi.refitStages();
+      const designKey = size ? size.dw + "x" + size.dh + ":" + size.mode : "";
+      if (designKey && designKey !== lastResizeDesignKey) {
+        lastResizeDesignKey = designKey;
+        if (resizeRemountTimer) clearTimeout(resizeRemountTimer);
+        resizeRemountTimer = setTimeout(() => {
+          resizeRemountTimer = 0;
+          if (performance.now() < ignoreResizeUntil) return;
+          requestRebuild();
+          scheduleApply(0);
+        }, 120);
+        return;
+      }
+    }
     if (resizeRemountTimer) clearTimeout(resizeRemountTimer);
     resizeRemountTimer = setTimeout(() => {
       resizeRemountTimer = 0;
@@ -1664,14 +1825,20 @@
     handoff.onLiveKind((kind) => {
       // Park immediately on message/native so mosaic cards cannot linger
       // blown-up during handoff until a click triggers MutationObserver.
-      if (kind === "message" || kind === "native") {
+      if (kind === "native") {
+        parkOverlay();
+        scheduleApply(0);
+        return;
+      }
+      if (kind === "message") {
         parkOverlay();
         scheduleApply(0);
         return;
       }
       if (kind !== "mosaic") return;
       watchSettle();
-      pendingRebuild = true;
+      // Do not force pendingRebuild here. That disposed a healthy wall every
+      // time liveKind flapped to mosaic, then remounted ~300ms later.
       scheduleApply(0);
     });
   }

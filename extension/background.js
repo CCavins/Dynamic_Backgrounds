@@ -149,7 +149,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes.customEngines) {
     syncSideloadEngines().catch(() => {});
   }
-  if (changes.mosaicThemeSettings || changes.messageThemeSettings) {
+  if (changes.mosaicThemeSettings || changes.messageThemeSettings || changes.leaderboardThemeSettings) {
     chrome.storage.local.get(null, (stored) => {
       if (stored && typeof stored === "object") pushSettingsToTabs(stored);
     });

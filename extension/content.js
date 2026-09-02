@@ -46,7 +46,37 @@
   }
 
   function showBackgroundWanted(settings) {
-    if (!rules.liveThemeIsOn || !rules.liveThemeIsOn(settings)) return true;
+    const handoff = globalThis.BGThemeHandoff;
+    if (handoff && typeof handoff.isPassthrough === "function" && handoff.isPassthrough(settings)) {
+      return false;
+    }
+    if (rules.pageLooksLikeHardNative && rules.pageLooksLikeHardNative()) return false;
+    if (rules.pageLooksLikePassthrough && rules.pageLooksLikePassthrough()) return false;
+    const cap = rules.messageCapture ? rules.messageCapture() : {};
+    const hasMsg = Boolean(cap && (cap.src || cap.message || cap.name));
+    const mosaicN =
+      typeof rules.mosaicContentCount === "function" ? rules.mosaicContentCount() : 0;
+    if (
+      rules.pageLooksLikeNative &&
+      rules.pageLooksLikeNative() &&
+      !hasMsg &&
+      mosaicN === 0
+    ) {
+      return false;
+    }
+    if (!rules.liveThemeIsOn || !rules.liveThemeIsOn(settings)) {
+      const live = handoff && typeof handoff.liveKind === "function" ? handoff.liveKind() : "";
+      if (live === "native") return false;
+      if (hasMsg && settings && settings.messageTheme && settings.messageTheme !== "off") {
+        const chrome = rules.chromeForKind ? rules.chromeForKind(settings, "message") : null;
+        return Boolean(chrome && chrome.showBackground);
+      }
+      if (mosaicN > 0 && settings && settings.mosaicTheme && settings.mosaicTheme !== "off") {
+        const chrome = rules.chromeForKind ? rules.chromeForKind(settings, "mosaic") : null;
+        return Boolean(chrome && chrome.showBackground);
+      }
+      return false;
+    }
     const chrome = rules.chromeForKind
       ? rules.chromeForKind(settings, rules.activeThemeKind ? rules.activeThemeKind(settings) : "")
       : { showBackground: false };
@@ -218,6 +248,7 @@
   function syncMount(settings, opts) {
     const s = settings;
     if (!s || !rules.usesCustomBackground || !rules.usesCustomBackground(s)) return false;
+    if (rules.pageLooksLikePassthrough && rules.pageLooksLikePassthrough()) return false;
 
     const liveOn = Boolean(opts && opts.liveOn);
     const showBackground = Boolean(opts && opts.showBackground);
@@ -279,7 +310,64 @@
   }
 
   async function apply() {
+    const handoff = globalThis.BGThemeHandoff;
+    if (
+      rules.pageLooksLikePolling &&
+      rules.pageLooksLikePolling()
+    ) {
+      if (handoff && typeof handoff.isStandingDown === "function" && handoff.isStandingDown()) {
+        const leaked = Boolean(
+          document.getElementById("dyn-theme-host") ||
+          document.getElementById("dyn-mosaic-theme") ||
+          document.getElementById("dyn-message-theme")
+        );
+        if (!leaked) return;
+      }
+    } else if (
+      handoff &&
+      typeof handoff.passthroughIsQuiet === "function" &&
+      handoff.passthroughIsQuiet()
+    ) {
+      return;
+    }
+    if (rules.pageLooksLikePassthrough && rules.pageLooksLikePassthrough()) {
+      removeAllCustom();
+      if (rules.removeLeakedBrandChrome) rules.removeLeakedBrandChrome();
+      if (rules.resumeBackgroundMedia) rules.resumeBackgroundMedia();
+      return;
+    }
     const settings = await rules.loadSettings();
+    if (handoff && typeof handoff.isPassthrough === "function" && handoff.isPassthrough(settings)) {
+      if (
+        !(rules.pageLooksLikePolling && rules.pageLooksLikePolling()) &&
+        handoff.isStandingDown &&
+        handoff.isStandingDown()
+      ) {
+        return;
+      }
+      removeAllCustom();
+      if (rules.resumeBackgroundMedia) rules.resumeBackgroundMedia();
+      return;
+    }
+
+    const lbThemed = Boolean(
+      settings &&
+        settings.enabled !== false &&
+        rules.normalizeLeaderboardTheme &&
+        rules.normalizeLeaderboardTheme(settings.leaderboardTheme) !== "off" &&
+        rules.pageLooksLikeLeaderboardOverlay &&
+        rules.pageLooksLikeLeaderboardOverlay()
+    );
+    if (lbThemed) {
+      removeIframe();
+      removeMedia();
+      document.documentElement.classList.remove("dyn-custom-bg");
+      restoreOriginalBackground();
+      if (rules.clearPassthroughState) rules.clearPassthroughState();
+      if (rules.resumeBackgroundMedia) rules.resumeBackgroundMedia();
+      return;
+    }
+
     const themeOn = rules.liveThemeIsOn
       ? rules.liveThemeIsOn(settings)
       : rules.themeIsOn
@@ -288,7 +376,8 @@
             settings &&
               settings.enabled !== false &&
               ((settings.messageTheme && settings.messageTheme !== "off") ||
-                (settings.mosaicTheme && settings.mosaicTheme !== "off"))
+                (settings.mosaicTheme && settings.mosaicTheme !== "off") ||
+                (settings.leaderboardTheme && settings.leaderboardTheme !== "off"))
           );
 
     const wantCustom = showBackgroundWanted(settings);
@@ -351,6 +440,15 @@
   }
 
   function scheduleApply(delayMs) {
+    const handoff = globalThis.BGThemeHandoff;
+    if (
+      !(rules.pageLooksLikePolling && rules.pageLooksLikePolling()) &&
+      handoff &&
+      typeof handoff.passthroughIsQuiet === "function" &&
+      handoff.passthroughIsQuiet()
+    ) {
+      return;
+    }
     if (applyTimer) clearTimeout(applyTimer);
     const wait = delayMs == null ? 50 : Math.max(0, Number(delayMs) || 0);
     applyTimer = setTimeout(() => {
@@ -360,6 +458,22 @@
   }
 
   const observer = new MutationObserver(() => {
+    const peek = rules.peekSettings ? rules.peekSettings() : null;
+    if (rules.leaderboardBeatActive && peek && rules.leaderboardBeatActive(peek)) {
+      return;
+    }
+    if (rules.pageLooksLikePolling && rules.pageLooksLikePolling()) {
+      scheduleApply(0);
+      return;
+    }
+    const handoff = globalThis.BGThemeHandoff;
+    if (
+      handoff &&
+      typeof handoff.passthroughIsQuiet === "function" &&
+      handoff.passthroughIsQuiet()
+    ) {
+      return;
+    }
     scheduleApply();
   });
 
@@ -393,10 +507,32 @@
   globalThis.BGCustomBackground = {
     scheduleApply,
     syncMount,
+    removeAllCustom,
+    clearPassthrough() {
+      removeAllCustom();
+      if (rules.resumeBackgroundMedia) rules.resumeBackgroundMedia();
+    },
     applyNow() {
       return apply();
     },
   };
+
+  let resizeApplyTimer = 0;
+  window.addEventListener("resize", () => {
+    const handoff = globalThis.BGThemeHandoff;
+    if (
+      handoff &&
+      typeof handoff.passthroughIsQuiet === "function" &&
+      handoff.passthroughIsQuiet()
+    ) {
+      return;
+    }
+    if (resizeApplyTimer) clearTimeout(resizeApplyTimer);
+    resizeApplyTimer = setTimeout(() => {
+      resizeApplyTimer = 0;
+      scheduleApply(60);
+    }, 80);
+  });
 
   scheduleApply(0);
 })();

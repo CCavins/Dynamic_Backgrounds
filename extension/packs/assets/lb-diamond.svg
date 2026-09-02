@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="d" x1="12" y1="4" x2="52" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#b8ffd4"/>
+      <stop offset="0.4" stop-color="#3dff8a"/>
+      <stop offset="1" stop-color="#0a9a4a"/>
+    </linearGradient>
+    <filter id="g" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#3dff8a" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+  <g filter="url(#g)">
+    <polygon points="32,4 58,32 32,60 6,32" fill="url(#d)"/>
+    <polygon points="32,4 44,32 32,60 20,32" fill="#fff" fill-opacity="0.18"/>
+    <polygon points="32,4 20,32 6,32" fill="#fff" fill-opacity="0.28"/>
+  </g>
+</svg>

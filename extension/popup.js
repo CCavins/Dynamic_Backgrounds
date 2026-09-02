@@ -7,6 +7,7 @@
   const enabledLabel = document.getElementById("enabled-label");
   const mosaicTheme = document.getElementById("mosaic-theme");
   const messageTheme = document.getElementById("message-theme");
+  const leaderboardTheme = document.getElementById("leaderboard-theme");
   const stageAspect = document.getElementById("stage-aspect");
   const stageRatioRow = document.getElementById("stage-ratio-row");
   const stageRatioW = document.getElementById("stage-ratio-w");
@@ -19,6 +20,7 @@
   const messageShowLogo = document.getElementById("message-show-logo");
   const messageThemeSettings = document.getElementById("message-theme-settings");
   const mosaicThemeSettings = document.getElementById("mosaic-theme-settings");
+  const leaderboardThemeSettings = document.getElementById("leaderboard-theme-settings");
   const extVersionEl = document.getElementById("ext-version");
   const anyOutput = document.getElementById("any-output");
   const bgMode = document.getElementById("bg-mode");
@@ -57,6 +59,7 @@
   let cachedSettings = null;
   let lastMessageTheme = "off";
   let lastMosaicTheme = "off";
+  let lastLeaderboardTheme = "off";
   let folderHandle = null;
   let folderSelectedFile = "";
 
@@ -468,6 +471,24 @@
     fillThemeSelect(messageTheme, meta);
   }
 
+  function fillLeaderboardThemeOptions() {
+    if (!leaderboardTheme) return;
+    const meta = rulesApi.leaderboardThemeMetaAll
+      ? rulesApi.leaderboardThemeMetaAll()
+      : rulesApi.LEADERBOARD_THEME_META || {};
+    const current = leaderboardTheme.value;
+    leaderboardTheme.replaceChildren();
+    addThemeOption(leaderboardTheme, "off", "Vixi (default)");
+    Object.keys(meta || {}).forEach((id) => {
+      const entry = meta[id] || {};
+      addThemeOption(leaderboardTheme, id, entry.label || id);
+    });
+    if ([...leaderboardTheme.options].some((opt) => opt.value === current)) {
+      leaderboardTheme.value = current;
+    }
+    enhanceSelect(leaderboardTheme);
+  }
+
   function packSortKey(pack) {
     return String(pack.label || pack.id || "").toLowerCase();
   }
@@ -686,7 +707,7 @@
   }
 
   function appendExtraThemeSettings(container, meta, values) {
-    const skip = new Set(["primary", "secondary", "background", "scale", "motion", "wallpaper", "revealMs"]);
+    const skip = new Set(["primary", "secondary", "background", "panel", "scale", "motion", "wallpaper", "revealMs"]);
     const labels = (meta && meta.labels) || {};
     const defaults = (meta && meta.defaults) || {};
     const selects = (meta && meta.selects) || {};
@@ -768,6 +789,11 @@
     const storeId = mosaicStoreId(id) || id;
     const stored = cachedSettings && cachedSettings.mosaicThemeSettings;
     return rulesApi.normalizeOneThemeSettings(storeId, stored && (stored[id] || stored[storeId]));
+  }
+
+  function leaderboardSettingsFor(id) {
+    const stored = cachedSettings && cachedSettings.leaderboardThemeSettings;
+    return rulesApi.normalizeOneThemeSettings(id, stored && stored[id]);
   }
 
   function bindColorInputs(root, onInput) {
@@ -981,6 +1007,64 @@
     mosaicThemeSettings.hidden = false;
   }
 
+  function renderLeaderboardThemeSettings(id) {
+    if (!leaderboardThemeSettings) return;
+    leaderboardThemeSettings.replaceChildren();
+    if (!id || id === "off") {
+      leaderboardThemeSettings.hidden = true;
+      return;
+    }
+    const meta = rulesApi.leaderboardThemeMetaAll
+      ? rulesApi.leaderboardThemeMetaAll()[id]
+      : (rulesApi.LEADERBOARD_THEME_META || {})[id];
+    if (!meta || !meta.defaults) {
+      leaderboardThemeSettings.hidden = true;
+      return;
+    }
+    leaderboardThemeSettings.appendChild(themeSettingsTitle());
+    const values = leaderboardSettingsFor(id);
+    const labels = meta.labels || {};
+    if (meta.defaults.primary) {
+      leaderboardThemeSettings.appendChild(
+        colorRow("primary", labels.primary || "Accent", values.primary)
+      );
+    }
+    if (meta.defaults.secondary) {
+      leaderboardThemeSettings.appendChild(
+        colorRow("secondary", labels.secondary || "Highlight", values.secondary)
+      );
+    }
+    if (meta.defaults.panel) {
+      leaderboardThemeSettings.appendChild(
+        colorRow("panel", labels.panel || "Boxes", values.panel)
+      );
+    }
+    if (meta.defaults.background) {
+      leaderboardThemeSettings.appendChild(
+        colorRow("background", labels.background || "Background", values.background)
+      );
+    }
+    appendExtraThemeSettings(leaderboardThemeSettings, meta, values);
+    const reset = document.createElement("button");
+    reset.type = "button";
+    reset.className = "reset-theme v2-btn v2-btn-secondary";
+    reset.textContent = "Reset theme colors";
+    reset.addEventListener("click", () => {
+      if (!cachedSettings) cachedSettings = {};
+      cachedSettings.leaderboardThemeSettings = {
+        ...(cachedSettings.leaderboardThemeSettings || {}),
+      };
+      cachedSettings.leaderboardThemeSettings[id] = rulesApi.normalizeOneThemeSettings(id, {});
+      renderLeaderboardThemeSettings(id);
+      persist();
+    });
+    leaderboardThemeSettings.appendChild(reset);
+    bindColorInputs(leaderboardThemeSettings, persist);
+    bindToggleInputs(leaderboardThemeSettings, persist);
+    bindSelectInputs(leaderboardThemeSettings, persist);
+    leaderboardThemeSettings.hidden = false;
+  }
+
   function readThemeForm(id) {
     if (!id || id === "off") return {};
     const raw = {};
@@ -1006,6 +1090,15 @@
     return rulesApi.normalizeOneThemeSettings(storeId, raw);
   }
 
+  function readLeaderboardForm(id) {
+    if (!id || id === "off" || !leaderboardThemeSettings) return {};
+    const raw = {};
+    readHexSettings(leaderboardThemeSettings, raw);
+    readSelectSettings(leaderboardThemeSettings, raw);
+    readToggleSettings(leaderboardThemeSettings, raw);
+    return rulesApi.normalizeOneThemeSettings(id, raw);
+  }
+
   function stashCurrentThemeForm() {
     if (!cachedSettings) cachedSettings = {};
     cachedSettings.messageThemeSettings = { ...(cachedSettings.messageThemeSettings || {}) };
@@ -1020,6 +1113,17 @@
     if (lastMosaicTheme !== "off") {
       const storeId = mosaicStoreId(lastMosaicTheme) || lastMosaicTheme;
       cachedSettings.mosaicThemeSettings[storeId] = readMosaicForm(lastMosaicTheme);
+    }
+  }
+
+  function stashCurrentLeaderboardForm() {
+    if (!cachedSettings) cachedSettings = {};
+    cachedSettings.leaderboardThemeSettings = {
+      ...(cachedSettings.leaderboardThemeSettings || {}),
+    };
+    if (lastLeaderboardTheme !== "off") {
+      cachedSettings.leaderboardThemeSettings[lastLeaderboardTheme] =
+        readLeaderboardForm(lastLeaderboardTheme);
     }
   }
 
@@ -1045,12 +1149,19 @@
     }));
     const theme = messageTheme.value;
     const mosaicId = mosaicTheme.value;
+    const leaderboardId = leaderboardTheme ? leaderboardTheme.value : "off";
     const themeSettings = { ...((cachedSettings && cachedSettings.messageThemeSettings) || {}) };
     if (theme !== "off") themeSettings[theme] = readThemeForm(theme);
     const mosaicSettings = { ...((cachedSettings && cachedSettings.mosaicThemeSettings) || {}) };
     if (mosaicId !== "off") {
       const storeId = mosaicStoreId(mosaicId) || mosaicId;
       mosaicSettings[storeId] = readMosaicForm(mosaicId);
+    }
+    const leaderboardSettings = {
+      ...((cachedSettings && cachedSettings.leaderboardThemeSettings) || {}),
+    };
+    if (leaderboardId !== "off") {
+      leaderboardSettings[leaderboardId] = readLeaderboardForm(leaderboardId);
     }
     return {
       enabled: enabledInput.checked,
@@ -1063,8 +1174,10 @@
       messageShowLogo: Boolean(messageShowLogo && messageShowLogo.checked),
       mosaicTheme: mosaicId,
       messageTheme: theme,
+      leaderboardTheme: leaderboardId,
       messageThemeSettings: themeSettings,
       mosaicThemeSettings: mosaicSettings,
+      leaderboardThemeSettings: leaderboardSettings,
       anyOutputIframeHtml: anyOutput ? anyOutput.value : "",
       bgMode: bgMode ? bgMode.value : "auto",
       bgMediaId: cachedSettings && cachedSettings.bgMediaId ? cachedSettings.bgMediaId : "",
@@ -1233,6 +1346,14 @@
     renderThemeSettings(messageTheme.value);
     persist();
   });
+  if (leaderboardTheme) {
+    leaderboardTheme.addEventListener("change", () => {
+      stashCurrentLeaderboardForm();
+      lastLeaderboardTheme = leaderboardTheme.value;
+      renderLeaderboardThemeSettings(leaderboardTheme.value);
+      persist();
+    });
+  }
   anyOutput.addEventListener("input", schedulePersist);
   if (bgMode) {
     enhanceSelect(bgMode);
@@ -1691,11 +1812,13 @@
   Promise.all([packsReady, packsReady.then(() => rulesApi.loadSettings())]).then(([packs, settings]) => {
     fillMosaicThemeOptions();
     fillMessageThemeOptions();
+    fillLeaderboardThemeOptions();
     cachedSettings = settings;
     enabledInput.checked = settings.enabled;
     setEnabledLabel();
     mosaicTheme.value = settings.mosaicTheme;
     messageTheme.value = settings.messageTheme;
+    if (leaderboardTheme) leaderboardTheme.value = settings.leaderboardTheme || "off";
     if (stageAspect) {
       enhanceSelect(stageAspect);
       syncStageAspectUI(settings.stageAspect || "vixi");
@@ -1708,10 +1831,13 @@
     if (messageShowLogo) messageShowLogo.checked = Boolean(settings.messageShowLogo);
     lastMessageTheme = settings.messageTheme;
     lastMosaicTheme = settings.mosaicTheme;
+    lastLeaderboardTheme = settings.leaderboardTheme || "off";
     syncSelectUI(mosaicTheme);
     syncSelectUI(messageTheme);
+    if (leaderboardTheme) syncSelectUI(leaderboardTheme);
     renderThemeSettings(settings.messageTheme);
     renderMosaicThemeSettings(settings.mosaicTheme);
+    renderLeaderboardThemeSettings(settings.leaderboardTheme || "off");
     if (anyOutput) anyOutput.value = settings.anyOutputIframeHtml || "";
     if (bgMode) {
       bgMode.value = settings.bgMode || "auto";

@@ -207,7 +207,8 @@
 
   function unparkOverlay(root) {
     if (root) {
-      root.classList.remove("is-parked", "is-leaving", "dyn-awaiting-show");
+      root.classList.remove("is-parked", "is-leaving");
+      if (root.classList.contains("on")) root.classList.remove("dyn-awaiting-show");
     }
     document.documentElement.classList.add("dyn-message-on");
     if (typeof handoff.applyCovers === "function") handoff.applyCovers();
@@ -354,7 +355,6 @@
       ) {
         img.src = next.src;
       }
-      root.classList.remove("dyn-awaiting-show");
       unparkOverlay(root);
       // Theme root is mountable now — pull #dyn-bg-media out of the host/wrapper
       // into this theme before show() paints (avoids a late overlay flash).
@@ -364,7 +364,7 @@
       }
     } finally {
       if (token === cycle) {
-        root.classList.remove("dyn-awaiting-show");
+        if (root.classList.contains("on")) root.classList.remove("dyn-awaiting-show");
         unparkOverlay(root);
         if (typeof handoff.applyCovers === "function") handoff.applyCovers();
       }
@@ -378,6 +378,7 @@
       return active.def.hide(root, active.state, lastThemeSettings);
     },
     teardown: teardownSoft,
+    standDown: teardownHard,
   });
 
   const customApi = globalThis.BGCustomThemes;
@@ -397,6 +398,21 @@
   async function apply() {
     // Sideloaded engines compile from storage after this file starts. Wait so
     // the first paint does not treat the selected theme as missing.
+    let polling = Boolean(rules.pageLooksLikePolling && rules.pageLooksLikePolling());
+    const passthroughEarly = Boolean(
+      polling || (rules.pageLooksLikePassthrough && rules.pageLooksLikePassthrough())
+    );
+    if (passthroughEarly && !polling) {
+      const transitioning =
+        handoff.themeTransitionActive && handoff.themeTransitionActive();
+      const leaked = Boolean(
+        document.getElementById(OVERLAY_ID) ||
+        document.getElementById(handoff.HOST_ID) ||
+        document.documentElement.classList.contains("dyn-message-on")
+      );
+      if (!transitioning && handoff.isStandingDown && handoff.isStandingDown() && !leaked) return;
+    }
+
     if (customApi && typeof customApi.whenReady === "function") {
       await Promise.race([
         customApi.whenReady(),
@@ -407,6 +423,37 @@
     // running this script. loadSettings falls back to the cached settings, so
     // theming continues instead of dropping back to the stock Vixi look.
     const settings = await rules.loadSettings();
+    if (rules.leaderboardBeatActive && rules.leaderboardBeatActive(settings)) {
+      const needsTear =
+        Boolean(document.getElementById(OVERLAY_ID)) ||
+        Boolean(document.getElementById(STYLE_ID)) ||
+        Boolean(document.getElementById(handoff.HOST_ID)) ||
+        handoff.currentMode() === "message" ||
+        document.documentElement.classList.contains("dyn-message-on");
+      if (handoff.liveKind() === "mosaic") await releaseForMosaic();
+      else if (needsTear) teardownHard();
+      handoff.clearMode("message");
+      if (typeof handoff.endHold === "function") handoff.endHold();
+      return;
+    }
+    polling = Boolean(rules.pageLooksLikePolling && rules.pageLooksLikePolling());
+    const passthrough = Boolean(
+      polling || (rules.pageLooksLikePassthrough && rules.pageLooksLikePassthrough())
+    );
+    if (polling || (passthrough && !(handoff.themeTransitionActive && handoff.themeTransitionActive()))) {
+      const needsTear =
+        Boolean(document.getElementById(OVERLAY_ID)) ||
+        Boolean(document.getElementById(STYLE_ID)) ||
+        Boolean(document.getElementById(handoff.HOST_ID)) ||
+        handoff.currentMode() === "message" ||
+        document.documentElement.classList.contains("dyn-message-on");
+      if (handoff.liveKind() === "mosaic") await releaseForMosaic();
+      else if (needsTear) teardownHard();
+      handoff.clearMode("message");
+      if (typeof handoff.endHold === "function") handoff.endHold();
+      handoff.applyCovers(settings);
+      return;
+    }
     handoff.applyCovers(settings);
     const theme = settings.enabled ? rules.normalizeMessageTheme(settings.messageTheme) : "off";
     const themeSettings = rules.resolveMessageThemeSettings(settings, theme);
@@ -428,8 +475,6 @@
     }
 
     let kind = handoff.liveKind();
-    const mode = handoff.currentMode();
-    const mosaicPage = rules.pageLooksLikeMosaic && rules.pageLooksLikeMosaic();
     const cap = rules.messageCapture();
     const hasMsg = Boolean(cap.src || cap.message || cap.name);
     const mosaicOn =
@@ -438,6 +483,7 @@
     if (kind === "mosaic") {
       parkOverlay();
       if (!mosaicOn) await releaseForMosaic();
+      handoff.applyCovers(settings);
       return;
     }
     if (kind === "native") {
@@ -445,10 +491,13 @@
       handoff.applyCovers(settings);
       return;
     }
-    // Do not steal a pure mosaic page with no message content.
-    if (kind !== "message" && mosaicPage && !hasMsg) return;
-    if (kind === "" && mosaicOn && !hasMsg) return;
-    if (kind !== "message" && !(kind === "" && (!mode || mode === "message" || hasMsg))) return;
+    if (kind === "leaderboard") {
+      parkOverlay();
+      handoff.applyCovers(settings);
+      return;
+    }
+    // Boot / unknown: keep black covers. Do not mount message over leftover mosaic.
+    if (kind !== "message") return;
 
     ensureStyle();
     ensureFonts();
@@ -640,7 +689,21 @@
     handoff.applyCovers(resolved);
   }
 
+  function passthroughIsQuiet() {
+    return (
+      handoff.passthroughIsQuiet &&
+      typeof handoff.passthroughIsQuiet === "function" &&
+      handoff.passthroughIsQuiet()
+    );
+  }
+
   function scheduleApply(delay) {
+    if (
+      !(rules.pageLooksLikePolling && rules.pageLooksLikePolling()) &&
+      passthroughIsQuiet()
+    ) {
+      return;
+    }
     if (applyTimer) clearTimeout(applyTimer);
     applyTimer = setTimeout(() => {
       applyTimer = 0;

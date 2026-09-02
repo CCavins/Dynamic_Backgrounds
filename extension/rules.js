@@ -5,8 +5,10 @@
     rules: "rules",
     mosaicTheme: "mosaicTheme",
     messageTheme: "messageTheme",
+    leaderboardTheme: "leaderboardTheme",
     messageThemeSettings: "messageThemeSettings",
     mosaicThemeSettings: "mosaicThemeSettings",
+    leaderboardThemeSettings: "leaderboardThemeSettings",
     customThemes: "customThemes",
     customEngines: "customEngines",
     customEngineWarningSeen: "customEngineWarningSeen",
@@ -50,8 +52,10 @@
     rules: [],
     mosaicTheme: "off",
     messageTheme: "off",
+    leaderboardTheme: "off",
     messageThemeSettings: {},
     mosaicThemeSettings: {},
+    leaderboardThemeSettings: {},
     stageAspect: "vixi",
     messageShowBackground: false,
     messageShowQr: false,
@@ -200,6 +204,76 @@
 
   const MOSAIC_THEMES = ["off", ...Object.keys(MOSAIC_THEME_META)];
 
+  const LEADERBOARD_THEME_META = {
+    podium: {
+      label: "Crown podium",
+      labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
+      defaults: {
+        primary: "#3dff8a",
+        secondary: "#f5c542",
+        panel: "#12182a",
+        revealMs: 360,
+        hideMs: 220,
+        showHeader: true,
+        avatarBorder: true,
+      },
+    },
+    "stacked-cards": {
+      label: "Winner cards",
+      labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
+      defaults: {
+        primary: "#3dff8a",
+        secondary: "#f5c542",
+        panel: "#12182a",
+        revealMs: 340,
+        hideMs: 200,
+        showHeader: true,
+        avatarBorder: true,
+      },
+    },
+    "compact-ladder": {
+      label: "Wreath ranking",
+      labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
+      defaults: {
+        primary: "#3dff8a",
+        secondary: "#f5c542",
+        panel: "#12182a",
+        revealMs: 300,
+        hideMs: 180,
+        showHeader: true,
+        avatarBorder: true,
+      },
+    },
+    "hero-list": {
+      label: "Gold spotlight",
+      labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
+      defaults: {
+        primary: "#f5c542",
+        secondary: "#6d4aff",
+        panel: "#121028",
+        revealMs: 360,
+        hideMs: 220,
+        showHeader: true,
+        avatarBorder: true,
+      },
+    },
+    "ticker-strip": {
+      label: "Broadcast pills",
+      labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
+      defaults: {
+        primary: "#f5c542",
+        secondary: "#3dff8a",
+        panel: "#12182a",
+        revealMs: 320,
+        hideMs: 200,
+        showHeader: true,
+        avatarBorder: true,
+      },
+    },
+  };
+
+  const LEADERBOARD_THEMES = ["off", ...Object.keys(LEADERBOARD_THEME_META)];
+
   function envKey(hostname) {
     const match = String(hostname || "").toLowerCase().match(/vixisuite(?:-[a-z0-9]+)?/);
     return match ? match[0] : String(hostname || "").toLowerCase();
@@ -288,6 +362,10 @@
 
   function mosaicThemeMetaAll() {
     return { ...MOSAIC_THEME_META, ...customMosaicMeta };
+  }
+
+  function leaderboardThemeMetaAll() {
+    return { ...LEADERBOARD_THEME_META };
   }
 
   function isKnownMessageTheme(value) {
@@ -479,6 +557,14 @@
     return isKnownMessageTheme(value) ? value : "off";
   }
 
+  function isKnownLeaderboardTheme(value) {
+    return value === "off" || Boolean(leaderboardThemeMetaAll()[value]);
+  }
+
+  function normalizeLeaderboardTheme(value) {
+    return isKnownLeaderboardTheme(value) ? value : "off";
+  }
+
   function isHexColor(value) {
     return /^#[0-9a-fA-F]{6}$/.test(String(value || ""));
   }
@@ -491,7 +577,7 @@
   }
 
   function themeMetaForSettings(themeId) {
-    return messageThemeMetaAll()[themeId] || mosaicThemeMetaAll()[themeId] || null;
+    return messageThemeMetaAll()[themeId] || mosaicThemeMetaAll()[themeId] || leaderboardThemeMetaAll()[themeId] || null;
   }
 
   function normalizeBgMode(value) {
@@ -613,6 +699,21 @@
     return next;
   }
 
+  function normalizeLeaderboardThemeSettings(value) {
+    const src = value && typeof value === "object" ? value : {};
+    const next = {};
+    const seen = new Set();
+    Object.keys(leaderboardThemeMetaAll()).forEach((id) => {
+      seen.add(id);
+      next[id] = normalizeOneThemeSettings(id, src[id]);
+    });
+    Object.keys(src).forEach((id) => {
+      if (seen.has(id)) return;
+      next[id] = src[id];
+    });
+    return next;
+  }
+
   function normalizeMosaicThemeSettings(value) {
     const src = value && typeof value === "object" ? value : {};
     const next = {};
@@ -671,6 +772,26 @@
         (meta && meta.defaults && meta.defaults.revealMs) ||
         Number(resolved.revealMs) ||
         1000,
+    };
+  }
+
+  function resolveLeaderboardThemeSettings(settings, themeId) {
+    const id = normalizeLeaderboardTheme(themeId || (settings && settings.leaderboardTheme));
+    if (id === "off") return null;
+    const meta = leaderboardThemeMetaAll()[id];
+    const stored =
+      settings && settings.leaderboardThemeSettings && settings.leaderboardThemeSettings[id];
+    const resolved = mergeResolvedThemeSettings(id, stored);
+    return {
+      ...resolved,
+      revealMs:
+        (meta && meta.defaults && meta.defaults.revealMs) ||
+        Number(resolved.revealMs) ||
+        300,
+      hideMs:
+        (meta && meta.defaults && meta.defaults.hideMs) ||
+        Number(resolved.hideMs) ||
+        200,
     };
   }
 
@@ -769,6 +890,14 @@
   }
 
   function viewportSize() {
+    try {
+      const vv = window.visualViewport;
+      if (vv && vv.width > 0 && vv.height > 0) {
+        return { vw: vv.width, vh: vv.height };
+      }
+    } catch {
+      /* ignore */
+    }
     return {
       vw: window.innerWidth || 1920,
       vh: window.innerHeight || 1080,
@@ -795,6 +924,7 @@
   }
 
   let lastVixiRatio = { aw: 16, ah: 9 };
+  let lastVixiDesign = { dw: DESIGN_LONG_EDGE, dh: Math.max(1, Math.round(DESIGN_LONG_EDGE * (9 / 16))) };
 
   function cssAspectParts(raw) {
     if (!raw || raw === "auto" || raw === "none") return null;
@@ -832,13 +962,126 @@
     return html.dataset.stageAspect !== "auto" || !html.classList.contains("dyn-stage-forced");
   }
 
-  function captureNativeVixiAspect() {
-    if (!wrapperLooksNative()) return lastVixiRatio;
-    const outer = findWrapper();
-    const rw = outer && (outer.clientWidth || outer.width);
-    const rh = outer && (outer.clientHeight || outer.height);
-    if (rw >= 8 && rh >= 8) lastVixiRatio = snapVixiRatio(clampAspectParts(rw, rh));
+  function parseTransformScale(el) {
+    if (!el) return 1;
+    try {
+      const tr = getComputedStyle(el).transform;
+      if (!tr || tr === "none") return 1;
+      const m = tr.match(/matrix3d\(([^)]+)\)/) || tr.match(/matrix\(([^)]+)\)/);
+      if (!m) return 1;
+      const parts = m[1].split(",").map((n) => Number.parseFloat(n.trim()));
+      if (parts.length === 6) {
+        const sx = Math.hypot(parts[0], parts[1]);
+        const sy = Math.hypot(parts[2], parts[3]);
+        const s = (sx + sy) / 2;
+        return s > 0 ? s : 1;
+      }
+      if (parts.length === 16) {
+        const sx = Math.hypot(parts[0], parts[1]);
+        const sy = Math.hypot(parts[4], parts[5]);
+        const s = (sx + sy) / 2;
+        return s > 0 ? s : 1;
+      }
+    } catch {
+      /* ignore */
+    }
+    return 1;
+  }
+
+  function inlineDesignSize(el) {
+    if (!el || !el.style) return null;
+    const w = Number.parseFloat(el.style.width);
+    const h = Number.parseFloat(el.style.height);
+    if (w >= 8 && h >= 8) return clampAspectParts(w, h);
+    return null;
+  }
+
+  function measureVixiAspectFromEl(el) {
+    if (!el) return null;
+    const inline = inlineDesignSize(el);
+    if (inline) return snapVixiRatio(inline);
+    const scale = parseTransformScale(el);
+    const r = el.getBoundingClientRect();
+    if (r.width >= 8 && r.height >= 8 && scale > 0 && scale < 0.995) {
+      return snapVixiRatio(clampAspectParts(r.width / scale, r.height / scale));
+    }
+    return null;
+  }
+
+  /** Reliable Vixi canvas ratio — not the fullscreen window box. */
+  function measureWrapperAspect(el) {
+    if (!el) return null;
+    const fromEl = measureVixiAspectFromEl(el);
+    if (fromEl) return fromEl;
+    const scene =
+      el.querySelector &&
+      el.querySelector(".v2-scene-transition, .v2-container, .v2-scene");
+    if (scene) {
+      const fromScene = measureVixiAspectFromEl(scene);
+      if (fromScene) return fromScene;
+    }
+    const r = el.getBoundingClientRect();
+    if (r.width < 8 || r.height < 8) return null;
+    const page = document.querySelector(".output-page");
+    const pr = page ? page.getBoundingClientRect() : null;
+    const { vw, vh } = viewportSize();
+    const pageW = pr && pr.width >= 8 ? pr.width : vw;
+    const pageH = pr && pr.height >= 8 ? pr.height : vh;
+    const letterboxed = r.width < pageW - 10 || r.height < pageH - 10;
+    if (letterboxed) return snapVixiRatio(clampAspectParts(r.width, r.height));
+    return null;
+  }
+
+  function rememberVixiDesign(dw, dh) {
+    const w = Number(dw);
+    const h = Number(dh);
+    if (!(w >= 8 && h >= 8)) return lastVixiDesign;
+    lastVixiDesign = { dw: Math.round(w), dh: Math.round(h) };
+    lastVixiRatio = snapVixiRatio(clampAspectParts(w, h));
+    return lastVixiDesign;
+  }
+
+  /** Vixi's configured output pixel size — not just aspect ratio. */
+  function readVixiDesignSize(box) {
+    const nodes = [
+      document.querySelector(".v2-app-wrapper"),
+      box && box.nodeType === 1 ? box : null,
+      findWrapper(),
+    ].filter(Boolean);
+    const seen = new Set();
+    for (let i = 0; i < nodes.length; i += 1) {
+      const el = nodes[i];
+      if (seen.has(el)) continue;
+      seen.add(el);
+      const inline = inlineDesignSize(el);
+      if (inline) return rememberVixiDesign(inline.aw, inline.ah);
+      const scale = parseTransformScale(el);
+      const r = el.getBoundingClientRect();
+      if (r.width >= 8 && r.height >= 8 && scale > 0 && scale < 0.995) {
+        return rememberVixiDesign(r.width / scale, r.height / scale);
+      }
+    }
+    const ratio = readVixiAspect(box);
+    const size = designSizeFromRatio(ratio.aw, ratio.ah);
+    return rememberVixiDesign(size.dw, size.dh);
+  }
+
+  /** Match Vixi caps at native resolution; other modes may upscale to fill. */
+  function stageContainScale(vw, vh, dw, dh, mode) {
+    if (!(vw > 0 && vh > 0 && dw > 0 && dh > 0)) return 1;
+    let s = Math.min(vw / dw, vh / dh);
+    if (normalizeStageAspect(mode) === "vixi") s = Math.min(1, s);
+    return s;
+  }
+
+  /** Cache Vixi's design aspect while the v2 wrapper is on screen (before stream/CTA cuts). */
+  function touchVixiAspectCache() {
+    readVixiDesignSize(findWrapper());
     return lastVixiRatio;
+  }
+
+  function captureNativeVixiAspect() {
+    return touchVixiAspectCache();
   }
 
   function readVixiAspect(box) {
@@ -856,9 +1099,17 @@
       /* ignore */
     }
 
-    const nodes = [box && box.nodeType === 1 ? box : null, findWrapper()].filter(Boolean);
+    const nodes = [
+      box && box.nodeType === 1 ? box : null,
+      document.querySelector(".v2-app-wrapper"),
+      document.querySelector(".v2-scene-transition"),
+      findWrapper(),
+    ].filter(Boolean);
+    const seen = new Set();
     for (let i = 0; i < nodes.length; i += 1) {
       const el = nodes[i];
+      if (seen.has(el)) continue;
+      seen.add(el);
       const ds = el.dataset || {};
       const fromData = namedRatioFromValue(
         ds.ratio || ds.aspectRatio || ds.outputAspect
@@ -876,21 +1127,25 @@
       } catch {
         /* ignore */
       }
+      const measured = measureWrapperAspect(el);
+      if (measured) {
+        lastVixiRatio = measured;
+        return lastVixiRatio;
+      }
     }
 
-    if (wrapperLooksNative()) {
-      const measure = (box && box.clientWidth >= 8 ? box : null) || findWrapper();
-      const rw = measure && (measure.clientWidth || measure.width);
-      const rh = measure && (measure.clientHeight || measure.height);
-      if (rw >= 8 && rh >= 8) lastVixiRatio = snapVixiRatio(clampAspectParts(rw, rh));
-    }
     return lastVixiRatio;
+  }
+
+  function resolveCanvasAspect(aspect) {
+    return aspect != null ? aspect : currentStageAspect();
   }
 
   function resolveStageSize(box, aspect) {
     const mode = normalizeStageAspect(aspect != null ? aspect : currentStageAspect());
-    const rw = (box && (box.clientWidth || box.width)) || window.innerWidth || 1920;
-    const rh = (box && (box.clientHeight || box.height)) || window.innerHeight || 1080;
+    const vp = viewportSize();
+    const rw = (box && (box.clientWidth || box.width)) || vp.vw;
+    const rh = (box && (box.clientHeight || box.height)) || vp.vh;
     if (mode === "auto") {
       const size = designSizeFromRatio(rw, rh);
       return {
@@ -901,12 +1156,11 @@
       };
     }
     if (mode === "vixi") {
-      const detected = readVixiAspect(box);
-      const size = designSizeFromRatio(detected.aw, detected.ah);
+      const design = readVixiDesignSize(box);
       return {
-        dw: size.dw,
-        dh: size.dh,
-        portrait: detected.ah > detected.aw,
+        dw: design.dw,
+        dh: design.dh,
+        portrait: design.dh > design.dw,
         mode,
       };
     }
@@ -990,7 +1244,7 @@
   ];
   const STAGE_CANVAS_STYLE_ID = "dyn-stage-canvas-style";
   const STAGE_CANVAS_CSS =
-    "html.dyn-theme-on,html.dyn-theme-on body,html.dyn-theme-on .output-page{" +
+    "html.dyn-theme-on:not(.dyn-show-bg),html.dyn-theme-on:not(.dyn-show-bg) body,html.dyn-theme-on:not(.dyn-show-bg) .output-page{" +
       "background:#000!important;" +
     "}" +
     "html.dyn-stage-forced,html.dyn-stage-forced body,html.dyn-stage-forced .output-page{" +
@@ -1028,6 +1282,22 @@
       "max-width:none!important;max-height:none!important;" +
       "transform:none!important;" +
       "margin:0!important;" +
+    "}" +
+    "html.dyn-stage-forced [data-dyn-canvas-fill] .output-stream-wrapper," +
+    "html.dyn-stage-forced [data-dyn-canvas-fill] .output-stream-wrapper video," +
+    "html.dyn-stage-forced [data-dyn-canvas-fill] .output-stream-wrapper canvas," +
+    "html.dyn-stage-forced [data-dyn-canvas-fill] [class*='output-stream']," +
+    "html.dyn-stage-forced [data-dyn-canvas-fill] [class*='output-live']," +
+    "html.dyn-stage-forced [data-dyn-canvas-fill] .output-app > :not(#dyn-theme-host) img," +
+    "html.dyn-stage-forced [data-dyn-canvas-fill] .output-app > :not(#dyn-theme-host) video," +
+    "html.dyn-stage-forced [data-dyn-canvas-fill] .output-app > :not(#dyn-theme-host) canvas," +
+    "html.dyn-stage-forced [data-dyn-canvas-fill] .output-app > :not(#dyn-theme-host) iframe{" +
+      "position:absolute!important;" +
+      "inset:0!important;" +
+      "width:100%!important;height:100%!important;" +
+      "max-width:none!important;max-height:none!important;" +
+      "object-fit:contain!important;" +
+      "object-position:center!important;" +
     "}";
 
   function ensureStageCanvasStyle() {
@@ -1063,22 +1333,27 @@
   }
 
   function findOuterCanvas() {
+    // Vixi v2 scales the live scene internally — never letterbox the wrapper.
+    if (document.querySelector(".v2-app-wrapper")) return null;
+    const page = document.querySelector(".output-wrapper");
+    if (page) return page;
     return findWrapper();
   }
 
   function markCanvasOuter(outer) {
     if (!outer) return;
+    // Vixi v2 scales and positions the live scene via inline styles on this node.
+    // Never attach canvas guards or strip styles here — it breaks polling/CTA layouts.
+    if (outer.classList && outer.classList.contains("v2-app-wrapper")) return;
     clearCanvasInline(outer);
     outer.setAttribute("data-dyn-canvas-outer", "1");
     outer.removeAttribute("data-dyn-canvas-fill");
     bindCanvasGuard(outer);
-    [".v2-app-wrapper", ".v2-scene-transition", ".v2-container", ".output-app"].forEach((sel) => {
-      outer.querySelectorAll(sel).forEach((el) => {
-        if (el === outer) return;
-        clearCanvasInline(el);
-        el.setAttribute("data-dyn-canvas-fill", "1");
-        bindCanvasGuard(el);
-      });
+    outer.querySelectorAll(".output-app").forEach((el) => {
+      if (el === outer) return;
+      clearCanvasInline(el);
+      el.setAttribute("data-dyn-canvas-fill", "1");
+      bindCanvasGuard(el);
     });
   }
 
@@ -1087,10 +1362,12 @@
       .querySelectorAll("[data-dyn-canvas-outer], [data-dyn-canvas-fill], [data-dyn-canvas]")
       .forEach((el) => {
         unbindCanvasGuard(el);
-        clearCanvasInline(el);
         el.removeAttribute("data-dyn-canvas-outer");
         el.removeAttribute("data-dyn-canvas-fill");
         el.removeAttribute("data-dyn-canvas");
+        if (!el.classList || !el.classList.contains("v2-app-wrapper")) {
+          clearCanvasInline(el);
+        }
       });
     document.querySelectorAll(".dyn-stage-letterbox").forEach((el) => {
       el.classList.remove("dyn-stage-letterbox");
@@ -1112,28 +1389,26 @@
       raf = window.requestAnimationFrame(() => {
         raf = 0;
         const handoff = root.BGThemeHandoff;
-        if (handoff && typeof handoff.liveKind === "function" && handoff.liveKind() === "native") {
+        if (
+          pageLooksLikePassthrough() ||
+          (handoff && typeof handoff.liveKind === "function" && handoff.liveKind() === "native")
+        ) {
           resetOutputCanvas();
           return;
         }
-        applyOutputCanvas();
+        applyOutputCanvas(currentStageAspect());
       });
     };
     window.addEventListener("resize", refit);
     if (window.visualViewport) window.visualViewport.addEventListener("resize", refit);
   }
 
-  function applyOutputCanvas(aspect) {
-    const handoff = root.BGThemeHandoff;
-    if (handoff && typeof handoff.liveKind === "function" && handoff.liveKind() === "native") {
-      resetOutputCanvas();
-      return resolveStageSize(findWrapper(), "auto");
-    }
+  function applyForcedStageCanvas(aspect) {
     ensureStageCanvasStyle();
-    const mode = normalizeStageAspect(aspect != null ? aspect : currentStageAspect());
+    const mode = normalizeStageAspect(resolveCanvasAspect(aspect));
     const html = document.documentElement;
     bindCanvasResize();
-    captureNativeVixiAspect();
+    touchVixiAspectCache();
 
     if (mode === "vixi") {
       const detected = readVixiAspect(findOuterCanvas());
@@ -1149,9 +1424,6 @@
     }
 
     if (mode === "auto") {
-      // Stretch Vixi's canvas to the window. Design space then matches that
-      // ratio (see resolveStageSize), so mosaics and messages fill instead of
-      // sitting in a leftover 16:9 box.
       html.classList.add("dyn-stage-forced");
       html.dataset.stageAspect = "auto";
       html.style.removeProperty("--dyn-aw");
@@ -1174,23 +1446,65 @@
     return resolveStageSize({ clientWidth: fit.w, clientHeight: fit.h }, mode);
   }
 
+  function applyOutputCanvas(aspect) {
+    const mode = resolveCanvasAspect(aspect);
+    if (document.querySelector(".v2-app-wrapper") || pageLooksLikePassthrough()) {
+      touchVixiAspectCache();
+      resetOutputCanvas();
+      return resolveStageSize(findWrapper(), mode);
+    }
+    if (needsPassthroughStageCanvas()) {
+      return applyForcedStageCanvas(mode);
+    }
+    const handoff = root.BGThemeHandoff;
+    if (handoff && typeof handoff.liveKind === "function" && handoff.liveKind() === "native") {
+      resetOutputCanvas();
+      return resolveStageSize(findWrapper(), mode);
+    }
+    return applyForcedStageCanvas(mode);
+  }
+
   function applyStageFrame(root, aspect) {
-    const outer = findOuterCanvas();
-    const size = applyOutputCanvas(aspect);
+    applyOutputCanvas(aspect);
+    const size = resolveStageSize(
+      (root && root.parentElement) || findWrapper(),
+      aspect != null ? aspect : currentStageAspect()
+    );
     if (!root) return size;
     root.classList.toggle("dyn-portrait", size.portrait);
     root.dataset.aspect = stageAspectToken(size);
-    if (!outer && size.mode !== "auto") {
-      root.classList.add("dyn-stage-letterbox");
-      clearCanvasInline(root);
+    const host = root.parentElement;
+    if (!host) return size;
+    const vw = host.clientWidth || 1;
+    const vh = host.clientHeight || 1;
+    if (size.mode === "auto") {
+      root.classList.remove("dyn-stage-letterbox");
+      root.style.position = "absolute";
+      root.style.inset = "0";
+      root.style.left = "";
+      root.style.top = "";
+      root.style.right = "";
+      root.style.bottom = "";
+      root.style.width = "";
+      root.style.height = "";
+      root.style.maxWidth = "";
+      root.style.maxHeight = "";
       return size;
     }
-    root.classList.remove("dyn-stage-letterbox");
-    root.style.inset = "0";
-    root.style.left = "";
-    root.style.top = "";
-    root.style.width = "";
-    root.style.height = "";
+    root.classList.add("dyn-stage-letterbox");
+    const s = stageContainScale(vw, vh, size.dw, size.dh, size.mode);
+    const w = size.dw * s;
+    const h = size.dh * s;
+    root.style.position = "absolute";
+    root.style.inset = "auto";
+    root.style.left = (vw - w) / 2 + "px";
+    root.style.top = (vh - h) / 2 + "px";
+    root.style.right = "auto";
+    root.style.bottom = "auto";
+    root.style.width = w + "px";
+    root.style.height = h + "px";
+    root.style.maxWidth = size.mode === "vixi" ? size.dw + "px" : "";
+    root.style.maxHeight = size.mode === "vixi" ? size.dh + "px" : "";
     return size;
   }
 
@@ -1228,6 +1542,12 @@
   function usesCustomBackground(settings, pageUrl) {
     const href = pageUrl || (typeof location !== "undefined" ? location.href : "");
     const state = normalizeSettings(settings);
+    if (
+      normalizeLeaderboardTheme(state.leaderboardTheme) !== "off" &&
+      pageLooksLikeLeaderboardOverlay()
+    ) {
+      return false;
+    }
     // Vixi source always uses the inject path (URL copied from the event asset).
     if (state.bgMode === "vixi") return true;
     if (resolveBackgroundMediaId(settings, href)) return true;
@@ -1289,6 +1609,31 @@
   }
 
   let lastVixiBgAsset = null;
+
+  function clearPassthroughState() {
+    lastVixiBgAsset = null;
+  }
+
+  function removeLeakedBrandChrome() {
+    try {
+      document
+        .querySelectorAll(
+          ".output-app .dyn-brand-chrome, .output-wrapper > .dyn-brand-chrome, " +
+            ".output-app > .dyn-brand-clone, .output-wrapper > .dyn-brand-clone"
+        )
+        .forEach((el) => {
+          if (
+            el.closest &&
+            el.closest("#dyn-message-theme, #dyn-mosaic-theme, #dyn-leaderboard-theme, #dyn-theme-host")
+          ) {
+            return;
+          }
+          el.remove();
+        });
+    } catch {
+      /* ignore */
+    }
+  }
 
   function cssBackgroundImageUrl(el) {
     if (!el || !el.ownerDocument) return "";
@@ -1378,6 +1723,7 @@
     });
 
     if (best && best.src) lastVixiBgAsset = best;
+    if (pageLooksLikeLeaderboardOverlay(root || undefined)) return best;
     return best || lastVixiBgAsset;
   }
 
@@ -1419,6 +1765,10 @@
         showLogo: Boolean(s.mosaicShowLogo),
       };
     }
+    if (kind === "leaderboard") {
+      // Leaderboard replaces leader rows only — always keep Vixi's event background.
+      return { showBackground: true, showQr: false, showLogo: false };
+    }
     return { showBackground: false, showQr: false, showLogo: false };
   }
 
@@ -1436,21 +1786,23 @@
   function activeThemeKind(settings) {
     const handoff = root.BGThemeHandoff;
     const live = handoff && typeof handoff.liveKind === "function" ? handoff.liveKind() : "";
-    if (live === "message" || live === "mosaic") return live;
-    // CTA / video / URL beats must not inherit the previous mosaic or message mode.
-    if (live === "native" || pageLooksLikeNative()) return "";
     const mode = handoff && typeof handoff.currentMode === "function" ? handoff.currentMode() : "";
+    if (mode === "leaderboard") return "leaderboard";
+    if (live === "message" || live === "mosaic" || live === "leaderboard") return live;
+    // CTA / video / URL beats must not inherit the previous mosaic or message mode.
+    if (live === "native" || pageLooksLikeNative() || pageLooksLikePassthrough()) return "";
     if (mode === "message" || mode === "mosaic") return mode;
     const s = settings || lastGoodSettings;
     if (s && normalizeMessageTheme(s.messageTheme) !== "off") return "message";
     if (s && normalizeMosaicTheme(s.mosaicTheme) !== "off") return "mosaic";
+    if (s && normalizeLeaderboardTheme(s.leaderboardTheme) !== "off") return "leaderboard";
     return "";
   }
 
   function themeIsOn(settings) {
     const s = settings || lastGoodSettings;
     if (!s || s.enabled === false) return false;
-    return normalizeMessageTheme(s.messageTheme) !== "off" || normalizeMosaicTheme(s.mosaicTheme) !== "off";
+    return normalizeMessageTheme(s.messageTheme) !== "off" || normalizeMosaicTheme(s.mosaicTheme) !== "off" || normalizeLeaderboardTheme(s.leaderboardTheme) !== "off";
   }
 
   function liveThemeIsOn(settings) {
@@ -1459,6 +1811,7 @@
     const kind = activeThemeKind(s);
     if (kind === "message") return normalizeMessageTheme(s.messageTheme) !== "off";
     if (kind === "mosaic") return normalizeMosaicTheme(s.mosaicTheme) !== "off";
+    if (kind === "leaderboard") return normalizeLeaderboardTheme(s.leaderboardTheme) !== "off";
     return false;
   }
 
@@ -1861,8 +2214,10 @@
       bgFit: normalizeBgFit(next.bgFit),
       mosaicTheme: normalizeMosaicTheme(next.mosaicTheme),
       messageTheme: normalizeMessageTheme(next.messageTheme),
+      leaderboardTheme: normalizeLeaderboardTheme(next.leaderboardTheme),
       messageThemeSettings: normalizeMessageThemeSettings(next.messageThemeSettings),
       mosaicThemeSettings: normalizeMosaicThemeSettings(next.mosaicThemeSettings),
+      leaderboardThemeSettings: normalizeLeaderboardThemeSettings(next.leaderboardThemeSettings),
       stageAspect: normalizeStageAspect(next.stageAspect),
       messageShowBackground: readChromeFlag(next, "messageShowBackground", "showBackground"),
       messageShowQr: readChromeFlag(next, "messageShowQr", "showQr"),
@@ -1975,8 +2330,398 @@
     return Boolean(document.querySelector(MOSAIC_CHROME_SCOPE + ", img.mosaic-image"));
   }
 
+  function elementLooksVisible(el) {
+    if (!el) return false;
+    try {
+      if (el.hidden || el.getAttribute("aria-hidden") === "true") return false;
+      const st = getComputedStyle(el);
+      if (st.display === "none" || st.visibility === "hidden") return false;
+      if (Number.parseFloat(st.opacity || "1") < 0.05) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 2 && r.height > 2;
+    } catch {
+      return false;
+    }
+  }
+
+  function themeOverlayLive(kind) {
+    const id =
+      kind === "message" ? "dyn-message-theme" : kind === "mosaic" ? "dyn-mosaic-theme" : "";
+    if (!id) return false;
+    const el = document.getElementById(id);
+    if (!el || el.classList.contains("is-parked") || el.classList.contains("is-leaving")) {
+      return false;
+    }
+    // Only the overlay node. HTML kind/on classes are set *from* liveKind, so
+    // treating them as proof the overlay is live created a remount loop.
+    return el.classList.contains("on");
+  }
+
+  /** Visible message beat — not a leftover empty shell from the previous guest. */
+  function pageLooksLikeMessageBeat() {
+    if (themeOverlayLive("message")) return true;
+    const cap = messageCapture();
+    if (!cap.src && !cap.message && !cap.name) return false;
+    const layer = document.querySelector(MESSAGE_CHROME_SCOPE);
+    if (!layer) return false;
+    const html = document.documentElement;
+    // Our covers hide the stock layer on purpose — capture + shell is enough.
+    if (
+      html.classList.contains("dyn-kind-message") ||
+      html.classList.contains("dyn-message-on") ||
+      html.classList.contains("dyn-cover-message") ||
+      html.classList.contains("dyn-hold") ||
+      html.classList.contains("dyn-handoff")
+    ) {
+      return true;
+    }
+    return elementLooksVisible(layer);
+  }
+
+  /** Visible mosaic beat — tiles on screen, not a hidden leftover layout. */
+  function pageLooksLikeMosaicBeat() {
+    if (themeOverlayLive("mosaic")) return true;
+    const n = mosaicContentCount();
+    if (n > 0) {
+      const layer = document.querySelector(MOSAIC_CHROME_SCOPE);
+      const html = document.documentElement;
+      // Cover/hold/handoff classes are applied on boot to every output page.
+      // They are not proof this is a mosaic beat — leftover tiles + early
+      // covers used to theme mosaic over CTA and polling on refresh.
+      if (
+        html.classList.contains("dyn-kind-mosaic") ||
+        html.classList.contains("dyn-mosaic-on")
+      ) {
+        return true;
+      }
+      return !layer || elementLooksVisible(layer);
+    }
+    if (!pageLooksLikeMosaic()) return false;
+    return elementLooksVisible(document.querySelector(MOSAIC_CHROME_SCOPE));
+  }
+
+  /** V2 LEADERS overlay only — explicit LEADERS header; not result-bar polling. */
+  function pageLooksLikeLeaderboardOverlay(wrapper) {
+    const root = wrapper || document.querySelector(".v2-app-wrapper");
+    if (!root) return false;
+    if (pageLooksLikeResultBarPolling(root)) return false;
+    // DOM presence only — we hide the native header while themed; visibility would loop.
+    const leaderHeader = [...root.querySelectorAll(".v2-text-tile")].find((el) => {
+      return tileText(el).toUpperCase() === "LEADERS";
+    });
+    return Boolean(leaderHeader);
+  }
+
+  /** Themed LEADERS overlay beat — message/mosaic should yield without re-covering every tick. */
+  function leaderboardBeatActive(settings) {
+    const s = settings || lastGoodSettings;
+    if (!s || s.enabled === false) return false;
+    if (normalizeLeaderboardTheme(s.leaderboardTheme) === "off") return false;
+    return pageLooksLikeLeaderboardOverlay();
+  }
+
+  function clearLeaderboardNativeMarks() {
+    document.querySelectorAll(".v2-block[data-dyn-lb-native], .v2-block[data-dyn-lb-header]").forEach((el) => {
+      el.removeAttribute("data-dyn-lb-native");
+      el.removeAttribute("data-dyn-lb-header");
+    });
+  }
+
+  function elementLooksLaidOut(el) {
+    if (!el) return false;
+    try {
+      if (el.hidden || el.getAttribute("aria-hidden") === "true") return false;
+      const st = getComputedStyle(el);
+      if (st.display === "none") return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 2 && r.height > 2;
+    } catch {
+      return false;
+    }
+  }
+
+  function pageLooksLikeResultBarPolling(wrapper) {
+    try {
+      const root = wrapper || document.querySelector(".v2-app-wrapper");
+      if (!root) return false;
+      // Display + size only. Covers set visibility:hidden on a live polling
+      // page; requiring visibility made leftover LEADERS win and kept the
+      // leaderboard overlay over the result bars.
+      return [...root.querySelectorAll(".v2-result-bar-tile")].some(elementLooksLaidOut);
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+
+  function pageLooksLikePolling() {
+    try {
+      const wrapper = document.querySelector(".v2-app-wrapper");
+      if (!wrapper) return false;
+      if (pageLooksLikeLeaderboardOverlay(wrapper)) return true;
+      return pageLooksLikeResultBarPolling(wrapper);
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+
+  function tileText(el) {
+    if (!el) return "";
+    const inner = el.querySelector(".v2-auto-scale-text__content");
+    return String((inner && inner.textContent) || el.textContent || "").trim();
+  }
+
+  function looksLikeScore(tx) {
+    const t = String(tx || "").trim().replace(/[\s,]/g, "");
+    if (!t) return false;
+    return /^[+\-]?\d+(\.\d+)?k?$/i.test(t);
+  }
+
+  function nameAndScoreFromTiles(textTiles) {
+    const texts = [];
+    (textTiles || []).forEach((tile) => {
+      const tx = tileText(tile);
+      if (tx) texts.push(tx);
+    });
+    if (!texts.length) return { name: "", score: "" };
+    if (texts.length === 1) {
+      return looksLikeScore(texts[0]) ? { name: "", score: texts[0] } : { name: texts[0], score: "" };
+    }
+    const a = texts[0];
+    const b = texts[1];
+    if (looksLikeScore(a) && !looksLikeScore(b)) return { name: b, score: a };
+    if (looksLikeScore(b) && !looksLikeScore(a)) return { name: a, score: b };
+    return { name: a, score: b };
+  }
+
+  function parseCssUrl(raw) {
+    const m = String(raw || "").match(/url\(\s*(['"]?)(.*?)\1\s*\)/i);
+    return m ? String(m[2] || "").trim() : "";
+  }
+
+  function parseInlineCss(raw, prop) {
+    const m = String(raw || "").match(new RegExp("(?:^|;)\\s*" + prop + "\\s*:\\s*([^;]+)", "i"));
+    return m ? m[1].trim() : "";
+  }
+
+  /** Vixi avatars use a CSS sprite on .v2-avatar-tile__sprite; the img is display:none. */
+  function captureLeaderboardAvatar(block) {
+    const tile = block && block.querySelector && block.querySelector(".v2-avatar-tile");
+    if (!tile) return null;
+    const sprite = tile.querySelector(".v2-avatar-tile__sprite");
+    if (sprite) {
+      const inline = sprite.getAttribute("style") || sprite.style.cssText || "";
+      const src =
+        parseCssUrl(parseInlineCss(inline, "background-image")) ||
+        parseCssUrl(sprite.style && sprite.style.backgroundImage) ||
+        parseCssUrl(getComputedStyle(sprite).backgroundImage);
+      if (src) {
+        let bgSize = parseInlineCss(inline, "background-size");
+        let bgPosition = parseInlineCss(inline, "background-position");
+        const bgRepeat = parseInlineCss(inline, "background-repeat") || "no-repeat";
+        if (!bgSize || !/%/.test(bgSize)) bgSize = "500% 500%";
+        if (!bgPosition || !/%/.test(bgPosition)) {
+          bgPosition = parseInlineCss(inline, "background-position") || "50% 50%";
+          if (!/%/.test(bgPosition)) bgPosition = "50% 50%";
+        }
+        bgPosition = bgPosition.split(/\s*\/\s*/)[0].trim();
+        return { src, sprite: true, bgSize, bgPosition, bgRepeat };
+      }
+    }
+    const img = tile.querySelector("img");
+    if (!img) return null;
+    const src = String(img.currentSrc || img.src || "").trim();
+    if (!src) return null;
+    return { src, sprite: false };
+  }
+
+  function leaderboardCapture() {
+    const wrapper = document.querySelector(".v2-app-wrapper");
+    if (!wrapper || !pageLooksLikeLeaderboardOverlay(wrapper)) {
+      return { header: "", leaders: [] };
+    }
+    const marked = new Set();
+    let header = "LEADERS";
+    const leaders = [];
+    const blocks = [...wrapper.querySelectorAll(".v2-block")].filter((block) => {
+      if (block.querySelector(".v2-avatar-tile img")) return true;
+      return [...block.querySelectorAll(".v2-text-tile")].some(
+        (t) => tileText(t).toUpperCase() === "LEADERS"
+      );
+    });
+    blocks.forEach((block) => {
+      const tiles = [...block.querySelectorAll(".v2-text-tile")];
+      const avatarImg = block.querySelector(".v2-avatar-tile img");
+      const avatar = captureLeaderboardAvatar(block);
+      const headerHit = tiles.find((t) => tileText(t).toUpperCase() === "LEADERS");
+      if (headerHit && !avatarImg) {
+        header = tileText(headerHit) || "LEADERS";
+        if (!block.hasAttribute("data-dyn-lb-header")) block.setAttribute("data-dyn-lb-header", "1");
+        if (block.hasAttribute("data-dyn-lb-native")) block.removeAttribute("data-dyn-lb-native");
+        marked.add(block);
+        return;
+      }
+      if (!avatarImg && !avatar) return;
+      const rankTile = tiles.find((t) => /^[0-9]+$/.test(tileText(t)));
+      const rank = rankTile ? tileText(rankTile) : String(leaders.length + 1);
+      const textTiles = tiles.filter((t) => {
+        const tx = tileText(t);
+        return tx && tx.toUpperCase() !== "LEADERS" && tx !== rank;
+      });
+      const named = nameAndScoreFromTiles(textTiles);
+      const name = named.name;
+      const score = named.score;
+      if (!block.hasAttribute("data-dyn-lb-native")) block.setAttribute("data-dyn-lb-native", "1");
+      if (block.hasAttribute("data-dyn-lb-header")) block.removeAttribute("data-dyn-lb-header");
+      marked.add(block);
+      leaders.push({
+        rank,
+        name,
+        score,
+        avatar,
+        avatarSrc: avatar && avatar.src ? avatar.src : "",
+      });
+    });
+    wrapper.querySelectorAll(".v2-block[data-dyn-lb-native], .v2-block[data-dyn-lb-header]").forEach((el) => {
+      if (!marked.has(el)) {
+        el.removeAttribute("data-dyn-lb-native");
+        el.removeAttribute("data-dyn-lb-header");
+      }
+    });
+    leaders.sort((a, b) => {
+      const ar = parseInt(a.rank, 10);
+      const br = parseInt(b.rank, 10);
+      if (isFinite(ar) && isFinite(br) && ar !== br) return ar - br;
+      return 0;
+    });
+    return { header, leaders };
+  }
+
+  function isExtensionOwnedOutputNode(el) {
+    if (!el || el.nodeType !== 1) return false;
+    const id = String(el.id || "");
+    if (id === "dyn-theme-host" || id === "dyn-bg-media" || id === "dyn-bg-embed") return true;
+    if (/^dyn-/.test(id)) return true;
+    return false;
+  }
+
+  /** Beats we may replace with a custom theme (message, mosaic, themed LEADERS). */
+  function pageLooksLikeRecognizedThemeTarget(settings) {
+    const s = settings || lastGoodSettings;
+    if (!s || s.enabled === false) return false;
+    if (normalizeMessageTheme(s.messageTheme) !== "off" && pageLooksLikeMessageBeat()) return true;
+    if (normalizeMosaicTheme(s.mosaicTheme) !== "off" && pageLooksLikeMosaicBeat()) return true;
+    if (leaderboardBeatActive(s)) return true;
+    return false;
+  }
+
+  /** Live native media — not an empty wrapper or leftover mosaic/message shell. */
+  function outputHasVisibleNativeShell() {
+    try {
+      const app = document.querySelector(".output-app");
+      if (!app) return false;
+      const host = document.getElementById("dyn-theme-host");
+      const media = [...app.querySelectorAll("video, img, canvas, iframe")].filter((el) => {
+        if (host && host.contains(el)) return false;
+        if (el.closest && el.closest("#dyn-message-theme, #dyn-mosaic-theme, #dyn-leaderboard-theme")) {
+          return false;
+        }
+        if (el.closest && (el.closest(MOSAIC_CHROME_SCOPE) || el.closest(MESSAGE_CHROME_SCOPE))) {
+          return false;
+        }
+        return nativeMediaLooksLive(el, true) || directNativeAssetLooksLive(el);
+      });
+      return media.length > 0;
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+
+  /** Unrecognized Vixi output: leave native UI alone (CTA/stream/polling/future types). */
+  function pageLooksLikeUnknownPassthrough(settings) {
+    if (!isOutputPage(location.href)) return false;
+    if (pageLooksLikeRecognizedThemeTarget(settings)) return false;
+    return outputHasVisibleNativeShell();
+  }
+
+  // Polling, CTA v2, streams, and other playlist items we do not theme.
+  function pageLooksLikeStreamBeat() {
+    try {
+      const app = document.querySelector(".output-app");
+      if (!app) return false;
+      const nodes = [
+        ...app.querySelectorAll(
+          ".output-stream-wrapper, [class*='output-stream'], [class*='output-live']"
+        ),
+      ];
+      return nodes.some((el) => isHardNativeEl(el) || nativeMediaLooksLive(el));
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+
+  /** Passthrough beats use Vixi's own layout — never force a letterbox canvas. */
+  function needsPassthroughStageCanvas() {
+    return false;
+  }
+
+  function passthroughLeavesVixiAlone(settings) {
+    return pageLooksLikePassthrough(settings);
+  }
+
+  function pageLooksLikePassthrough(settings) {
+    const s = settings || lastGoodSettings;
+    if (pageLooksLikeResultBarPolling()) return true;
+    if (leaderboardBeatActive(s)) return false;
+    if (pageLooksLikeLeaderboardOverlay() && !leaderboardBeatActive(s)) return true;
+    if (pageLooksLikeMessageBeat() || pageLooksLikeMosaicBeat()) return false;
+    if (pageLooksLikeHardNative()) return true;
+    try {
+      const app = document.querySelector(".output-app");
+      if (app) {
+        const nativeSel =
+          ".output-stream-wrapper, [class*='output-stream'], [class*='output-live']," +
+          "img.fullscreen-asset, video.fullscreen-asset, img[alt='CTA Image' i]," +
+          "[src*='/playlist/cta/'], :scope > iframe, video[id^='subscribe-']";
+        const nodes = [...app.querySelectorAll(nativeSel)];
+        if (nodes.some(isHardNativeEl) || nodes.some((el) => nativeMediaLooksLive(el))) return true;
+        const direct = app.querySelector(
+          ":scope > img, :scope > video, :scope > iframe, :scope > canvas"
+        );
+        if (direct && nativeMediaLooksLive(direct)) return true;
+        if (
+          [...app.children].some((child) => {
+            if (!child || child.id === "dyn-theme-host") return false;
+            return nativeMediaLooksLive(child);
+          })
+        ) {
+          return true;
+        }
+      }
+      const wrapper = document.querySelector(".v2-app-wrapper");
+      if (wrapper) {
+        if ([...wrapper.querySelectorAll(".v2-result-bar-tile")].some(elementLooksVisible)) {
+          return true;
+        }
+        const passthroughSel =
+          ".output-stream-wrapper, [class*='output-stream'], " +
+          "[class*='output-live'], img.fullscreen-asset, video.fullscreen-asset, iframe, " +
+          "video[id^='subscribe-']";
+        if ([...wrapper.querySelectorAll(passthroughSel)].some(elementLooksVisible)) return true;
+      }
+    } catch {
+      /* ignore */
+    }
+    if (pageLooksLikeUnknownPassthrough(s)) return true;
+    return false;
+  }
+
   function nativeMediaLooksLive(el, inner) {
-    if (!el || (el.closest && (isBrandNode(el) || el.closest(QR_SELECTORS)))) return false;
+    if (!el || el.id === "dyn-cta-wait") return false;
+    if (el.closest && (isBrandNode(el) || el.closest(QR_SELECTORS))) return false;
     if (el.classList && el.classList.contains("mosaic-image")) return false;
     if (el.closest && (el.closest(MOSAIC_CHROME_SCOPE) || el.closest(MESSAGE_CHROME_SCOPE))) {
       return false;
@@ -1989,12 +2734,22 @@
       const direct = Boolean(app && el.parentElement === app);
       if (!isCta && !direct) return false;
     }
-    // Empty leftover stream wrappers stay in the DOM on mosaic/message beats.
-    // Only the wrapper's actual media can make this a native CTA/live scene.
+    // Empty leftover stream / .asset-view wrappers stay in the DOM on mosaic
+    // and message beats. Only the wrapper's actual media is a native scene.
+    // Treating a sized empty .asset-view as live stood covers down on refresh
+    // and flashed Vixi's message card / background.
     if (!inner && el.querySelector && !/^(IMG|VIDEO|CANVAS|IFRAME)$/i.test(el.tagName || "")) {
       const cls = typeof el.className === "string" ? el.className : el.getAttribute("class") || "";
       if (/output-stream|output-live/i.test(cls)) {
         const media = el.querySelector("video, img, canvas, iframe");
+        return Boolean(media && nativeMediaLooksLive(media, true));
+      }
+      // Event-background photos live in .asset-view. Only a real CTA / stream
+      // inside the wrapper is native — any img here stood the theme down.
+      if (el.classList && el.classList.contains("asset-view")) {
+        const media = el.querySelector(
+          "iframe, img.fullscreen-asset, video.fullscreen-asset, img[alt='CTA Image' i], [src*='/playlist/cta/']"
+        );
         return Boolean(media && nativeMediaLooksLive(media, true));
       }
     }
@@ -2011,14 +2766,14 @@
   }
 
   function isHardNativeEl(el) {
-    if (!el) return false;
+    if (!el || el.id === "dyn-cta-wait") return false;
     if (el.closest && (isBrandNode(el) || el.closest(QR_SELECTORS))) return false;
     if (el.closest && (el.closest(MOSAIC_CHROME_SCOPE) || el.closest(MESSAGE_CHROME_SCOPE))) {
       return false;
     }
     // Our covers set visibility:hidden on the CTA. Size is enough — if we
     // require computed visibility, a covered CTA never wins over the theme.
-    if (el.matches && el.matches("img[alt='CTA Image' i], [src*='/playlist/cta/']")) {
+    if (el.matches && el.matches("img[alt='CTA Image' i], [src*='/playlist/cta/'], img.fullscreen-asset")) {
       return directNativeAssetLooksLive(el);
     }
     if (el.matches && el.matches("video[id^='subscribe-'], video.fullscreen-asset")) {
@@ -2059,7 +2814,7 @@
       const app = document.querySelector(".output-app");
       if (!app) return null;
       for (const el of app.children) {
-        if (!el || el.id === "dyn-theme-host") continue;
+        if (!el || el.id === "dyn-theme-host" || el.id === "dyn-cta-wait") continue;
         if (
           el.matches &&
           el.matches(
@@ -2073,6 +2828,16 @@
           const media = el.querySelector("video, img, canvas, iframe");
           if (media && nativeMediaLooksLive(media, true)) return el;
         }
+      }
+      const views = document.querySelectorAll(".output-wrapper > .asset-view");
+      for (const view of views) {
+        if (!view || (view.closest && (view.closest(MOSAIC_CHROME_SCOPE) || view.closest(MESSAGE_CHROME_SCOPE)))) {
+          continue;
+        }
+        const el = view.querySelector(
+          "iframe, img.fullscreen-asset, video.fullscreen-asset, img[alt='CTA Image' i], [src*='/playlist/cta/']"
+        );
+        if (el && directNativeAssetLooksLive(el)) return el;
       }
     } catch {
       /* ignore */
@@ -2525,6 +3290,8 @@
     currentStageAspect,
     resolveStageSize,
     readVixiAspect,
+    readVixiDesignSize,
+    stageContainScale,
     containFit,
     applyStageFrame,
     applyOutputCanvas,
@@ -2590,6 +3357,33 @@
     pageLooksLikeMosaic,
     pageLooksLikeNative,
     pageLooksLikeHardNative,
+    pageLooksLikeStreamBeat,
+
+    LEADERBOARD_THEMES,
+    LEADERBOARD_THEME_META,
+    leaderboardThemeMetaAll,
+    normalizeLeaderboardTheme,
+    normalizeLeaderboardThemeSettings,
+    resolveLeaderboardThemeSettings,
+    pageLooksLikeLeaderboardOverlay,
+    leaderboardBeatActive,
+    pageLooksLikeResultBarPolling,
+    leaderboardCapture,
+    captureLeaderboardAvatar,
+    clearLeaderboardNativeMarks,
+    pageLooksLikePolling,
+    touchVixiAspectCache,
+    measureWrapperAspect,
+    pageLooksLikeRecognizedThemeTarget,
+    pageLooksLikeUnknownPassthrough,
+    needsPassthroughStageCanvas,
+    pageLooksLikePassthrough,
+    pageLooksLikeMessageBeat,
+    pageLooksLikeMosaicBeat,
+    themeOverlayLive,
+    removeLeakedBrandChrome,
+    passthroughLeavesVixiAlone,
+    clearPassthroughState,
     findDirectNativeAsset,
     pageLooksLikeMessage,
     hasMessage,

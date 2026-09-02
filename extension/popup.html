@@ -133,6 +133,18 @@
   </section>
 
   <section>
+    <h2>Leaderboard overlay</h2>
+    <p class="help">Applies only when the admin leaderboard overlay is ON (LEADERS view). Normal polling is always left untouched. Off keeps Vixi’s native leaderboard. Score colors every rank, including the podium. Highlight tints accents. Boxes tints glass panels, cards, and pedestals.</p>
+    <label class="select-label">
+      <span>Theme</span>
+      <select id="leaderboard-theme">
+        <option value="off">Vixi (default)</option>
+      </select>
+    </label>
+    <div id="leaderboard-theme-settings" class="theme-settings" hidden></div>
+  </section>
+
+  <section>
     <h2>Background</h2>
     <p class="help">Used on output pages that do not match a specific row below. Choose <strong>Vixi</strong> to pull the event’s own background URL into the same layer as a pasted asset (stored upload/folder files are kept for later). Link/iframe, upload, and folder still work when Source is Auto or Media. When a message or mosaic theme is on, turn on Show background for that theme: the selected media sits above the theme’s Background color (transparent PNG/GIF holes show that color) and below the theme’s cards and copy.</p>
     <label class="select-label">
