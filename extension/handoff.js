@@ -990,7 +990,16 @@
 
     if (html.classList.contains("dyn-hold")) {
       if (mode === "message" && msgThemeOn && (live === "message" || hasMsg)) return "message";
-      if (mode === "mosaic" && mosThemeOn && (live === "mosaic" || mosaicN > 0)) return "mosaic";
+      if (
+        mode === "mosaic" &&
+        mosThemeOn &&
+        (live === "mosaic" ||
+          mosaicN > 0 ||
+          (typeof rules.pageLooksLikeEmptyMosaicShell === "function" &&
+            rules.pageLooksLikeEmptyMosaicShell()))
+      ) {
+        return "mosaic";
+      }
       if (mode === "leaderboard" && lbThemeOn) return "leaderboard";
     }
     if (handingOff) {
@@ -1260,8 +1269,13 @@
       }
     } else {
       html.classList.remove("dyn-custom-bg");
-      if (rules.restoreBackgroundLayers) rules.restoreBackgroundLayers();
-      if (rules.resumeBackgroundMedia) rules.resumeBackgroundMedia();
+      if (themedBeat === "mosaic" && !stageBgOn) {
+        if (rules.hideBackgroundLayers) rules.hideBackgroundLayers();
+        if (rules.silenceReplacedMedia) rules.silenceReplacedMedia();
+      } else {
+        if (rules.restoreBackgroundLayers) rules.restoreBackgroundLayers();
+        if (rules.resumeBackgroundMedia) rules.resumeBackgroundMedia();
+      }
     }
     if (bgApi && typeof bgApi.scheduleApply === "function" && shownKind !== "leaderboard") {
       bgApi.scheduleApply(0);
@@ -1396,10 +1410,17 @@
     const messageOnly = msgDisp && !mosDisp && hasMsg;
     // Leftover mosaic tiles/chrome must not count as a mosaic beat when a
     // message capture is on the page (refresh-on-message used to first-paint mosaic).
-    // An empty leftover .mosaic-layout (mosaicN 0) is also not a mosaic beat —
-    // that remounted a blank wall over CTA on refresh.
+    // An empty mosaic shell is a mosaic beat only when that is the live item
+    // (theme on can then hide Vixi's background). CTA / polling still win above.
+    const emptyMosaic =
+      mosaicN === 0 &&
+      typeof rules.pageLooksLikeEmptyMosaicShell === "function" &&
+      rules.pageLooksLikeEmptyMosaicShell();
     const mosaicPage =
-      overlayMos || (mosaicOnly && mosaicN > 0) || (!hasMsg && mosaicN > 0);
+      overlayMos ||
+      (mosaicOnly && mosaicN > 0) ||
+      (!hasMsg && mosaicN > 0) ||
+      (mosaicOnly && emptyMosaic && !hasMsg);
     const mosaicAppeared = mosaicNSeen && mosaicN > 0 && prevMosaicN === 0;
     const mosBecameOn = mosDispSeen && mosDisp && !prevMosDisp;
     prevMosaicN = mosaicN;
@@ -1484,10 +1505,11 @@
       lastLiveWhy = "skipLeftoverMos";
       return "";
     }
-    // Empty leftover .mosaic-layout (mosaicN 0) is not a mosaic beat — that
-    // remounted a blank wall over CTA / polling on refresh.
-    if (mosaicOnly && mosaicN > 0) {
-      lastLiveWhy = "mosaicOnly";
+    // Empty leftover .mosaic-layout over CTA / polling is not a mosaic beat.
+    // A live empty mosaic (theme on) still is — hide-background should not
+    // leak Vixi's event art.
+    if (mosaicOnly && (mosaicN > 0 || emptyMosaic)) {
+      lastLiveWhy = mosaicN > 0 ? "mosaicOnly" : "emptyMosaic";
       return "mosaic";
     }
     if (freshMsg) {

@@ -25,9 +25,32 @@
   let parkedFromNative = false;
   let parkedAt = 0;
 
+  function themeUsesExtraFields(overlay) {
+    if (!overlay) return false;
+    try {
+      return Boolean(
+        overlay.querySelector(
+          "[data-field], [data-question], [data-message]:not([data-message='']), [data-name]:not([data-name=''])"
+        )
+      );
+    } catch {
+      return false;
+    }
+  }
+
   function captureKey(capture) {
     if (!capture) return "";
+    const overlay = document.getElementById(OVERLAY_ID);
+    if (themeUsesExtraFields(overlay) && typeof rules.captureKeyString === "function") {
+      return rules.captureKeyString(capture);
+    }
     return `${capture.src}\n${capture.message}\n${capture.name}`;
+  }
+
+  function refreshMessageFields(overlay, capture) {
+    if (!overlay || typeof themeApi.applyMessageFields !== "function") return;
+    if (!overlay.querySelector("[data-field], [data-question], [data-message], [data-name]")) return;
+    themeApi.applyMessageFields(overlay, capture || rules.messageCapture());
   }
 
   function settingsKey(theme, themeSettings) {
@@ -529,6 +552,7 @@
       msgKey === lastKey &&
       applyMessageSettingsLive(theme, themeSettings)
     ) {
+      refreshMessageFields(liveOverlay, cap);
       handoff.applyCovers(settings);
       if (typeof handoff.endHold === "function") handoff.endHold();
       return;
@@ -588,6 +612,7 @@
           }
           parkedFromNative = false;
           // Stay hidden under mosaic until reveal — avoid playing enter twice.
+          refreshMessageFields(live, capture);
           applyMessageThemeSettings(live, themeSettings);
           return;
         }
@@ -629,6 +654,7 @@
           parkedFromNative = false;
           if (live && live.classList.contains("on") && !live.classList.contains("off")) {
             unparkOverlay(live);
+            refreshMessageFields(live, capture);
             applyMessageThemeSettings(live, themeSettings);
             return;
           }

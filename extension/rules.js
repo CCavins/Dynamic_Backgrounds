@@ -2594,15 +2594,125 @@
 
   const V2_MSG_HOLD_MS = 1100;
   const V2_PHOTO_MAGIC_STABLE_MS = 450;
-  let lastV2MessageCap = { src: "", message: "", name: "", at: 0 };
+  let lastV2MessageCap = emptyMessageCapture();
+  lastV2MessageCap.at = 0;
   let v2PhotoMagicSeenAt = 0;
 
+  function emptyMessageCapture() {
+    return { src: "", message: "", name: "", fields: {} };
+  }
+
+  function normalizeFieldKey(raw) {
+    return String(raw || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+  }
+
+  function questionIndex(raw) {
+    const key = normalizeFieldKey(raw);
+    const match = /^(?:question|q)?_?(\d+)$/.exec(key);
+    if (!match) return 0;
+    return Number(match[1]) || 0;
+  }
+
+  function fieldsSignature(fields) {
+    if (!fields) return "";
+    const extras = Array.isArray(fields.questions)
+      ? fields.questions
+      : Object.keys(fields)
+          .map((key) => questionIndex(key))
+          .filter(Boolean)
+          .filter((n, i, all) => all.indexOf(n) === i)
+          .sort((a, b) => a - b)
+          .map((n) => fields["question" + n] || fields["question_" + n] || fields["q" + n] || "");
+    return extras
+      .map((text) => String(text || "").trim())
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  function captureHasContent(cap) {
+    return Boolean(cap && (cap.src || cap.message || cap.name));
+  }
+
+  function captureKeyString(cap) {
+    if (!cap) return "";
+    return [cap.src || "", cap.message || "", cap.name || "", fieldsSignature(cap.fields)].join("\n");
+  }
+
+  function captureFieldValue(capture, name) {
+    if (!capture) return "";
+    const want = normalizeFieldKey(name);
+    if (!want) return "";
+    if (want === "message" || want === "mes00") return String(capture.message || "").trim();
+    if (want === "name" || want === "nam00") return String(capture.name || "").trim();
+    const fields = capture.fields || {};
+    const q = questionIndex(want);
+    if (q) {
+      const fromList = Array.isArray(fields.questions) ? fields.questions[q - 1] : "";
+      return String(fields["question" + q] || fields["question_" + q] || fields["q" + q] || fromList || "").trim();
+    }
+    return String(fields[name] || fields[want] || "").trim();
+  }
+
+  function fieldsFromOrderedTexts(texts) {
+    if (!texts || !texts.some(Boolean)) return null;
+    const fields = {};
+    // First two texts stay message + name (same as existing themes).
+    // Everything after is question1, question2, … in that order.
+    fields.message = texts[0] || "";
+    fields.name = texts[1] || "";
+    const extras = [];
+    texts.slice(2).forEach((text) => {
+      if (!text) return;
+      extras.push(text);
+      const n = extras.length;
+      fields["question" + n] = text;
+      fields["question_" + n] = text;
+      fields["q" + n] = text;
+    });
+    fields.questions = extras;
+    return fields;
+  }
+
+  function finalizeMessageCapture(src, fields) {
+    const next = fields || {};
+    return {
+      src: src || "",
+      message: String(next.message || "").trim(),
+      name: String(next.name || "").trim(),
+      fields: next,
+    };
+  }
+
+  function readOrderedMessageTexts(v2) {
+    const sel = v2
+      ? ".v2-text-tile"
+      : ".message-layer .message-content-text, .message-content-text";
+    try {
+      return [...document.querySelectorAll(sel)].map((el) => String(el.textContent || "").trim());
+    } catch {
+      return [];
+    }
+  }
+
+  function classicFieldValues() {
+    return fieldsFromOrderedTexts(readOrderedMessageTexts(false));
+  }
+
+  function v2FieldValues() {
+    return fieldsFromOrderedTexts(readOrderedMessageTexts(true).filter(Boolean));
+  }
+
   function rememberV2MessageCap(cap) {
-    if (!cap || !(cap.src || cap.message || cap.name)) return cap;
+    if (!captureHasContent(cap)) return cap;
     lastV2MessageCap = {
       src: cap.src || lastV2MessageCap.src || "",
       message: cap.message || "",
       name: cap.name || "",
+      fields: Object.assign({}, cap.fields || {}),
       at: Date.now(),
     };
     return cap;
@@ -2611,7 +2721,7 @@
   function v2MessageHoldActive() {
     if (!lastV2MessageCap.at) return false;
     if (mosaicGridPresent()) return false;
-    if (!(lastV2MessageCap.src || lastV2MessageCap.message || lastV2MessageCap.name)) return false;
+    if (!captureHasContent(lastV2MessageCap)) return false;
     // A real Photo Magic playlist item keeps .photo-container. A V2 message
     // swap can flash that node — wait it out before yielding.
     try {
@@ -2629,24 +2739,21 @@
   }
 
   function heldV2MessageCap() {
-    if (!v2MessageHoldActive()) return { src: "", message: "", name: "" };
-    return {
-      src: lastV2MessageCap.src,
+    if (!v2MessageHoldActive()) return emptyMessageCapture();
+    return finalizeMessageCapture(lastV2MessageCap.src, Object.assign({}, lastV2MessageCap.fields || {
       message: lastV2MessageCap.message,
       name: lastV2MessageCap.name,
-    };
+    }));
   }
 
   function v2MessageCapture() {
-    if (mosaicGridPresent()) return { src: "", message: "", name: "" };
+    if (mosaicGridPresent()) return emptyMessageCapture();
     if (document.querySelector(".photo-container")) return heldV2MessageCap();
-    const texts = v2MessageTexts();
-    if (!texts.length) return heldV2MessageCap();
-    return rememberV2MessageCap({
-      src: v2FeaturedImageSrc() || lastV2MessageCap.src || "",
-      message: texts[0] || "",
-      name: texts[1] || "",
-    });
+    const fields = v2FieldValues();
+    if (!fields) return heldV2MessageCap();
+    return rememberV2MessageCap(
+      finalizeMessageCapture(v2FeaturedImageSrc() || lastV2MessageCap.src || "", fields)
+    );
   }
 
   function findMessageLayer() {
@@ -2721,7 +2828,7 @@
     if (pageLooksLikePhotoMagic()) return false;
     if (themeOverlayLive("message")) return true;
     const cap = messageCapture();
-    if (!cap.src && !cap.message && !cap.name) return false;
+    if (!captureHasContent(cap)) return false;
     const layer = findMessageLayer();
     if (!layer) return false;
     const html = document.documentElement;
@@ -2736,6 +2843,30 @@
       return true;
     }
     return elementLooksVisible(layer);
+  }
+
+  function mosaicLayerPresent(el) {
+    if (!el) return false;
+    try {
+      if (el.hidden || el.getAttribute("aria-hidden") === "true") return false;
+      const st = getComputedStyle(el);
+      if (st.display === "none") return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 2 && r.height > 2;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Mosaic playlist item with no guest photos — still a mosaic beat. */
+  function pageLooksLikeEmptyMosaicShell() {
+    if (pageLooksLikePhotoMagic()) return false;
+    if (pageLooksLikeHardNative()) return false;
+    if (pageLooksLikeResultBarPolling()) return false;
+    if (mosaicContentCount() > 0) return false;
+    const layer = findMosaicLayer();
+    if (!pageLooksLikeMosaic() && !layer) return false;
+    return mosaicLayerPresent(layer) || pageLooksLikeMosaic();
   }
 
   /** Visible mosaic beat — tiles on screen, not a hidden leftover layout. */
@@ -2757,8 +2888,15 @@
       }
       return !layer || elementLooksVisible(layer);
     }
-    if (!pageLooksLikeMosaic()) return false;
-    return elementLooksVisible(layer);
+    // Empty mosaic with a selected theme should still theme (black / aesthetic)
+    // instead of leaking Vixi's background. Mosaic Off stands this down later.
+    if (pageLooksLikeHardNative()) return false;
+    if (!pageLooksLikeMosaic() && !mosaicLayerPresent(layer)) return false;
+    const html = document.documentElement;
+    if (html.classList.contains("dyn-kind-mosaic") || html.classList.contains("dyn-mosaic-on")) {
+      return true;
+    }
+    return mosaicLayerPresent(layer) || pageLooksLikeMosaic();
   }
 
   /** V2 LEADERS overlay only — explicit LEADERS header; not result-bar polling. */
@@ -3268,7 +3406,7 @@
     }
     if (document.querySelector(MESSAGE_CHROME_SCOPE)) return true;
     const v2 = v2MessageCapture();
-    return Boolean(v2.src || v2.message || v2.name);
+    return captureHasContent(v2);
   }
 
   function hasMosaic() {
@@ -3276,8 +3414,7 @@
   }
 
   function hasMessage() {
-    const cap = messageCapture();
-    return Boolean(cap.src || cap.message || cap.name);
+    return captureHasContent(messageCapture());
   }
 
   function mosaicImageSrc(img) {
@@ -3307,16 +3444,14 @@
     const src = img && (img.currentSrc || img.src) ? img.currentSrc || img.src : "";
     if (src && src.startsWith("data:")) {
       const v2Empty = v2MessageCapture();
-      if (v2Empty.src || v2Empty.message || v2Empty.name) return v2Empty;
-      return { src: "", message: "", name: "" };
+      return captureHasContent(v2Empty) ? v2Empty : emptyMessageCapture();
     }
-    const texts = [...document.querySelectorAll(".message-layer .message-content-text, .message-content-text")];
-    const classic = {
-      src: src && !src.startsWith("data:") ? src : "",
-      message: texts[0] ? String(texts[0].textContent || "").trim() : "",
-      name: texts[1] ? String(texts[1].textContent || "").trim() : "",
-    };
-    if (classic.src || classic.message || classic.name) return classic;
+    const classicSrc = src && !src.startsWith("data:") ? src : "";
+    const classicFields = classicFieldValues();
+    if (classicSrc || classicFields) {
+      const classic = finalizeMessageCapture(classicSrc, classicFields || {});
+      if (captureHasContent(classic)) return classic;
+    }
     return v2MessageCapture();
   }
 
@@ -3768,6 +3903,7 @@
     pageLooksLikePassthrough,
     pageLooksLikeMessageBeat,
     pageLooksLikeMosaicBeat,
+    pageLooksLikeEmptyMosaicShell,
     themeOverlayLive,
     removeLeakedBrandChrome,
     passthroughLeavesVixiAlone,
@@ -3777,6 +3913,9 @@
     hasMessage,
     mosaicContentCount,
     messageCapture,
+    captureHasContent,
+    captureFieldValue,
+    captureKeyString,
     mosaicImages,
     mosaicImageSrc,
     mosaicAssetClassUrls,

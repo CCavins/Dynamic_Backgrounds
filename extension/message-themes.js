@@ -72,7 +72,9 @@ html.dyn-show-bg #dyn-message-theme:not(.on) > *:not(#dyn-bg-media):not(#dyn-bg-
 #dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) .rig,
 #dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) [data-photo],
 #dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) [data-message],
-#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) [data-name] {
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) [data-name],
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) [data-field],
+#dyn-message-theme.dyn-awaiting-show:not(.dyn-show-bg) [data-question] {
   visibility: hidden !important;
   opacity: 0 !important;
 }
@@ -4288,6 +4290,68 @@ html.dyn-show-bg #dyn-message-theme:not(.on) > *:not(#dyn-bg-media):not(#dyn-bg-
     );
   }
 
+  function fieldValueOf(capture, name) {
+    const rulesApi = root.BGExtensionRules;
+    if (rulesApi && typeof rulesApi.captureFieldValue === "function") {
+      return rulesApi.captureFieldValue(capture, name);
+    }
+    if (!capture) return "";
+    const key = String(name || "").trim();
+    if (!key || key === "message") return String(capture.message || "").trim();
+    if (key === "name") return String(capture.name || "").trim();
+    const fields = capture.fields || {};
+    return String(fields[key] || fields[key.toLowerCase()] || "").trim();
+  }
+
+  function fieldSlug(name) {
+    return String(name || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+  }
+
+  function markFieldClass(themeRoot, name, value) {
+    const slug = fieldSlug(name);
+    if (!slug || slug === "message" || slug === "name") return;
+    themeRoot.classList.toggle("has-field-" + slug, Boolean(value));
+  }
+
+  function applyMessageFields(themeRoot, capture) {
+    if (!themeRoot) return;
+    themeRoot.querySelectorAll("[data-field]").forEach((node) => {
+      const name = node.getAttribute("data-field");
+      const value = fieldValueOf(capture, name);
+      node.textContent = value;
+      node.classList.toggle("no-field", !value);
+      markFieldClass(themeRoot, name, value);
+    });
+    themeRoot.querySelectorAll("[data-question]").forEach((node) => {
+      const name = "question" + String(node.getAttribute("data-question") || "").trim();
+      const value = fieldValueOf(capture, name);
+      node.textContent = value;
+      node.classList.toggle("no-field", !value);
+      markFieldClass(themeRoot, name, value);
+    });
+    themeRoot.querySelectorAll("[data-message]").forEach((node) => {
+      const named = node.getAttribute("data-message");
+      const value = named ? fieldValueOf(capture, named) : fieldValueOf(capture, "message");
+      node.textContent = value;
+      if (named) markFieldClass(themeRoot, named, value);
+    });
+    themeRoot.querySelectorAll("[data-name]").forEach((node) => {
+      const named = node.getAttribute("data-name");
+      const value = named ? fieldValueOf(capture, named) : fieldValueOf(capture, "name");
+      node.textContent = value;
+      if (named) markFieldClass(themeRoot, named, value);
+    });
+    const message = fieldValueOf(capture, "message");
+    const name = fieldValueOf(capture, "name");
+    themeRoot.classList.toggle("no-photo", !(capture && capture.src));
+    themeRoot.classList.toggle("no-copy", !message && !name);
+    themeRoot.classList.toggle("no-name", !name);
+  }
+
   root.BGMessageThemes = {
     STYLE,
     FONTS,
@@ -4295,6 +4359,8 @@ html.dyn-show-bg #dyn-message-theme:not(.on) > *:not(#dyn-bg-media):not(#dyn-bg-
     fitText: fitPx,
     ensureFitStage,
     applyVars,
+    applyMessageFields,
+    fieldValueOf,
     ensurePosterPasteVisible,
     commonShowPrep,
     finishShow,

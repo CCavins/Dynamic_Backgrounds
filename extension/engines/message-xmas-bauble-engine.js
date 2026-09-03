@@ -154,18 +154,22 @@
         if (img.classList && img.classList.contains("orbit-next")) return;
         img.src = (capture && capture.src) || "";
       });
-      (state.messages || []).forEach((node) => {
-        node.textContent = (capture && capture.message) || "";
-      });
-      (state.names || []).forEach((node) => {
-        node.textContent = (capture && capture.name) || "";
-      });
-      themeRoot.classList.toggle("no-photo", !(capture && capture.src));
-      themeRoot.classList.toggle(
-        "no-copy",
-        !(capture && (capture.message || capture.name))
-      );
-      themeRoot.classList.toggle("no-name", !(capture && capture.name));
+      if (helpers.applyMessageFields) {
+        helpers.applyMessageFields(themeRoot, capture);
+      } else {
+        (state.messages || []).forEach((node) => {
+          node.textContent = (capture && capture.message) || "";
+        });
+        (state.names || []).forEach((node) => {
+          node.textContent = (capture && capture.name) || "";
+        });
+        themeRoot.classList.toggle("no-photo", !(capture && capture.src));
+        themeRoot.classList.toggle(
+          "no-copy",
+          !(capture && (capture.message || capture.name))
+        );
+        themeRoot.classList.toggle("no-name", !(capture && capture.name));
+      }
       if (helpers.finishShow) await helpers.finishShow(themeRoot, state.photos);
       else themeRoot.classList.add("on");
     },

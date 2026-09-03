@@ -521,6 +521,8 @@ Put these on elements the JSON-only compiler (or your engine) should fill:
 - `data-photo` on the image (or the first `img` is also collected)
 - `data-message` on the caption node
 - `data-name` on the name node (can appear more than once)
+- Extra answers after name, in DOM order: `data-field="question1"`, `data-field="question2"`, … or `data-question="1"`. Same order on V1 and V2. Bare `data-message` / `data-name` still mean the first two texts only — existing themes do not need to change.
+- The theme root gets `has-field-question1` (and so on) when that extra is present, plus `no-field` on empty extra nodes so you can hide unused slots.
 - `data-qr` on the box that should receive this kind’s Vixi QR when **Show QR code** is on
 - `data-logo` on the box that should receive this kind’s Vixi logo when **Show logo** is on
 

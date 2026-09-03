@@ -1212,15 +1212,19 @@
         (state.photos || []).forEach((img) => {
           img.src = capture.src || "";
         });
-        (state.messages || []).forEach((node) => {
-          node.textContent = capture.message || "";
-        });
-        (state.names || []).forEach((node) => {
-          node.textContent = capture.name || "";
-        });
-        themeRoot.classList.toggle("no-photo", !capture.src);
-        themeRoot.classList.toggle("no-copy", !capture.message && !capture.name);
-        themeRoot.classList.toggle("no-name", !capture.name);
+        if (helpers().applyMessageFields) {
+          helpers().applyMessageFields(themeRoot, capture);
+        } else {
+          (state.messages || []).forEach((node) => {
+            node.textContent = capture.message || "";
+          });
+          (state.names || []).forEach((node) => {
+            node.textContent = capture.name || "";
+          });
+          themeRoot.classList.toggle("no-photo", !capture.src);
+          themeRoot.classList.toggle("no-copy", !capture.message && !capture.name);
+          themeRoot.classList.toggle("no-name", !capture.name);
+        }
         if (document.fonts && document.fonts.ready) {
           await Promise.race([document.fonts.ready.catch(() => {}), wait(800)]);
         }
