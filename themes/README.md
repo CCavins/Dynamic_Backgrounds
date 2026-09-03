@@ -38,6 +38,7 @@ A pack that includes JS runs on matching output pages only after Allow User Scri
 
 Examples to try:
 
+- `message-class-survey.json` — kindergarten class survey (JSON only; name + 4 extra questions + message; Pencil, Paper, Desk, Photos)
 - `message-stamp.json` — postage-stamp message card (JSON only; Ink, Paper, Background, Motion)
 - `message-grunge-poster.json` — torn-paper grunge poster (JSON only; **Ink**, **Paper**, **Photos**). Brick wall is a separate asset (`assets/grunge-wall.webp`), not a popup color — see SPEC.md.
 - `mosaic-framed.json` — framed photo scatter (JSON only; Photo size + Frame color)

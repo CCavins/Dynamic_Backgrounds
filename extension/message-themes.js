@@ -2398,7 +2398,9 @@ html.dyn-show-bg #dyn-message-theme:not(.on) > *:not(#dyn-bg-media):not(#dyn-bg-
 
   function replayGuestMotion(themeRoot) {
     if (!themeRoot || !themeRoot.classList.contains("on")) return;
-    const targets = themeRoot.querySelectorAll(".photo-paste, .msg-paste, .name-stamp");
+    const targets = themeRoot.querySelectorAll(
+      ".photo-paste, .msg-paste, .name-stamp, [data-photo], [data-message], [data-name], [data-field], [data-question]"
+    );
     targets.forEach((el) => {
       el.style.animation = "none";
     });

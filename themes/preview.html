@@ -756,6 +756,7 @@
   }
 
   const CUSTOM_FILES = [
+    ["message-class-survey.json", "Class Survey"],
     ["message-grunge-poster.json", "Grunge Poster"],
     ["mosaic-slant-rows.json", "Slant Rows"],
     ["message-xmas-bauble.json", "Christmas Bauble"],
@@ -874,12 +875,28 @@
     const fileIdx = header.indexOf("captures");
     const nameIdx = header.indexOf("name");
     const msgIdx = header.indexOf("message");
+    const cars = ["a red race car", "something fast", "my dad's truck", "a yellow taxi", "the school bus"];
+    const jobs = ["astronaut", "veterinarian", "chef", "teacher", "soccer player"];
+    const colors = ["blue", "red", "green", "purple", "orange"];
+    const teams = ["Patriots", "Celtics", "Red Sox", "Bruins", "my school team"];
     captures = rows
-      .map((row) => ({
-        src: SAMPLE_DIR + (row[fileIdx] || "").trim(),
-        name: (row[nameIdx] || "").trim(),
-        message: (row[msgIdx] || "").trim(),
-      }))
+      .map((row, i) => {
+        const name = (row[nameIdx] || "").trim();
+        const message = (row[msgIdx] || "").trim();
+        return {
+          src: SAMPLE_DIR + (row[fileIdx] || "").trim(),
+          name,
+          message,
+          fields: {
+            message,
+            name,
+            question1: cars[i % cars.length],
+            question2: jobs[i % jobs.length],
+            question3: colors[i % colors.length],
+            question4: teams[i % teams.length],
+          },
+        };
+      })
       .filter((row) => row.src && row.src !== SAMPLE_DIR);
   } catch {
     captures = [];
@@ -1574,6 +1591,14 @@
         src: "",
         name: "Sam & Jo",
         message: "Wish you were here — the lights went on and the whole room went quiet.",
+        fields: {
+          message: "Wish you were here — the lights went on and the whole room went quiet.",
+          name: "Sam & Jo",
+          question1: "a red race car",
+          question2: "astronaut",
+          question3: "blue",
+          question4: "Patriots",
+        },
       };
     }
     return captures[((index % captures.length) + captures.length) % captures.length];
