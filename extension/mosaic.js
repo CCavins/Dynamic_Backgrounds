@@ -641,7 +641,9 @@
       theme === "decks-brand" ||
       theme === "cascade" ||
       theme === "coverflow" ||
-      theme === "depthfield"
+      theme === "depthfield" ||
+      theme === "livewall" ||
+      theme === "livewall-brand"
     ) {
       return true;
     }
@@ -1015,6 +1017,12 @@
   }
 
   async function rebuildNow(id) {
+    const existingAtLog = document.getElementById(OVERLAY_ID);
+    if (livewallHealthy(existingAtLog, id)) {
+      pendingRebuild = false;
+      mosaicNeedsFreshMount = false;
+      return true;
+    }
     if (rebuildRunning) {
       pendingRebuild = true;
       return false;
@@ -1046,17 +1054,14 @@
           existing &&
           active &&
           mountedTheme === target &&
-          existing.classList.contains("on") &&
           !existing.classList.contains("is-parked") &&
-          !mountedEmpty &&
-          pool.length > 0
+          (isLivewallTheme(target) ||
+            (existing.classList.contains("on") && !mountedEmpty && pool.length > 0))
         ) {
           ok = true;
-          if (token === rebuildGen && !pendingRebuild) {
-            pendingRebuild = false;
-            return true;
-          }
-          continue;
+          pendingRebuild = false;
+          mosaicNeedsFreshMount = false;
+          return true;
         }
         const prevHostKey = mountedHostKey;
         snapshotOverlayPool();
@@ -1083,7 +1088,7 @@
             pool.push(src);
           });
         }
-        await decodeUrls(pool);
+        if (!isLivewallTheme(target)) await decodeUrls(pool);
         ok = await mountTheme(target, resolveLiveMosaicSettings(loadedSettings, target));
         const host = rules.findOverlayHost && rules.findOverlayHost();
         if (ok) mountedHostKey = hostSizeKey(host);
@@ -1159,6 +1164,21 @@
     if (!root) return true;
     return (
       root.classList.contains("is-parked") || root.classList.contains("dyn-awaiting-show")
+    );
+  }
+
+  function isLivewallTheme(id) {
+    return id === "livewall" || id === "livewall-brand";
+  }
+
+  function livewallHealthy(root, target) {
+    const id = target || mountedTheme;
+    return (
+      isLivewallTheme(id) &&
+      mountedTheme === id &&
+      Boolean(active && root) &&
+      root.dataset.theme === id &&
+      !root.classList.contains("is-parked")
     );
   }
 
@@ -1266,10 +1286,12 @@
       overlay &&
       active &&
       mountedTheme === theme &&
-      !overlayIsStale(overlay) &&
-      layoutReady(overlay)
+      (livewallHealthy(overlay, theme) ||
+        (!overlayIsStale(overlay) && layoutReady(overlay)))
     ) {
-      if (applyMosaicSettingsLive(theme, settings, true)) return true;
+      if (applyMosaicSettingsLive(theme, settings, true) || livewallHealthy(overlay, theme)) {
+        return true;
+      }
     }
     const ok = await rebuildNow(theme);
     const after = handoff.liveKind();
@@ -1554,19 +1576,24 @@
           const html = document.documentElement;
           html.classList.add("dyn-mosaic-on", "dyn-cover-message", "dyn-cover-mosaic");
           syncFeed();
-          await decodeUrls(pool);
+          if (!isLivewallTheme(theme)) await decodeUrls(pool);
           const overlay = document.getElementById(OVERLAY_ID);
           const scaleChanged =
             Math.abs(mosaicScaleOf(lastThemeSettings) - mosaicScaleOf(themeSettings)) > 0.001;
+          if (livewallHealthy(overlay, theme)) {
+            pendingRebuild = false;
+            mosaicNeedsFreshMount = false;
+          }
           const needsMount =
-            pendingRebuild ||
-            mosaicNeedsFreshMount ||
-            overlayIsStale(overlay) ||
-            mountedTheme !== theme ||
-            mountedAspect !== aspect ||
-            (scaleChanged && mosaicSettingsKey(theme, themeSettings) !== lastSettingsKey) ||
-            !overlay ||
-            !active;
+            !livewallHealthy(overlay, theme) &&
+            (pendingRebuild ||
+              mosaicNeedsFreshMount ||
+              overlayIsStale(overlay) ||
+              mountedTheme !== theme ||
+              mountedAspect !== aspect ||
+              (scaleChanged && mosaicSettingsKey(theme, themeSettings) !== lastSettingsKey) ||
+              !overlay ||
+              !active);
           if (needsMount) {
             pendingRebuild = false;
             suppressResizeRebuild(1600);
@@ -1595,7 +1622,10 @@
               !active.state ||
               active.state.waiting ||
               (active.state.field && active.state.field.stopped));
+          const livewallMounted =
+            theme === "livewall" || theme === "livewall-brand";
           const sizeChanged =
+            !livewallMounted &&
             performance.now() >= ignoreResizeUntil &&
             Boolean(mountedHostKey && host && hostSizeKey(host) !== mountedHostKey);
           const stale = overlayIsStale(overlay);
@@ -1613,17 +1643,22 @@
           ) {
             pendingRebuild = false;
           }
+          if (livewallHealthy(overlay, theme)) {
+            pendingRebuild = false;
+            mosaicNeedsFreshMount = false;
+          }
           const doRebuild =
-            stale ||
-            !overlay ||
-            !active ||
-            mountedTheme !== theme ||
-            mountedAspect !== aspect ||
-            hostMisplaced ||
-            cubeBroken ||
-            (mountedEmpty && pool.length > 0) ||
-            sizeChanged ||
-            Math.abs(mosaicScaleOf(lastThemeSettings) - mosaicScaleOf(themeSettings)) > 0.001;
+            !livewallHealthy(overlay, theme) &&
+            (stale ||
+              !overlay ||
+              !active ||
+              mountedTheme !== theme ||
+              mountedAspect !== aspect ||
+              hostMisplaced ||
+              cubeBroken ||
+              (mountedEmpty && pool.length > 0) ||
+              sizeChanged ||
+              Math.abs(mosaicScaleOf(lastThemeSettings) - mosaicScaleOf(themeSettings)) > 0.001);
           if (doRebuild) {
             const ok = await rebuildNow(theme);
             unparkOverlay(document.getElementById(OVERLAY_ID));
@@ -1795,6 +1830,12 @@
       const size = rules.applyStageFrame(root);
       if (themeApi && typeof themeApi.refitStages === "function") themeApi.refitStages();
       const designKey = size ? size.dw + "x" + size.dh + ":" + size.mode : "";
+      const livewallMounted =
+        root.dataset.theme === "livewall" || root.dataset.theme === "livewall-brand";
+      if (livewallMounted) {
+        lastResizeDesignKey = designKey;
+        return;
+      }
       if (designKey && designKey !== lastResizeDesignKey) {
         lastResizeDesignKey = designKey;
         if (resizeRemountTimer) clearTimeout(resizeRemountTimer);
@@ -1806,6 +1847,9 @@
         }, 120);
         return;
       }
+    }
+    if (root && (root.dataset.theme === "livewall" || root.dataset.theme === "livewall-brand")) {
+      return;
     }
     if (resizeRemountTimer) clearTimeout(resizeRemountTimer);
     resizeRemountTimer = setTimeout(() => {

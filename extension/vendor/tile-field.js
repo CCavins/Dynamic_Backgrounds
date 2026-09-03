@@ -129,7 +129,7 @@
     const userScale = (() => {
       const n = Number(options && options.scale);
       if (!isFinite(n)) return 1;
-      return Math.max(0.7, Math.min(1.5, n));
+      return Math.max(0.9, Math.min(1.5, n));
     })();
     const tileCount = Math.max(24, Math.round(MAX_TILES / userScale));
     const minGap = MIN_GAP * Math.max(0.85, userScale);

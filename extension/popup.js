@@ -799,12 +799,12 @@
   }
 
   function scaleRow(label, value) {
-    const pct = Math.round((Number(value) || 1) * 100);
+    const pct = Math.max(90, Math.min(150, Math.round((Number(value) || 1) * 100)));
     const row = document.createElement("label");
     row.className = "setting-row scale";
     row.innerHTML =
       `<span>${label}</span>` +
-      `<input type="range" class="theme-scale" min="70" max="150" step="1" value="${pct}">` +
+      `<input type="range" class="theme-scale" min="90" max="150" step="1" value="${pct}">` +
       `<span class="theme-scale-value">${pct}%</span>`;
     return row;
   }

@@ -79,7 +79,7 @@
   }
   const BG_MODES = ["auto", "vixi", "link", "media"];
   const BG_FITS = ["cover", "contain", "fill", "center"];
-  const MOSAIC_SCALE_MIN = 0.7;
+  const MOSAIC_SCALE_MIN = 0.9;
   const MOSAIC_SCALE_MAX = 1.5;
 
   const MESSAGE_THEME_META = {
@@ -218,8 +218,60 @@
         avatarBorder: true,
       },
     },
+    "podium-idle-v1": {
+      label: "Crown podium with idle v1",
+      labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
+      defaults: {
+        primary: "#3dff8a",
+        secondary: "#f5c542",
+        panel: "#12182a",
+        revealMs: 360,
+        hideMs: 220,
+        showHeader: true,
+        avatarBorder: true,
+      },
+    },
+    "podium-idle-v2": {
+      label: "Crown podium with idle v2",
+      labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
+      defaults: {
+        primary: "#3dff8a",
+        secondary: "#f5c542",
+        panel: "#12182a",
+        revealMs: 360,
+        hideMs: 220,
+        showHeader: true,
+        avatarBorder: true,
+      },
+    },
     "stacked-cards": {
       label: "Winner cards",
+      labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
+      defaults: {
+        primary: "#3dff8a",
+        secondary: "#f5c542",
+        panel: "#12182a",
+        revealMs: 340,
+        hideMs: 200,
+        showHeader: true,
+        avatarBorder: true,
+      },
+    },
+    "stacked-cards-idle-v1": {
+      label: "Winner cards with idle v1",
+      labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
+      defaults: {
+        primary: "#3dff8a",
+        secondary: "#f5c542",
+        panel: "#12182a",
+        revealMs: 340,
+        hideMs: 200,
+        showHeader: true,
+        avatarBorder: true,
+      },
+    },
+    "stacked-cards-idle-v2": {
+      label: "Winner cards with idle v2",
       labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
       defaults: {
         primary: "#3dff8a",
@@ -244,6 +296,32 @@
         avatarBorder: true,
       },
     },
+    "compact-ladder-idle-v1": {
+      label: "Wreath ranking with idle v1",
+      labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
+      defaults: {
+        primary: "#3dff8a",
+        secondary: "#f5c542",
+        panel: "#12182a",
+        revealMs: 300,
+        hideMs: 180,
+        showHeader: true,
+        avatarBorder: true,
+      },
+    },
+    "compact-ladder-idle-v2": {
+      label: "Wreath ranking with idle v2",
+      labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
+      defaults: {
+        primary: "#3dff8a",
+        secondary: "#f5c542",
+        panel: "#12182a",
+        revealMs: 300,
+        hideMs: 180,
+        showHeader: true,
+        avatarBorder: true,
+      },
+    },
     "hero-list": {
       label: "Gold spotlight",
       labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
@@ -257,8 +335,60 @@
         avatarBorder: true,
       },
     },
+    "hero-list-idle-v1": {
+      label: "Gold spotlight with idle v1",
+      labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
+      defaults: {
+        primary: "#f5c542",
+        secondary: "#6d4aff",
+        panel: "#121028",
+        revealMs: 360,
+        hideMs: 220,
+        showHeader: true,
+        avatarBorder: true,
+      },
+    },
+    "hero-list-idle-v2": {
+      label: "Gold spotlight with idle v2",
+      labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
+      defaults: {
+        primary: "#f5c542",
+        secondary: "#6d4aff",
+        panel: "#121028",
+        revealMs: 360,
+        hideMs: 220,
+        showHeader: true,
+        avatarBorder: true,
+      },
+    },
     "ticker-strip": {
       label: "Broadcast pills",
+      labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
+      defaults: {
+        primary: "#f5c542",
+        secondary: "#3dff8a",
+        panel: "#12182a",
+        revealMs: 320,
+        hideMs: 200,
+        showHeader: true,
+        avatarBorder: true,
+      },
+    },
+    "ticker-strip-idle-v1": {
+      label: "Broadcast pills with idle v1",
+      labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
+      defaults: {
+        primary: "#f5c542",
+        secondary: "#3dff8a",
+        panel: "#12182a",
+        revealMs: 320,
+        hideMs: 200,
+        showHeader: true,
+        avatarBorder: true,
+      },
+    },
+    "ticker-strip-idle-v2": {
+      label: "Broadcast pills with idle v2",
       labels: { primary: "Score", secondary: "Highlight", panel: "Boxes" },
       defaults: {
         primary: "#f5c542",

@@ -279,7 +279,7 @@
   function clampThemeScale(settings) {
     const n = Number(settings && settings.scale);
     if (!isFinite(n)) return 1;
-    return Math.max(0.7, Math.min(1.5, n));
+    return Math.max(0.9, Math.min(1.5, n));
   }
 
   function themeColor(settings, fallback) {
@@ -946,17 +946,17 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
   position: absolute;
   top: 0;
   left: 0;
-  display: grid;
+  display: block;
   transform-origin: 0 0;
   will-change: transform;
 }
 #dyn-mosaic-theme[data-theme="livewall"] .dyn-live-tile {
-  position: relative;
+  position: absolute;
   overflow: hidden;
   border-radius: 12px;
   background: #11141c;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
-  transition: opacity 360ms ease, filter 360ms ease;
+  contain: strict;
 }
 #dyn-mosaic-theme[data-theme="livewall"] .dyn-live-tile img {
   position: absolute;
@@ -966,34 +966,26 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
   object-fit: cover;
   display: block;
   transform-origin: 50% 50%;
-  will-change: transform, opacity;
   backface-visibility: hidden;
-  transition: opacity 300ms ease;
 }
-#dyn-mosaic-theme[data-theme="livewall"] .dyn-live-tile.is-dormant {
-  opacity: 0.16;
-  filter: saturate(0.75) brightness(0.75);
+#dyn-mosaic-theme[data-theme="livewall"] .dyn-live-tile.is-dormant,
+#dyn-mosaic-theme[data-theme="livewall"] .dyn-live-tile.is-offscreen {
+  visibility: hidden;
+  opacity: 0;
+  content-visibility: hidden;
 }
 #dyn-mosaic-theme[data-theme="livewall"] .dyn-live-tile.is-dormant img {
   opacity: 0;
+}
+#dyn-mosaic-theme[data-theme="livewall"] .dyn-live-tile.is-pending {
+  background: #161922;
 }
 #dyn-mosaic-theme[data-theme="livewall"] .dyn-live-tile.is-pending img {
   opacity: 0;
   transform: scale(0.28) rotate(-8deg);
 }
-#dyn-mosaic-theme[data-theme="livewall"] .dyn-live-tile.is-pending::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(110deg, #11141c 30%, #1c2130 50%, #11141c 70%);
-  background-size: 220% 100%;
-  animation: dyn-shimmer 1.2s ease-in-out infinite;
-}
-@keyframes dyn-shimmer {
-  0% { background-position: 140% 0; }
-  100% { background-position: -140% 0; }
-}
 #dyn-mosaic-theme[data-theme="livewall"] .dyn-live-tile.is-arrive img {
+  will-change: transform, opacity;
   animation: dyn-live-pop 0.58s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 @keyframes dyn-live-pop {
@@ -2733,17 +2725,26 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
           ZOOMED_ROWS: [3.1 / scale, 3.9 / scale],
           START_CLUSTER_COL_RADIUS: 6,
           START_CLUSTER_ROW_RADIUS: 4,
-          EXPAND_STRIP: [6, 11],
-          ACTIVE_BUDGET: 210,
+          EXPAND_STRIP: [2, 3],
+          EXPAND_MAX_BORN: 18,
+          ACTIVE_BUDGET: 64,
           KEEP_OLD_VISIBLE: [0.25, 0.8],
-          EDGE_APPROACH_MS: [3000, 4600],
+          EDGE_APPROACH_MS: [3800, 5600],
           EDGE_HOLD_MS: [3200, 4600],
-          ARC_DIP: 0.8,
-          BREATH: 0.03,
+          ARC_DIP: 0.92,
+          BREATH: 0.02,
           POP_FLASH_MS: 1100,
-          EDGE_REVEAL_SPREAD_MS: [40, 720],
+          EDGE_REVEAL_SPREAD_MS: [80, 900],
           REVEAL_VIEW_PAD_CELLS: 0.5,
-          PREWARM_MAX_TRACKED: 420,
+          PREWARM_MAX_TRACKED: 24,
+          REVEAL_PER_FRAME: 2,
+          ACTIVATE_PER_FRAME: 3,
+          DEACTIVATE_PER_FRAME: 4,
+          GAP_SCAN_MS: 90,
+          MAX_FRAME_DT: 32,
+          DECODE_WAIT_MS: 700,
+          KEEP_PAD_CELLS: 0.6,
+          RELEASE_PAD_CELLS: 1.25,
         };
         const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
         const lerp = (a, b, t) => a + (b - a) * t;
@@ -2781,38 +2782,55 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
 
         const world = document.createElement("div");
         world.className = "dyn-live-world";
-        world.style.gridTemplateColumns = `repeat(${CONFIG.COLS}, ${CONFIG.CELL_W}px)`;
-        world.style.gridAutoRows = `${CONFIG.CELL_H}px`;
-        world.style.gap = `${CONFIG.GAP}px`;
         world.style.width = `${WORLD_W}px`;
+        world.style.height = `${WORLD_H}px`;
 
         const grid = [];
         const tiles = [];
-        const frag = document.createDocumentFragment();
-        for (let r = 0; r < CONFIG.ROWS; r += 1) {
-          grid[r] = [];
-          for (let c = 0; c < CONFIG.COLS; c += 1) {
-            const el = document.createElement("div");
-            el.className = "dyn-live-tile is-dormant";
-            const img = document.createElement("img");
-            img.alt = "";
-            img.decoding = "async";
-            img.draggable = false;
-            el.appendChild(img);
-            frag.appendChild(el);
-            const rec = {
-              el, img, r, c,
-              active: false,
-              data: null,
-              pendingSrc: null,
-              edgePending: false,
-              revealAt: null,
-            };
-            grid[r][c] = rec;
-            tiles.push(rec);
-          }
+        function getCell(r, c, create) {
+          if (r < 0 || c < 0 || r >= CONFIG.ROWS || c >= CONFIG.COLS) return null;
+          if (!grid[r]) grid[r] = [];
+          if (grid[r][c]) return grid[r][c];
+          if (!create) return null;
+          const el = document.createElement("div");
+          el.className = "dyn-live-tile is-dormant is-offscreen";
+          el.style.left = c * TW + "px";
+          el.style.top = r * TH + "px";
+          el.style.width = CONFIG.CELL_W + "px";
+          el.style.height = CONFIG.CELL_H + "px";
+          const img = document.createElement("img");
+          img.alt = "";
+          img.decoding = "async";
+          img.draggable = false;
+          el.appendChild(img);
+          world.appendChild(el);
+          const rec = {
+            el, img, r, c,
+            active: false,
+            data: null,
+            pendingSrc: null,
+            edgePending: false,
+            revealAt: null,
+            offscreen: true,
+          };
+          grid[r][c] = rec;
+          tiles.push(rec);
+          return rec;
         }
-        world.appendChild(frag);
+        function releaseCell(rec) {
+          if (!rec) return;
+          const ai = activateQ.indexOf(rec);
+          if (ai !== -1) activateQ.splice(ai, 1);
+          const di = deactivateQ.indexOf(rec);
+          if (di !== -1) deactivateQ.splice(di, 1);
+          const pi = pendingReveal.indexOf(rec);
+          if (pi !== -1) pendingReveal.splice(pi, 1);
+          deactivateTile(rec);
+          if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+          if (grid[rec.r]) grid[rec.r][rec.c] = null;
+          const idx = tiles.indexOf(rec);
+          if (idx !== -1) tiles.splice(idx, 1);
+        }
         root.appendChild(world);
         const vignette = document.createElement("div");
         vignette.className = "dyn-live-vignette";
@@ -2829,8 +2847,14 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
         let activeCount = 0;
         let lastDir = null;
         let pendingReveal = [];
+        const activateQ = [];
+        const deactivateQ = [];
         const segQueue = [];
         let curSeg = null;
+        let lastTickNow = 0;
+        let segProgress = 0;
+        let lastGapScan = 0;
+        let lastCamCell = { c: -1, r: -1, s: 0 };
 
         function refreshDeck() {
           deck = shuffle(uniqueList(state.poolRef));
@@ -2865,12 +2889,87 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
           else cy = WORLD_H / 2;
           return [cx, cy];
         }
+        function transformFor(cx, cy, s) {
+          return `translate3d(${vw / 2 - cx * s}px, ${vh / 2 - cy * s}px, 0) scale(${s})`;
+        }
+        function poseAt(seg, t) {
+          const u = clamp(t, 0, 1);
+          const p = easeInOutSine(u);
+          let cx = lerp(seg.from.cx, seg.to.cx, p);
+          let cy = lerp(seg.from.cy, seg.to.cy, p);
+          let s;
+          if (seg.arc) {
+            const sMid = Math.min(seg.from.s, seg.to.s) * CONFIG.ARC_DIP;
+            if (u < 0.5) s = lerp(seg.from.s, sMid, easeInOutSine(u / 0.5));
+            else s = lerp(sMid, seg.to.s, easeInOutSine((u - 0.5) / 0.5));
+          } else {
+            const breath = 1 + Math.sin(u * Math.PI) * CONFIG.BREATH;
+            s = lerp(seg.from.s, seg.to.s, easeInOutSine(u)) * breath;
+          }
+          s = clampScale(s);
+          [cx, cy] = clampCenter(cx, cy, s);
+          return { cx, cy, s };
+        }
         function applyCam() {
-          world.style.transform =
-            `translate3d(${vw / 2 - cam.cx * cam.s}px, ${vh / 2 - cam.cy * cam.s}px, 0) scale(${cam.s})`;
+          if (state.camAnim) return;
+          world.style.transform = transformFor(cam.cx, cam.cy, cam.s);
+        }
+        function cancelCamAnim() {
+          if (!state.camAnim) return;
+          try {
+            state.camAnim.cancel();
+          } catch {
+            /* ignore */
+          }
+          state.camAnim = null;
+        }
+        function playCamSeg(seg) {
+          cancelCamAnim();
+          if (!seg || !seg.from || !seg.to) return;
+          const keys = [];
+          const steps = 12;
+          for (let i = 0; i <= steps; i += 1) {
+            const u = i / steps;
+            const pose = poseAt(seg, u);
+            keys.push({ transform: transformFor(pose.cx, pose.cy, pose.s), offset: u });
+          }
+          if (typeof world.animate === "function") {
+            world.style.transform = keys[0].transform;
+            const anim = world.animate(keys, {
+              duration: Math.max(16, seg.dur),
+              easing: "linear",
+              fill: "forwards",
+            });
+            state.camAnim = anim;
+            anim.onfinish = () => {
+              if (state.stopped || curSeg !== seg) return;
+              const end = poseAt(seg, 1);
+              cam.cx = end.cx;
+              cam.cy = end.cy;
+              cam.s = end.s;
+              if (seg.onEnd) seg.onEnd();
+              curSeg = null;
+              segProgress = 0;
+            };
+            return;
+          }
+          applyCam();
+        }
+        const waitingSrc = [];
+        function pageReady() {
+          return document.readyState === "complete";
+        }
+        function flushWaitingSrc() {
+          const pending = waitingSrc.splice(0, waitingSrc.length);
+          pending.forEach((rec) => {
+            if (rec && rec.img && rec.pendingSrc) rec.img.src = rec.pendingSrc;
+          });
+        }
+        if (!pageReady()) {
+          window.addEventListener("load", flushWaitingSrc, { once: true });
         }
         function prewarmSrc(src) {
-          if (!src || prewarmCache.has(src)) return;
+          if (!pageReady() || !src || prewarmCache.has(src)) return;
           const probe = new Image();
           probe.decoding = "async";
           probe.src = src;
@@ -2888,6 +2987,37 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
             y: r * TH + CONFIG.CELL_H / 2,
           };
         }
+        function photoKey(src) {
+          return String(src || "").split("?")[0];
+        }
+        function setTileSrc(rec, src) {
+          if (!rec || !rec.img || !src) return;
+          if ((rec.img.getAttribute("src") || "") === src) return;
+          rec.pendingSrc = src;
+          if (!pageReady()) {
+            if (waitingSrc.indexOf(rec) === -1) waitingSrc.push(rec);
+            return;
+          }
+          rec.img.src = src;
+        }
+        function retargetPoolUrls(pool) {
+          const byKey = new Map();
+          uniqueList(pool).forEach((src) => {
+            if (src) byKey.set(photoKey(src), src);
+          });
+          deck = deck.map((src) => {
+            const next = byKey.get(photoKey(src));
+            return next && next !== src ? next : src;
+          });
+          tiles.forEach((rec) => {
+            if (!rec.data) return;
+            const next = byKey.get(photoKey(rec.data));
+            if (!next || next === rec.data) return;
+            rec.data = next;
+            rec.pendingSrc = next;
+            if (rec.img.getAttribute("src")) setTileSrc(rec, next);
+          });
+        }
         function nextImage(avoidSet) {
           if (!deck.length) refreshDeck();
           if (!deck.length) return "";
@@ -2904,7 +3034,7 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
         function neighborAvoidSet(r, c) {
           const out = new Set();
           [[r, c - 1], [r, c + 1], [r - 1, c], [r + 1, c]].forEach(([rr, cc]) => {
-            const rec = grid[rr] && grid[rr][cc];
+            const rec = getCell(rr, cc, false);
             if (rec && rec.data) out.add(rec.data);
           });
           return out;
@@ -2914,7 +3044,7 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
           rec.data = src;
           rec.pendingSrc = src;
           rec.decoded = !src;
-          if (src) {
+          if (src && deferSet) {
             prewarmSrc(src);
             const warmed = prewarmCache.get(src);
             if (warmed && typeof warmed.then === "function") {
@@ -2923,7 +3053,7 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
               });
             }
           }
-          if (!deferSet && src) rec.img.src = src;
+          if (!deferSet && src) setTileSrc(rec, src);
         }
         function activateTile(rec, pending) {
           if (!rec.active) activeCount += 1;
@@ -2950,13 +3080,17 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
           rec.pendingSrc = null;
           rec.edgePending = false;
           rec.revealAt = null;
+          rec.decoded = false;
+          rec.wantPending = false;
+          rec.offscreen = true;
+          rec.el.classList.add("is-offscreen");
           rec.img.removeAttribute("src");
         }
         function revealTile(rec) {
           if (!rec.active || !rec.edgePending) return false;
           if (!tileInView(rec, CONFIG.REVEAL_VIEW_PAD_CELLS)) return false;
           if (rec.pendingSrc && rec.img.getAttribute("src") !== rec.pendingSrc) {
-            rec.img.src = rec.pendingSrc;
+            setTileSrc(rec, rec.pendingSrc);
           }
           rec.el.classList.remove("is-pending");
           rec.edgePending = false;
@@ -2974,7 +3108,7 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
           cluster.maxR = clamp(midR + CONFIG.START_CLUSTER_ROW_RADIUS, 0, CONFIG.ROWS - 1);
           for (let r = cluster.minR; r <= cluster.maxR; r += 1) {
             for (let c = cluster.minC; c <= cluster.maxC; c += 1) {
-              activateTile(grid[r][c], false);
+              activateTile(getCell(r, c, true), false);
             }
           }
         }
@@ -2983,73 +3117,92 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
           if (direction === "left") {
             const c0 = cluster.maxC - strip + 1;
             for (let c = c0; c <= cluster.maxC; c += 1) {
-              for (let r = cluster.minR; r <= cluster.maxR; r += 1) gone.push(grid[r][c]);
+              for (let r = cluster.minR; r <= cluster.maxR; r += 1) {
+                const rec = getCell(r, c, false);
+                if (rec) gone.push(rec);
+              }
             }
             cluster.maxC = Math.max(cluster.minC, cluster.maxC - strip);
           } else if (direction === "right") {
             const c1 = cluster.minC + strip - 1;
             for (let c = cluster.minC; c <= c1; c += 1) {
-              for (let r = cluster.minR; r <= cluster.maxR; r += 1) gone.push(grid[r][c]);
+              for (let r = cluster.minR; r <= cluster.maxR; r += 1) {
+                const rec = getCell(r, c, false);
+                if (rec) gone.push(rec);
+              }
             }
             cluster.minC = Math.min(cluster.maxC, cluster.minC + strip);
           } else if (direction === "up") {
             const r0 = cluster.maxR - strip + 1;
             for (let r = r0; r <= cluster.maxR; r += 1) {
-              for (let c = cluster.minC; c <= cluster.maxC; c += 1) gone.push(grid[r][c]);
+              for (let c = cluster.minC; c <= cluster.maxC; c += 1) {
+                const rec = getCell(r, c, false);
+                if (rec) gone.push(rec);
+              }
             }
             cluster.maxR = Math.max(cluster.minR, cluster.maxR - strip);
           } else {
             const r1 = cluster.minR + strip - 1;
             for (let r = cluster.minR; r <= r1; r += 1) {
-              for (let c = cluster.minC; c <= cluster.maxC; c += 1) gone.push(grid[r][c]);
+              for (let c = cluster.minC; c <= cluster.maxC; c += 1) {
+                const rec = getCell(r, c, false);
+                if (rec) gone.push(rec);
+              }
             }
             cluster.minR = Math.min(cluster.maxR, cluster.minR + strip);
           }
-          gone.forEach(deactivateTile);
+          gone.forEach((rec) => {
+            if (rec && !tileInView(rec, CONFIG.KEEP_PAD_CELLS)) queueDeactivate(rec);
+          });
         }
         function expandAtEdge(direction, strip) {
           const born = [];
+          const view = visibleBounds(cam.cx, cam.cy, cam.s, CONFIG.KEEP_PAD_CELLS);
+          function spawn(r, c) {
+            if (born.length >= CONFIG.EXPAND_MAX_BORN) return;
+            const rec = getCell(r, c, true);
+            if (!rec) return;
+            queueActivate(rec, true);
+            born.push(rec);
+          }
           if (direction === "left") {
             const newMin = Math.max(0, cluster.minC - strip);
             for (let c = newMin; c < cluster.minC; c += 1) {
-              for (let r = cluster.minR; r <= cluster.maxR; r += 1) {
-                activateTile(grid[r][c], true);
-                born.push(grid[r][c]);
-              }
+              for (let r = view.minR; r <= view.maxR; r += 1) spawn(r, c);
             }
             cluster.minC = newMin;
           } else if (direction === "right") {
             const newMax = Math.min(CONFIG.COLS - 1, cluster.maxC + strip);
             for (let c = cluster.maxC + 1; c <= newMax; c += 1) {
-              for (let r = cluster.minR; r <= cluster.maxR; r += 1) {
-                activateTile(grid[r][c], true);
-                born.push(grid[r][c]);
-              }
+              for (let r = view.minR; r <= view.maxR; r += 1) spawn(r, c);
             }
             cluster.maxC = newMax;
           } else if (direction === "up") {
             const newMin = Math.max(0, cluster.minR - strip);
             for (let r = newMin; r < cluster.minR; r += 1) {
-              for (let c = cluster.minC; c <= cluster.maxC; c += 1) {
-                activateTile(grid[r][c], true);
-                born.push(grid[r][c]);
-              }
+              for (let c = view.minC; c <= view.maxC; c += 1) spawn(r, c);
             }
             cluster.minR = newMin;
           } else {
             const newMax = Math.min(CONFIG.ROWS - 1, cluster.maxR + strip);
             for (let r = cluster.maxR + 1; r <= newMax; r += 1) {
-              for (let c = cluster.minC; c <= cluster.maxC; c += 1) {
-                activateTile(grid[r][c], true);
-                born.push(grid[r][c]);
-              }
+              for (let c = view.minC; c <= view.maxC; c += 1) spawn(r, c);
             }
             cluster.maxR = newMax;
           }
           return born;
         }
         function pruneToBudget(direction) {
-          while (activeCount > CONFIG.ACTIVE_BUDGET) pruneOpposite(direction, 1);
+          let projected = activeCount - deactivateQ.length + activateQ.length;
+          let guard = 48;
+          while (projected > CONFIG.ACTIVE_BUDGET && guard > 0) {
+            const before = deactivateQ.length;
+            pruneOpposite(direction, 1);
+            const added = deactivateQ.length - before;
+            if (!added) break;
+            projected -= added;
+            guard -= 1;
+          }
         }
         function tileInView(rec, pad) {
           const extra = pad || 0;
@@ -3079,18 +3232,34 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
           if (!rec || !rec.edgePending) return;
           if (pendingReveal.indexOf(rec) === -1) pendingReveal.push(rec);
         }
+        function queueActivate(rec, pending) {
+          if (!rec) return;
+          if (rec.active) {
+            if (pending && rec.edgePending) queuePending(rec);
+            return;
+          }
+          rec.wantPending = pending;
+          if (pending) rec.edgePending = true;
+          const di = deactivateQ.indexOf(rec);
+          if (di !== -1) deactivateQ.splice(di, 1);
+          if (activateQ.indexOf(rec) === -1) activateQ.push(rec);
+          if (pending) queuePending(rec);
+        }
+        function queueDeactivate(rec) {
+          if (!rec) return;
+          const ai = activateQ.indexOf(rec);
+          if (ai !== -1) activateQ.splice(ai, 1);
+          if (!rec.active) return;
+          if (deactivateQ.indexOf(rec) === -1) deactivateQ.push(rec);
+        }
         function stageVisibleGaps() {
           const b = visibleBounds(cam.cx, cam.cy, cam.s, 0.85);
           for (let r = b.minR; r <= b.maxR; r += 1) {
             for (let c = b.minC; c <= b.maxC; c += 1) {
-              const rec = grid[r] && grid[r][c];
+              const rec = getCell(r, c, true);
               if (!rec) continue;
-              if (!rec.active) {
-                activateTile(rec, true);
-                queuePending(rec);
-              } else if (rec.edgePending) {
-                queuePending(rec);
-              }
+              if (!rec.active) queueActivate(rec, true);
+              else if (rec.edgePending) queuePending(rec);
             }
           }
           cluster.minC = Math.min(cluster.minC, b.minC);
@@ -3103,26 +3272,100 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
             direction === "left" || direction === "right"
               ? vw / (zoomed * TW)
               : vh / (zoomed * TH);
-          return clamp(Math.ceil(along - keepOld + 1.5), CONFIG.EXPAND_STRIP[0], 14);
+          return clamp(Math.ceil(along - keepOld + 1.5), CONFIG.EXPAND_STRIP[0], CONFIG.EXPAND_STRIP[1]);
         }
         function processEdgeReveals(now) {
-          stageVisibleGaps();
+          const camCellC = cam.cx / TW;
+          const camCellR = cam.cy / TH;
+          const moved =
+            Math.abs(camCellC - lastCamCell.c) > 0.15 ||
+            Math.abs(camCellR - lastCamCell.r) > 0.15 ||
+            Math.abs(cam.s - lastCamCell.s) > 0.02;
+          if (moved || now - lastGapScan >= CONFIG.GAP_SCAN_MS) {
+            lastGapScan = now;
+            lastCamCell = { c: camCellC, r: camCellR, s: cam.s };
+            stageVisibleGaps();
+          }
           if (!pendingReveal.length) return;
+          let revealed = 0;
           const remaining = [];
           pendingReveal.forEach((rec) => {
-            if (!rec.active || !rec.edgePending) return;
+            if (!rec.edgePending) return;
+            if (!rec.active) {
+              remaining.push(rec);
+              return;
+            }
             if (rec.revealAt == null) {
               if (tileInView(rec, CONFIG.REVEAL_VIEW_PAD_CELLS)) {
                 rec.revealAt = now + rand(CONFIG.EDGE_REVEAL_SPREAD_MS[0], CONFIG.EDGE_REVEAL_SPREAD_MS[1]);
               }
               remaining.push(rec);
             } else if (now >= rec.revealAt) {
-              if (!revealTile(rec)) remaining.push(rec);
+              if (revealed >= CONFIG.REVEAL_PER_FRAME) {
+                remaining.push(rec);
+                return;
+              }
+              if (
+                rec.pendingSrc &&
+                !rec.decoded &&
+                now < rec.revealAt + CONFIG.DECODE_WAIT_MS
+              ) {
+                remaining.push(rec);
+                return;
+              }
+              if (revealTile(rec)) revealed += 1;
+              else remaining.push(rec);
             } else {
               remaining.push(rec);
             }
           });
           pendingReveal = remaining;
+        }
+        function drainWork(now) {
+          let n = 0;
+          while (n < CONFIG.DEACTIVATE_PER_FRAME && deactivateQ.length) {
+            deactivateTile(deactivateQ.shift());
+            n += 1;
+          }
+          n = 0;
+          while (n < CONFIG.ACTIVATE_PER_FRAME && activateQ.length) {
+            const rec = activateQ.shift();
+            if (!rec || rec.active) continue;
+            activateTile(rec, rec.wantPending !== false);
+            if (rec.edgePending) queuePending(rec);
+            n += 1;
+          }
+          processEdgeReveals(now);
+          cullOffscreen();
+        }
+        let lastCullKey = "";
+        function cullOffscreen() {
+          const keep = visibleBounds(cam.cx, cam.cy, cam.s, CONFIG.KEEP_PAD_CELLS);
+          const drop = visibleBounds(cam.cx, cam.cy, cam.s, CONFIG.RELEASE_PAD_CELLS);
+          const key = keep.minC + ":" + keep.maxC + ":" + keep.minR + ":" + keep.maxR + ":" + tiles.length;
+          if (key === lastCullKey) return;
+          lastCullKey = key;
+          for (let i = tiles.length - 1; i >= 0; i -= 1) {
+            const rec = tiles[i];
+            const far =
+              rec.r < drop.minR ||
+              rec.r > drop.maxR ||
+              rec.c < drop.minC ||
+              rec.c > drop.maxC;
+            if (far) {
+              releaseCell(rec);
+              continue;
+            }
+            const hide =
+              !rec.active ||
+              rec.r < keep.minR ||
+              rec.r > keep.maxR ||
+              rec.c < keep.minC ||
+              rec.c > keep.maxC;
+            if (rec.offscreen === hide) continue;
+            rec.offscreen = hide;
+            rec.el.classList.toggle("is-offscreen", hide);
+          }
         }
         function clusterCenter() {
           const minPt = cellCenter(cluster.minR, cluster.minC);
@@ -3186,7 +3429,6 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
             arc: true,
             onStart() {
               pendingReveal = expandAtEdge(dir, strip);
-              stageVisibleGaps();
             },
           });
           segQueue.push({
@@ -3196,11 +3438,9 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
             to: { cx: edgeCx, cy: edgeCy, s: zoomed },
             arc: false,
             onEnd() {
-              stageVisibleGaps();
               pendingReveal.forEach((rec) => {
-                if (tileInView(rec, 1)) revealTile(rec);
+                if (rec.revealAt == null) rec.revealAt = lastTickNow;
               });
-              pendingReveal = pendingReveal.filter((rec) => rec.edgePending);
               pruneToBudget(dir);
             },
           });
@@ -3210,70 +3450,92 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
           if (!segQueue.length) planEdgeCycle();
           curSeg = segQueue.shift();
           curSeg.t0 = now;
+          segProgress = 0;
           if (curSeg.onStart) curSeg.onStart();
+          playCamSeg(curSeg);
         }
         function tick(now) {
           if (state.stopped) return;
+          const rawDt = lastTickNow ? now - lastTickNow : 16.67;
+          const dt = lastTickNow ? Math.min(rawDt, CONFIG.MAX_FRAME_DT) : 16.67;
+          lastTickNow = now;
           ensureSeg(now);
-          const t = clamp((now - curSeg.t0) / curSeg.dur, 0, 1);
-          const p = easeInOutCubic(t);
-          cam.cx = lerp(curSeg.from.cx, curSeg.to.cx, p);
-          cam.cy = lerp(curSeg.from.cy, curSeg.to.cy, p);
-          if (curSeg.arc) {
-            const sMid = Math.min(curSeg.from.s, curSeg.to.s) * CONFIG.ARC_DIP;
-            if (t < 0.5) cam.s = lerp(curSeg.from.s, sMid, easeInOutSine(t / 0.5));
-            else cam.s = lerp(sMid, curSeg.to.s, easeInOutSine((t - 0.5) / 0.5));
+          let t;
+          if (state.camAnim && curSeg) {
+            const ct = state.camAnim.currentTime;
+            t = clamp((typeof ct === "number" ? ct : 0) / Math.max(1, curSeg.dur), 0, 1);
           } else {
-            const breath = 1 + Math.sin(t * Math.PI) * CONFIG.BREATH;
-            cam.s = lerp(curSeg.from.s, curSeg.to.s, easeInOutSine(t)) * breath;
+            segProgress += dt / Math.max(1, curSeg.dur);
+            t = clamp(segProgress, 0, 1);
           }
-          cam.s = clampScale(cam.s);
-          [cam.cx, cam.cy] = clampCenter(cam.cx, cam.cy, cam.s);
-          applyCam();
-          if (curSeg.kind === "edge-approach" || curSeg.kind === "edge-hold") {
-            processEdgeReveals(now);
-          }
-          if (t >= 1) {
+          const pose = poseAt(curSeg, t);
+          cam.cx = pose.cx;
+          cam.cy = pose.cy;
+          cam.s = pose.s;
+          if (!state.camAnim) applyCam();
+          drainWork(now);
+          if (!state.camAnim && t >= 1) {
             if (curSeg.onEnd) curSeg.onEnd();
             curSeg = null;
+            segProgress = 0;
           }
           state.raf = window.requestAnimationFrame(tick);
         }
         function seedIfNeeded() {
           if (state.seeded || state.stopped) return;
           if (!uniqueList(state.poolRef).length) return;
+          vw = root.clientWidth || 1;
+          vh = root.clientHeight || 1;
+          if (vw < 80 || vh < 80) return;
           state.seeded = true;
           refreshDeck();
-          seedCenterCluster();
           const startScale = clampScale(pickViewScale());
-          const center = clusterCenter();
+          const midC = Math.floor(CONFIG.COLS / 2);
+          const midR = Math.floor(CONFIG.ROWS / 2);
+          const center = cellCenter(midR, midC);
           cam.s = startScale;
-          [cam.cx, cam.cy] = clampCenter(center.cx, center.cy, cam.s);
+          [cam.cx, cam.cy] = clampCenter(center.x, center.y, cam.s);
           applyCam();
-          const opening = visibleBounds(cam.cx, cam.cy, cam.s, 0.85);
+          const opening = visibleBounds(cam.cx, cam.cy, cam.s, 0.35);
+          cluster.minC = opening.minC;
+          cluster.maxC = opening.maxC;
+          cluster.minR = opening.minR;
+          cluster.maxR = opening.maxR;
           for (let r = opening.minR; r <= opening.maxR; r += 1) {
             for (let c = opening.minC; c <= opening.maxC; c += 1) {
-              const rec = grid[r] && grid[r][c];
-              if (rec && !rec.active) activateTile(rec, false);
+              queueActivate(getCell(r, c, true), false);
             }
           }
-          cluster.minC = Math.min(cluster.minC, opening.minC);
-          cluster.maxC = Math.max(cluster.maxC, opening.maxC);
-          cluster.minR = Math.min(cluster.minR, opening.minR);
-          cluster.maxR = Math.max(cluster.maxR, opening.maxR);
           later(state, () => {
             if (!state.stopped) state.raf = window.requestAnimationFrame(tick);
-          }, 850);
+          }, 200);
         }
 
         state.seedIfNeeded = seedIfNeeded;
+        state.retargetPoolUrls = retargetPoolUrls;
         if (typeof ResizeObserver !== "undefined") {
           state.ro = new ResizeObserver(() => {
             vw = root.clientWidth || 1;
             vh = root.clientHeight || 1;
-            cam.s = clampScale(cam.s);
-            [cam.cx, cam.cy] = clampCenter(cam.cx, cam.cy, cam.s);
-            applyCam();
+            if (!state.seeded) {
+              seedIfNeeded();
+              return;
+            }
+            if (curSeg && state.camAnim) {
+              const ct = state.camAnim.currentTime;
+              const u = clamp((typeof ct === "number" ? ct : 0) / Math.max(1, curSeg.dur), 0, 1);
+              const pose = poseAt(curSeg, u);
+              cam.cx = pose.cx;
+              cam.cy = pose.cy;
+              cam.s = pose.s;
+              curSeg.from = { cx: cam.cx, cy: cam.cy, s: cam.s };
+              curSeg.dur = Math.max(16, curSeg.dur * (1 - u));
+              playCamSeg(curSeg);
+            } else {
+              cam.s = clampScale(cam.s);
+              [cam.cx, cam.cy] = clampCenter(cam.cx, cam.cy, cam.s);
+              applyCam();
+            }
           });
           state.ro.observe(root);
         }
@@ -3284,10 +3546,21 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
       tick(root, pool, state) {
         if (!state) return;
         state.poolRef = pool;
+        if (typeof state.retargetPoolUrls === "function") state.retargetPoolUrls(pool);
         if (typeof state.seedIfNeeded === "function") state.seedIfNeeded();
       },
       unmount(root, state) {
-        if (state) state.stopped = true;
+        if (state) {
+          state.stopped = true;
+          if (state.camAnim) {
+            try {
+              state.camAnim.cancel();
+            } catch {
+              /* ignore */
+            }
+            state.camAnim = null;
+          }
+        }
         stopTimers(state);
       },
     },

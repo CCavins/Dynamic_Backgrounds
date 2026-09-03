@@ -304,7 +304,7 @@
           state.settings && state.settings.scale != null
             ? Number(state.settings.scale)
             : 1;
-        const s = Math.max(0.7, Math.min(1.5, scale || 1));
+        const s = Math.max(0.9, Math.min(1.5, scale || 1));
         const portrait = themeRoot.classList.contains("dyn-portrait");
         const base = portrait ? 18 : 11.8;
         themeRoot.style.setProperty("--sr-card-w", (base * s).toFixed(2) + "cqw");
