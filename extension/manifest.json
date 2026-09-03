@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dynamic Backgrounds",
-  "version": "1.30.3",
+  "version": "1.30.11",
   "minimum_chrome_version": "120",
   "description": "Apply a Dynamic Backgrounds iframe, mosaic themes, and message themes to matching output URLs.",
   "action": {

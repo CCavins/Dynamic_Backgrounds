@@ -199,6 +199,15 @@
     const now = collectUrls();
     if (now.length) rememberUrls(now);
 
+    // Photo Magic's one featured tile is not a mosaic set. Do not replace a
+    // confirmed classic/V2 mosaic pool with that single overlay.
+    const gridOn =
+      typeof rules.mosaicGridPresent === "function" ? rules.mosaicGridPresent() : now.length > 1;
+    if (now.length === 1 && lastConfirmed.length > 1 && !gridOn) {
+      restoreRemembered();
+      return { added: [], removed: [] };
+    }
+
     // A flaky collect (covers on, Vue swap, srcset-only) must not wipe photos
     // we already have. While a mosaic theme is on, Vixi often removes or hides
     // the live mosaic tiles entirely — keep the last confirmed pool.
@@ -1476,13 +1485,16 @@
         return;
       }
       const msgLayer =
-        document.querySelector(".capture-content-layer") ||
-        document.querySelector(".message-layer") ||
-        document.querySelector(".v2-message");
+        typeof rules.findMessageLayer === "function"
+          ? rules.findMessageLayer()
+          : document.querySelector(".capture-content-layer") ||
+            document.querySelector(".message-layer") ||
+            document.querySelector(".v2-message");
       const mosaicLayer =
-        document.querySelector(".mosaic-layout") ||
-        document.querySelector(".v2-mosaic-swap-tile") ||
-        document.querySelector(".v2-asset-tile");
+        typeof rules.findMosaicLayer === "function"
+          ? rules.findMosaicLayer()
+          : document.querySelector(".mosaic-layout") ||
+            document.querySelector(".v2-mosaic-swap-tile");
       const shellPresent = (el) => {
         if (!el) return false;
         try {

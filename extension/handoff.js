@@ -8,7 +8,9 @@
     "html.dyn-cover-message .capture-content-layer," +
     "html.dyn-cover-message .message-layer," +
     "html.dyn-cover-message .message-content," +
-    "html.dyn-cover-message .v2-message{" +
+    "html.dyn-cover-message .v2-message," +
+    "html.dyn-kind-message.dyn-cover-message .v2-text-tile," +
+    "html.dyn-kind-message.dyn-cover-message .v2-asset-tile:not(.v2-mosaic-face){" +
       "visibility:hidden!important;opacity:0!important;" +
     "}" +
     "html.dyn-kind-message.dyn-cover-message .output-app > img.fullscreen-asset:not([src*='playlist/cta'])," +
@@ -45,20 +47,32 @@
     "html.dyn-cover-mosaic .mosaic-image," +
     "html.dyn-cover-mosaic .v2-mosaic-swap-tile," +
     "html.dyn-cover-mosaic .v2-mosaic-face," +
-    "html.dyn-cover-mosaic .v2-asset-tile{" +
+    "html.dyn-cover-mosaic .mosaic-tile-slot .v2-asset-tile," +
+    "html.dyn-cover-mosaic .v2-mosaic-swap-tile .v2-asset-tile{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
-    "html.dyn-theme-on:not(.dyn-kind-native) .v2-qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .qr-code-wrapper:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .qr-code-img:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .v2-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .v2-logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .event-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .output-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .brand-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .v2-app-wrapper__logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .v2-qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .v2-qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .qr-code-wrapper:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .qr-code-wrapper:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .qr-code-img:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .qr-code-img:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .v2-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .v2-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .v2-logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .v2-logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .event-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .event-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .output-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .output-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .brand-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .brand-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .v2-app-wrapper__logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .v2-app-wrapper__logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
     "html.dyn-theme-on:not(.dyn-kind-native) .mosaic-layout > .asset-view:not(#dyn-theme-host *)," +
     "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message:not(:has(#dyn-message-theme.on)) .capture-content-layer," +
     "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message:not(:has(#dyn-message-theme.on)) .message-layer," +
@@ -142,20 +156,28 @@
     "#dyn-mosaic-theme:not(.dyn-show-qr) [data-qr] img,#dyn-mosaic-theme:not(.dyn-show-logo) [data-logo] img{" +
       "visibility:hidden!important;opacity:0!important;" +
     "}" +
-    "html.dyn-theme-on:not(.dyn-chrome-qr) .v2-qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-chrome-qr) .qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-chrome-qr) .qr-code-wrapper:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-chrome-qr) .qr-code-img:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-chrome-logo) .v2-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-chrome-logo) .v2-logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-chrome-logo) .event-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-chrome-logo) .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-chrome-logo) .output-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-chrome-logo) .brand-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-chrome-logo) .v2-app-wrapper__logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-show-bg) .v2-app-wrapper__bg-image," +
-    "html.dyn-theme-on:not(.dyn-kind-native):not(.dyn-show-bg):not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .output-wrapper > .asset-view," +
-    "html.dyn-theme-on:not(.dyn-kind-native):not(.dyn-show-bg):not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .output-app > .asset-view," +
+    "html.dyn-theme-on:not(.dyn-kind-native):not(.dyn-chrome-qr).dyn-kind-message .v2-qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native):not(.dyn-chrome-qr).dyn-kind-mosaic .v2-qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native):not(.dyn-chrome-qr).dyn-kind-message .qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native):not(.dyn-chrome-qr).dyn-kind-mosaic .qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native):not(.dyn-chrome-qr).dyn-kind-message .qr-code-wrapper:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native):not(.dyn-chrome-qr).dyn-kind-mosaic .qr-code-wrapper:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native):not(.dyn-chrome-qr).dyn-kind-message .qr-code-img:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native):not(.dyn-chrome-qr).dyn-kind-mosaic .qr-code-img:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-chrome-logo).dyn-kind-message .v2-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-chrome-logo).dyn-kind-mosaic .v2-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-chrome-logo).dyn-kind-message .v2-logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-chrome-logo).dyn-kind-mosaic .v2-logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-chrome-logo).dyn-kind-message .event-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-chrome-logo).dyn-kind-mosaic .event-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-chrome-logo).dyn-kind-message .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-chrome-logo).dyn-kind-mosaic .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-chrome-logo).dyn-kind-message .output-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-chrome-logo).dyn-kind-mosaic .output-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-chrome-logo).dyn-kind-message .brand-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-chrome-logo).dyn-kind-mosaic .brand-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-chrome-logo).dyn-kind-message .v2-app-wrapper__logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-chrome-logo).dyn-kind-mosaic .v2-app-wrapper__logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
     "html.dyn-cover-message:not(.dyn-kind-native) .output-app > .asset-view," +
     "html.dyn-theme-on.dyn-kind-mosaic:not(.dyn-show-bg) .v2-app-wrapper__bg-image," +
     "html.dyn-theme-on.dyn-kind-mosaic:not(.dyn-show-bg) .output-wrapper > .asset-view," +
@@ -252,6 +274,7 @@
     "html.dyn-hold.dyn-show-bg .output-app .message-layer," +
     "html.dyn-hold.dyn-show-bg .output-app .message-content," +
     "html.dyn-hold.dyn-show-bg .output-app .v2-message," +
+    "html.dyn-hold.dyn-show-bg .output-app .v2-text-tile," +
     "html.dyn-hold.dyn-show-bg .output-app .mosaic-layout," +
     "html.dyn-hold.dyn-show-bg .output-app .mosaic-tile-slot," +
     "html.dyn-hold.dyn-show-bg .output-app .mosaic-asset," +
@@ -743,9 +766,10 @@
     }
     const mosaicN = typeof rules.mosaicContentCount === "function" ? rules.mosaicContentCount() : 0;
     const mosaicLayer =
-      document.querySelector(".mosaic-layout") ||
-      document.querySelector(".v2-mosaic-swap-tile") ||
-      document.querySelector(".v2-asset-tile");
+      typeof rules.findMosaicLayer === "function"
+        ? rules.findMosaicLayer()
+        : document.querySelector(".mosaic-layout") ||
+          document.querySelector(".v2-mosaic-swap-tile");
     const mosPresent = layerLooksPresent(mosaicLayer);
     const srcs = mosaicSrcSignature();
     const next = srcs.join("\n");
@@ -979,7 +1003,13 @@
     // (that painted show-background / QR / logo onto the native item).
     if (live === "native") return "";
     if (leftoverMosaicShouldYield()) {
-      if (hasMsg && msgThemeOn && document.querySelector(".capture-content-layer, .message-layer, .v2-message")) {
+      if (
+        hasMsg &&
+        msgThemeOn &&
+        (typeof rules.findMessageLayer === "function"
+          ? rules.findMessageLayer()
+          : document.querySelector(".capture-content-layer, .message-layer, .v2-message"))
+      ) {
         return "message";
       }
       return "";
@@ -999,7 +1029,13 @@
     ) {
       return "mosaic";
     }
-    if (hasMsg && msgThemeOn && document.querySelector(".capture-content-layer, .message-layer, .v2-message")) {
+    if (
+      hasMsg &&
+      msgThemeOn &&
+      (typeof rules.findMessageLayer === "function"
+        ? rules.findMessageLayer()
+        : document.querySelector(".capture-content-layer, .message-layer, .v2-message"))
+    ) {
       return "message";
     }
     if (mosaicN > 0 && mosThemeOn) return "mosaic";
@@ -1101,7 +1137,8 @@
       (live === "message" && !msgThemeOn) ||
       (live === "leaderboard" && !lbThemeOn);
     const nativePassthrough =
-      live === "native" ||
+      (live === "native" &&
+        !(typeof rules.v2MessageHoldActive === "function" && rules.v2MessageHoldActive())) ||
       hardCtaOrStream ||
       resultBarPolling;
     // Only a live CTA/stream/polling/LEADERS-off beat stands the theme down.
@@ -1117,6 +1154,13 @@
       }
       stoodDown = true;
       lastCoverDecision = "";
+      if (
+        enabled &&
+        typeof rules.pageLooksLikePhotoMagic === "function" &&
+        rules.pageLooksLikePhotoMagic()
+      ) {
+        html.classList.add("dyn-kind-native");
+      }
       return;
     }
     if (!themedBeat) {
@@ -1335,13 +1379,16 @@
     const overlayMos = Boolean(rules.themeOverlayLive && rules.themeOverlayLive("mosaic"));
     const overlayMsg = Boolean(rules.themeOverlayLive && rules.themeOverlayLive("message"));
     const msgLayer =
-      document.querySelector(".capture-content-layer") ||
-      document.querySelector(".message-layer") ||
-      document.querySelector(".v2-message");
+      typeof rules.findMessageLayer === "function"
+        ? rules.findMessageLayer()
+        : document.querySelector(".capture-content-layer") ||
+          document.querySelector(".message-layer") ||
+          document.querySelector(".v2-message");
     const mosaicLayer =
-      document.querySelector(".mosaic-layout") ||
-      document.querySelector(".v2-mosaic-swap-tile") ||
-      document.querySelector(".v2-asset-tile");
+      typeof rules.findMosaicLayer === "function"
+        ? rules.findMosaicLayer()
+        : document.querySelector(".mosaic-layout") ||
+          document.querySelector(".v2-mosaic-swap-tile");
     const msgDisp = layerLooksPresent(msgLayer);
     const mosDisp = layerLooksPresent(mosaicLayer);
     const capKey = captureKeyOf(cap);
@@ -1410,6 +1457,17 @@
     // Overlay .on is leftover from the first beat. A CTA parks both overlays,
     // which is why that was the only switch. Vixi's own shells / a new capture
     // must be able to win without that reset.
+    // Photo Magic: do not theme, and do not cover QR / logo / background.
+    if (
+      typeof rules.pageLooksLikePhotoMagic === "function" &&
+      rules.pageLooksLikePhotoMagic() &&
+      !(typeof rules.v2MessageHoldActive === "function" && rules.v2MessageHoldActive())
+    ) {
+      leftoverMsgKey = "";
+      clearNativeHold();
+      lastLiveWhy = "photoMagic";
+      return "native";
+    }
     if (messageOnly) {
       leftoverMsgKey = "";
       lastLiveWhy = "messageOnly";

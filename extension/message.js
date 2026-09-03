@@ -497,9 +497,13 @@
       return;
     }
     if (kind === "native") {
-      parkOverlay("native");
-      handoff.applyCovers(settings);
-      return;
+      if (rules.v2MessageHoldActive && rules.v2MessageHoldActive()) {
+        kind = "message";
+      } else {
+        parkOverlay("native");
+        handoff.applyCovers(settings);
+        return;
+      }
     }
     if (kind === "leaderboard") {
       parkOverlay();

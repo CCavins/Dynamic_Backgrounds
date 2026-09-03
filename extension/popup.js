@@ -1309,7 +1309,7 @@
       String((stageRatioH && stageRatioH.value) || "").trim();
     const next = rulesApi.normalizeStageAspect(raw);
     if (next !== "vixi" && next !== "auto") return next;
-    return (cachedSettings && cachedSettings.stageAspect) || "16:9";
+    return (cachedSettings && cachedSettings.stageAspect) || "vixi";
   }
 
   function fillRatioFields(mode) {

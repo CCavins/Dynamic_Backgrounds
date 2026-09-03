@@ -29,7 +29,6 @@
 
   const STAGE_ASPECT_PRESETS = [
     { value: "vixi", label: "Match Vixi" },
-    { value: "auto", label: "Match the window" },
     { value: "16:9", label: "16:9 landscape" },
     { value: "9:16", label: "9:16 portrait" },
     { value: "4:3", label: "4:3 landscape" },
@@ -41,6 +40,7 @@
     { value: "4:5", label: "4:5 portrait" },
     { value: "21:9", label: "21:9 ultrawide" },
     { value: "9:21", label: "9:21 tall" },
+    { value: "auto", label: "Match the window" },
   ];
   const STAGE_ASPECTS = STAGE_ASPECT_PRESETS.map((item) => item.value);
   const DESIGN_LONG_EDGE = 1920;
@@ -1332,8 +1332,11 @@
   ].join(", ");
   const MESSAGE_CHROME_SCOPE =
     ".message-layer, .capture-content-layer, .message-content, .v2-message";
-  const MOSAIC_CHROME_SCOPE =
-    ".mosaic-layout, .mosaic-tile-slot, .mosaic-asset, .v2-mosaic-swap-tile, .v2-mosaic-face, .v2-asset-tile";
+  const MOSAIC_GRID_SCOPE =
+    ".mosaic-layout, .mosaic-tile-slot, .mosaic-asset, .v2-mosaic-swap-tile, .v2-mosaic-face";
+  // Photo Magic also uses .v2-asset-tile (one featured photo). Chrome
+  // classification can still see that tile; mosaic *beats* need a real grid.
+  const MOSAIC_CHROME_SCOPE = MOSAIC_GRID_SCOPE + ", .v2-asset-tile";
   const lastBrand = {
     message: { qr: null, logo: null },
     mosaic: { qr: null, logo: null },
@@ -1400,11 +1403,12 @@
       "left:0!important;top:0!important;right:0!important;bottom:0!important;" +
       "margin:0!important;" +
     "}" +
-    "html.dyn-stage-forced [data-dyn-canvas-outer] .v2-app-wrapper," +
-    "html.dyn-stage-forced [data-dyn-canvas-outer] .v2-scene-transition," +
-    "html.dyn-stage-forced [data-dyn-canvas-outer] .v2-container," +
+    "html.dyn-stage-forced.dyn-theme-on [data-dyn-canvas-outer] .v2-app-wrapper," +
+    "html.dyn-stage-forced.dyn-theme-on [data-dyn-canvas-outer] .v2-scene-transition," +
+    "html.dyn-stage-forced.dyn-theme-on [data-dyn-canvas-outer] .v2-container," +
     "html.dyn-stage-forced [data-dyn-canvas-outer] .output-app," +
-    "html.dyn-stage-forced [data-dyn-canvas-fill]{" +
+    "html.dyn-stage-forced.dyn-theme-on [data-dyn-canvas-fill]," +
+    "html.dyn-stage-forced [data-dyn-canvas-fill]:not(.v2-app-wrapper){" +
       "position:absolute!important;" +
       "inset:0!important;" +
       "left:0!important;top:0!important;right:0!important;bottom:0!important;" +
@@ -1412,6 +1416,16 @@
       "max-width:none!important;max-height:none!important;" +
       "transform:none!important;" +
       "margin:0!important;" +
+    "}" +
+    "html.dyn-stage-forced.dyn-v2-native-stage [data-dyn-canvas-outer] .v2-app-wrapper{" +
+      "position:absolute!important;" +
+      "left:0!important;top:0!important;right:auto!important;bottom:auto!important;" +
+      "width:var(--dyn-v2-dw,1920px)!important;" +
+      "height:var(--dyn-v2-dh,1080px)!important;" +
+      "max-width:none!important;max-height:none!important;" +
+      "margin:0!important;" +
+      "transform-origin:left top!important;" +
+      "transform:translate(var(--dyn-v2-tx,0px),var(--dyn-v2-ty,0px)) scale(var(--dyn-v2-sx,1),var(--dyn-v2-sy,1))!important;" +
     "}" +
     "html.dyn-stage-forced [data-dyn-canvas-fill] .output-stream-wrapper," +
     "html.dyn-stage-forced [data-dyn-canvas-fill] .output-stream-wrapper video," +
@@ -1463,18 +1477,23 @@
   }
 
   function findOuterCanvas() {
-    // Vixi v2 scales the live scene internally — never letterbox the wrapper.
-    if (document.querySelector(".v2-app-wrapper")) return null;
+    // V2 letterboxes .output-wrapper, then scales .v2-app-wrapper inside it.
+    // Stage the letterbox box — never the 1920×1080 scene node.
     const page = document.querySelector(".output-wrapper");
     if (page) return page;
+    const v2 = document.querySelector(".v2-app-wrapper");
+    if (v2 && v2.parentElement) return v2.parentElement;
     return findWrapper();
   }
 
   function markCanvasOuter(outer) {
     if (!outer) return;
-    // Vixi v2 scales and positions the live scene via inline styles on this node.
-    // Never attach canvas guards or strip styles here — it breaks polling/CTA layouts.
-    if (outer.classList && outer.classList.contains("v2-app-wrapper")) return;
+    // Vixi v2 writes width/height/transform on this node. Stage its parent
+    // instead — stripping styles here breaks polling/CTA and Photo Magic.
+    if (outer.classList && outer.classList.contains("v2-app-wrapper")) {
+      if (outer.parentElement) markCanvasOuter(outer.parentElement);
+      return;
+    }
     clearCanvasInline(outer);
     outer.setAttribute("data-dyn-canvas-outer", "1");
     outer.removeAttribute("data-dyn-canvas-fill");
@@ -1484,6 +1503,9 @@
       clearCanvasInline(el);
       el.setAttribute("data-dyn-canvas-fill", "1");
       bindCanvasGuard(el);
+    });
+    outer.querySelectorAll(".v2-app-wrapper").forEach((el) => {
+      el.setAttribute("data-dyn-canvas-fill", "1");
     });
   }
 
@@ -1504,9 +1526,15 @@
       clearCanvasInline(el);
     });
     const html = document.documentElement;
-    html.classList.remove("dyn-stage-forced");
+    html.classList.remove("dyn-stage-forced", "dyn-v2-native-stage");
     html.style.removeProperty("--dyn-aw");
     html.style.removeProperty("--dyn-ah");
+    html.style.removeProperty("--dyn-v2-dw");
+    html.style.removeProperty("--dyn-v2-dh");
+    html.style.removeProperty("--dyn-v2-sx");
+    html.style.removeProperty("--dyn-v2-sy");
+    html.style.removeProperty("--dyn-v2-tx");
+    html.style.removeProperty("--dyn-v2-ty");
     delete html.dataset.stageAspect;
   }
 
@@ -1518,11 +1546,7 @@
       if (raf) return;
       raf = window.requestAnimationFrame(() => {
         raf = 0;
-        const handoff = root.BGThemeHandoff;
-        if (
-          pageLooksLikePassthrough() ||
-          (handoff && typeof handoff.liveKind === "function" && handoff.liveKind() === "native")
-        ) {
+        if (leaveVixiStageAlone()) {
           resetOutputCanvas();
           return;
         }
@@ -1531,6 +1555,55 @@
     };
     window.addEventListener("resize", refit);
     if (window.visualViewport) window.visualViewport.addEventListener("resize", refit);
+  }
+
+  function leaveVixiStageAlone() {
+    if (pageLooksLikePhotoMagic()) return true;
+    if (pageLooksLikeResultBarPolling()) return true;
+    if (pageLooksLikeHardNative()) return true;
+    if (pageLooksLikePassthrough()) return true;
+    const handoff = root.BGThemeHandoff;
+    if (handoff && typeof handoff.liveKind === "function" && handoff.liveKind() === "native") {
+      return true;
+    }
+    return false;
+  }
+
+  function applyV2NativeStageScale(outer, mode) {
+    const html = document.documentElement;
+    const v2 = document.querySelector(".v2-app-wrapper");
+    const themed = html.classList.contains("dyn-theme-on");
+    if (themed || !v2) {
+      html.classList.remove("dyn-v2-native-stage");
+      html.style.removeProperty("--dyn-v2-dw");
+      html.style.removeProperty("--dyn-v2-dh");
+      html.style.removeProperty("--dyn-v2-sx");
+      html.style.removeProperty("--dyn-v2-sy");
+      html.style.removeProperty("--dyn-v2-tx");
+      html.style.removeProperty("--dyn-v2-ty");
+      return;
+    }
+    const design = readVixiDesignSize(v2);
+    const { vw, vh } = viewportSize();
+    let boxW = vw;
+    let boxH = vh;
+    if (mode !== "auto") {
+      const ratio =
+        mode === "vixi" ? readVixiAspect(outer || v2) : parseStageAspect(mode);
+      if (ratio && ratio.aw && ratio.ah) {
+        const fit = containFit(vw, vh, ratio.aw, ratio.ah);
+        boxW = fit.w;
+        boxH = fit.h;
+      }
+    }
+    const s = Math.max(boxW / design.dw, boxH / design.dh);
+    html.classList.add("dyn-v2-native-stage");
+    html.style.setProperty("--dyn-v2-dw", design.dw + "px");
+    html.style.setProperty("--dyn-v2-dh", design.dh + "px");
+    html.style.setProperty("--dyn-v2-sx", String(s));
+    html.style.setProperty("--dyn-v2-sy", String(s));
+    html.style.setProperty("--dyn-v2-tx", (boxW - design.dw * s) / 2 + "px");
+    html.style.setProperty("--dyn-v2-ty", (boxH - design.dh * s) / 2 + "px");
   }
 
   function applyForcedStageCanvas(aspect) {
@@ -1548,6 +1621,7 @@
       html.style.setProperty("--dyn-ah", String(detected.ah));
       const outer = findOuterCanvas();
       if (outer) markCanvasOuter(outer);
+      applyV2NativeStageScale(outer, mode);
       const { vw, vh } = viewportSize();
       const fit = containFit(vw, vh, detected.aw, detected.ah);
       return resolveStageSize({ clientWidth: fit.w, clientHeight: fit.h }, mode);
@@ -1560,6 +1634,7 @@
       html.style.removeProperty("--dyn-ah");
       const outer = findOuterCanvas();
       if (outer) markCanvasOuter(outer);
+      applyV2NativeStageScale(outer, mode);
       return resolveStageSize(outer || findWrapper(), mode);
     }
 
@@ -1571,6 +1646,7 @@
 
     const outer = findOuterCanvas();
     if (outer) markCanvasOuter(outer);
+    applyV2NativeStageScale(outer, mode);
     const { vw, vh } = viewportSize();
     const fit = containFit(vw, vh, parsed.aw, parsed.ah);
     return resolveStageSize({ clientWidth: fit.w, clientHeight: fit.h }, mode);
@@ -1578,16 +1654,13 @@
 
   function applyOutputCanvas(aspect) {
     const mode = resolveCanvasAspect(aspect);
-    if (document.querySelector(".v2-app-wrapper") || pageLooksLikePassthrough()) {
+    if (leaveVixiStageAlone()) {
       touchVixiAspectCache();
       resetOutputCanvas();
       return resolveStageSize(findWrapper(), mode);
     }
-    if (needsPassthroughStageCanvas()) {
-      return applyForcedStageCanvas(mode);
-    }
-    const handoff = root.BGThemeHandoff;
-    if (handoff && typeof handoff.liveKind === "function" && handoff.liveKind() === "native") {
+    if (document.querySelector(".v2-app-wrapper") && normalizeStageAspect(mode) === "vixi") {
+      touchVixiAspectCache();
       resetOutputCanvas();
       return resolveStageSize(findWrapper(), mode);
     }
@@ -1953,7 +2026,8 @@
   function classifyChrome(el) {
     if (!el || !el.closest) return "shared";
     if (el.closest(MESSAGE_CHROME_SCOPE)) return "message";
-    if (el.closest(MOSAIC_CHROME_SCOPE)) return "mosaic";
+    // Grid only — a lone V2 .v2-asset-tile is Photo Magic, not mosaic chrome.
+    if (el.closest(MOSAIC_GRID_SCOPE)) return "mosaic";
     // Vixi’s message QR is `.qr-code-wrapper` under `.output-app`, outside
     // `.message-layer`. Mosaic’s QR uses the same classes but lives inside
     // `.mosaic-layout` (caught above). When message chrome is on screen and
@@ -1970,7 +2044,7 @@
         node = node.parentElement;
         continue;
       }
-      const hasMosaic = Boolean(node.querySelector(MOSAIC_CHROME_SCOPE));
+      const hasMosaic = Boolean(node.querySelector(MOSAIC_GRID_SCOPE));
       const hasMessage = Boolean(node.querySelector(MESSAGE_CHROME_SCOPE));
       if (hasMosaic && !hasMessage) return "mosaic";
       if (hasMessage && !hasMosaic) return "message";
@@ -2449,13 +2523,170 @@
     return host;
   }
 
+  function mosaicTileCount() {
+    try {
+      return document.querySelectorAll(".v2-asset-tile").length;
+    } catch {
+      return 0;
+    }
+  }
+
+  /** Real mosaic grid — not Photo Magic's single featured .v2-asset-tile. */
+  function mosaicGridPresent() {
+    try {
+      if (document.querySelector(MOSAIC_GRID_SCOPE + ", img.mosaic-image")) return true;
+      if (mosaicAssetClassUrls().length > 0) return true;
+      return mosaicTileCount() >= 2;
+    } catch {
+      return false;
+    }
+  }
+
+  function findMosaicLayer() {
+    try {
+      const grid =
+        document.querySelector(".mosaic-layout") ||
+        document.querySelector(".v2-mosaic-swap-tile") ||
+        document.querySelector(".v2-mosaic-face") ||
+        document.querySelector(".mosaic-tile-slot") ||
+        document.querySelector(".mosaic-asset");
+      if (grid) return grid;
+      if (mosaicTileCount() >= 2) return document.querySelector(".v2-asset-tile");
+    } catch {
+      /* ignore */
+    }
+    return null;
+  }
+
+  function v2MessageTexts() {
+    try {
+      return [...document.querySelectorAll(".v2-text-tile")]
+        .map((el) => String(el.textContent || "").trim())
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
+  /** Featured V2 photo — not a mosaic face inside a tile slot. */
+  function v2FeaturedAssetTile() {
+    try {
+      const tiles = [...document.querySelectorAll(".v2-asset-tile")].filter((el) => {
+        if (el.classList.contains("v2-mosaic-face")) return false;
+        if (el.closest(".mosaic-tile-slot, .v2-mosaic-swap-tile, .mosaic-layout, .mosaic-asset")) {
+          return false;
+        }
+        return true;
+      });
+      return tiles.length === 1 ? tiles[0] : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function v2FeaturedImageSrc() {
+    const tile = v2FeaturedAssetTile();
+    if (!tile) return "";
+    const img = tile.querySelector && tile.querySelector("img");
+    if (!img) return "";
+    return mosaicImageSrc(img);
+  }
+
+  const V2_MSG_HOLD_MS = 1100;
+  const V2_PHOTO_MAGIC_STABLE_MS = 450;
+  let lastV2MessageCap = { src: "", message: "", name: "", at: 0 };
+  let v2PhotoMagicSeenAt = 0;
+
+  function rememberV2MessageCap(cap) {
+    if (!cap || !(cap.src || cap.message || cap.name)) return cap;
+    lastV2MessageCap = {
+      src: cap.src || lastV2MessageCap.src || "",
+      message: cap.message || "",
+      name: cap.name || "",
+      at: Date.now(),
+    };
+    return cap;
+  }
+
+  function v2MessageHoldActive() {
+    if (!lastV2MessageCap.at) return false;
+    if (mosaicGridPresent()) return false;
+    if (!(lastV2MessageCap.src || lastV2MessageCap.message || lastV2MessageCap.name)) return false;
+    // A real Photo Magic playlist item keeps .photo-container. A V2 message
+    // swap can flash that node — wait it out before yielding.
+    try {
+      if (document.querySelector(".photo-container")) {
+        if (!v2PhotoMagicSeenAt) v2PhotoMagicSeenAt = Date.now();
+        if (Date.now() - v2PhotoMagicSeenAt >= V2_PHOTO_MAGIC_STABLE_MS) return false;
+      } else {
+        v2PhotoMagicSeenAt = 0;
+      }
+    } catch {
+      v2PhotoMagicSeenAt = 0;
+    }
+    if (document.getElementById("dyn-message-theme")) return true;
+    return Date.now() - lastV2MessageCap.at < V2_MSG_HOLD_MS;
+  }
+
+  function heldV2MessageCap() {
+    if (!v2MessageHoldActive()) return { src: "", message: "", name: "" };
+    return {
+      src: lastV2MessageCap.src,
+      message: lastV2MessageCap.message,
+      name: lastV2MessageCap.name,
+    };
+  }
+
+  function v2MessageCapture() {
+    if (mosaicGridPresent()) return { src: "", message: "", name: "" };
+    if (document.querySelector(".photo-container")) return heldV2MessageCap();
+    const texts = v2MessageTexts();
+    if (!texts.length) return heldV2MessageCap();
+    return rememberV2MessageCap({
+      src: v2FeaturedImageSrc() || lastV2MessageCap.src || "",
+      message: texts[0] || "",
+      name: texts[1] || "",
+    });
+  }
+
+  function findMessageLayer() {
+    const classic = document.querySelector(MESSAGE_CHROME_SCOPE);
+    if (classic) return classic;
+    if (mosaicGridPresent()) return null;
+    if (document.querySelector(".photo-container") && !v2MessageHoldActive()) return null;
+    if (v2MessageTexts().length) {
+      return v2FeaturedAssetTile() || document.querySelector(".v2-text-tile");
+    }
+    if (v2MessageHoldActive()) {
+      return (
+        v2FeaturedAssetTile() ||
+        document.querySelector(".v2-text-tile") ||
+        document.getElementById("dyn-message-theme")
+      );
+    }
+    return null;
+  }
+
+  /** Photo Magic: Vixi photo stage — not a V2 guest-message swap. */
+  function pageLooksLikePhotoMagic() {
+    if (v2MessageHoldActive()) return false;
+    if (document.querySelector(".photo-container")) return true;
+    if (mosaicGridPresent()) return false;
+    if (v2MessageTexts().length) return false;
+    const classicMsg = document.querySelector(MESSAGE_CHROME_SCOPE);
+    if (classicMsg && elementLooksVisible(classicMsg)) return false;
+    if (v2FeaturedAssetTile()) return true;
+    if (mosaicTileCount() !== 1) return false;
+    return Boolean(document.querySelector(".v2-asset-tile"));
+  }
+
   function pageLooksLikeMosaic() {
     try {
       if (/(?:^|[?&])standalone=mosaic(?:&|$)/i.test(location.search || "")) return true;
     } catch {
       /* ignore */
     }
-    return Boolean(document.querySelector(MOSAIC_CHROME_SCOPE + ", img.mosaic-image"));
+    return mosaicGridPresent();
   }
 
   function elementLooksVisible(el) {
@@ -2487,10 +2718,11 @@
 
   /** Visible message beat — not a leftover empty shell from the previous guest. */
   function pageLooksLikeMessageBeat() {
+    if (pageLooksLikePhotoMagic()) return false;
     if (themeOverlayLive("message")) return true;
     const cap = messageCapture();
     if (!cap.src && !cap.message && !cap.name) return false;
-    const layer = document.querySelector(MESSAGE_CHROME_SCOPE);
+    const layer = findMessageLayer();
     if (!layer) return false;
     const html = document.documentElement;
     // Our covers hide the stock layer on purpose — capture + shell is enough.
@@ -2508,10 +2740,11 @@
 
   /** Visible mosaic beat — tiles on screen, not a hidden leftover layout. */
   function pageLooksLikeMosaicBeat() {
+    if (pageLooksLikePhotoMagic()) return false;
     if (themeOverlayLive("mosaic")) return true;
     const n = mosaicContentCount();
+    const layer = findMosaicLayer();
     if (n > 0) {
-      const layer = document.querySelector(MOSAIC_CHROME_SCOPE);
       const html = document.documentElement;
       // Cover/hold/handoff classes are applied on boot to every output page.
       // They are not proof this is a mosaic beat — leftover tiles + early
@@ -2525,7 +2758,7 @@
       return !layer || elementLooksVisible(layer);
     }
     if (!pageLooksLikeMosaic()) return false;
-    return elementLooksVisible(document.querySelector(MOSAIC_CHROME_SCOPE));
+    return elementLooksVisible(layer);
   }
 
   /** V2 LEADERS overlay only — explicit LEADERS header; not result-bar polling. */
@@ -2997,12 +3230,14 @@
         ".output-stream-wrapper, [class*='output-stream'], [class*='output-live']," +
         "img.fullscreen-asset, video.fullscreen-asset, img[alt='CTA Image' i]," +
         "[src*='/playlist/cta/'], :scope > iframe, video[id^='subscribe-']";
-      const mosaicShell = app.querySelector(
-        ".mosaic-layout, .v2-mosaic-swap-tile, .v2-asset-tile"
-      );
-      const messageShell = app.querySelector(
-        ".capture-content-layer, .message-layer, .v2-message"
-      );
+      const mosaicShell =
+        app.querySelector(".mosaic-layout, .v2-mosaic-swap-tile, .v2-mosaic-face") ||
+        (app.querySelectorAll(".v2-asset-tile").length >= 2
+          ? app.querySelector(".v2-asset-tile")
+          : null);
+      const messageShell =
+        app.querySelector(".capture-content-layer, .message-layer, .v2-message") ||
+        findMessageLayer();
       const nodes = [...app.querySelectorAll(nativeSel)];
       const hardNative = nodes.some(isHardNativeEl);
       const nativeLive = nodes.some((el) => nativeMediaLooksLive(el));
@@ -3031,7 +3266,9 @@
     } catch {
       /* ignore */
     }
-    return Boolean(document.querySelector(MESSAGE_CHROME_SCOPE));
+    if (document.querySelector(MESSAGE_CHROME_SCOPE)) return true;
+    const v2 = v2MessageCapture();
+    return Boolean(v2.src || v2.message || v2.name);
   }
 
   function hasMosaic() {
@@ -3068,13 +3305,19 @@
   function messageCapture() {
     const img = document.querySelector(".capture-content-layer img");
     const src = img && (img.currentSrc || img.src) ? img.currentSrc || img.src : "";
-    if (src && src.startsWith("data:")) return { src: "", message: "", name: "" };
+    if (src && src.startsWith("data:")) {
+      const v2Empty = v2MessageCapture();
+      if (v2Empty.src || v2Empty.message || v2Empty.name) return v2Empty;
+      return { src: "", message: "", name: "" };
+    }
     const texts = [...document.querySelectorAll(".message-layer .message-content-text, .message-content-text")];
-    return {
+    const classic = {
       src: src && !src.startsWith("data:") ? src : "",
       message: texts[0] ? String(texts[0].textContent || "").trim() : "",
       name: texts[1] ? String(texts[1].textContent || "").trim() : "",
     };
+    if (classic.src || classic.message || classic.name) return classic;
+    return v2MessageCapture();
   }
 
   function mosaicImages() {
@@ -3148,8 +3391,20 @@
     if (isBrandNode(img)) return true;
     if (img.classList.contains("v2-app-wrapper__bg-image")) return true;
     if (img.closest(".output-wrapper > .asset-view")) return true;
+    if (img.closest(".photo-container")) return true;
     if (img.closest(".mosaic-layout > .asset-view")) return true;
     if (img.closest(".v2-mosaic-face.back, .dyn-flip-back, [class*='mosaic-face--back']")) {
+      return true;
+    }
+    // Photo Magic uses a lone .v2-asset-tile. V2 mosaic faces also use that
+    // class, but they sit on .v2-mosaic-face / .mosaic-tile-slot. Classic
+    // mosaic (.mosaic-layout / .mosaic-asset) is unchanged.
+    if (
+      img.closest(".v2-asset-tile") &&
+      !img.closest(
+        ".v2-mosaic-face, .mosaic-tile-slot, .v2-mosaic-swap-tile, .mosaic-layout, .mosaic-asset"
+      )
+    ) {
       return true;
     }
     const asset = img.closest(".mosaic-asset");
@@ -3483,6 +3738,11 @@
     findOverlayHost,
     hasMosaic,
     pageLooksLikeMosaic,
+    pageLooksLikePhotoMagic,
+    v2MessageHoldActive,
+    mosaicGridPresent,
+    findMosaicLayer,
+    findMessageLayer,
     pageLooksLikeNative,
     pageLooksLikeHardNative,
     pageLooksLikeStreamBeat,

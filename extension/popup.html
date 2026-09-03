@@ -16,7 +16,7 @@
       <span class="info-wrap">
         <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-master" aria-label="About the master switch">i</button>
       </span>
-      <span class="ext-version" id="ext-version">v1.30.3</span>
+      <span class="ext-version" id="ext-version">v1.30.11</span>
     </div>
     <label class="switch">
       <input type="checkbox" id="enabled" checked>
@@ -53,12 +53,11 @@
         <button type="button" class="info-btn" aria-expanded="false" aria-controls="info-stage" aria-label="About Stage">i</button>
       </span>
     </div>
-    <p class="info-popover" id="info-stage" hidden role="tooltip">Match Vixi uses Vixi’s canvas. Match the window fills the browser. Other ratios letterbox in black.</p>
+    <p class="info-popover" id="info-stage" hidden role="tooltip">Defaults to Match Vixi (Vixi’s canvas). Other ratios letterbox in black. Match the window fills the browser.</p>
     <label class="select-label">
       <span>Aspect</span>
       <select id="stage-aspect">
-        <option value="vixi">Match Vixi</option>
-        <option value="auto">Match the window</option>
+        <option value="vixi" selected>Match Vixi</option>
         <option value="16:9">16:9 landscape</option>
         <option value="9:16">9:16 portrait</option>
         <option value="4:3">4:3 landscape</option>
@@ -70,6 +69,7 @@
         <option value="4:5">4:5 portrait</option>
         <option value="21:9">21:9 ultrawide</option>
         <option value="9:21">9:21 tall</option>
+        <option value="auto">Match the window</option>
         <option value="custom">Custom — set width : height</option>
       </select>
     </label>

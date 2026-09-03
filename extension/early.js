@@ -31,10 +31,10 @@
     "html.dyn-ext-boot .mosaic-layout > .asset-view{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
-    "html.dyn-theme-on:not(.dyn-chrome-qr) .v2-qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-chrome-qr) .qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-chrome-qr) .qr-code-wrapper:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
-    "html.dyn-theme-on:not(.dyn-chrome-qr) .qr-code-img:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native):not(.dyn-chrome-qr) .v2-qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native):not(.dyn-chrome-qr) .qr-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native):not(.dyn-chrome-qr) .qr-code-wrapper:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
+    "html.dyn-theme-on:not(.dyn-kind-native):not(.dyn-chrome-qr) .qr-code-img:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
     "html.dyn-theme-on:not(.dyn-chrome-logo) .v2-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
     "html.dyn-theme-on:not(.dyn-chrome-logo) .v2-logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
     "html.dyn-theme-on:not(.dyn-chrome-logo) .event-logo:not(.dyn-brand-clone):not(#dyn-theme-host *)," +
@@ -57,7 +57,9 @@
     "html.dyn-cover-message .capture-content-layer," +
     "html.dyn-cover-message .message-layer," +
     "html.dyn-cover-message .message-content," +
-    "html.dyn-cover-message .v2-message{" +
+    "html.dyn-cover-message .v2-message," +
+    "html.dyn-kind-message.dyn-cover-message .v2-text-tile," +
+    "html.dyn-kind-message.dyn-cover-message .v2-asset-tile:not(.v2-mosaic-face){" +
       "visibility:hidden!important;opacity:0!important;" +
     "}" +
     "html.dyn-cover-mosaic .mosaic-layout," +
@@ -66,23 +68,35 @@
     "html.dyn-cover-mosaic .mosaic-image," +
     "html.dyn-cover-mosaic .v2-mosaic-swap-tile," +
     "html.dyn-cover-mosaic .v2-mosaic-face," +
-    "html.dyn-cover-mosaic .v2-asset-tile{" +
+    "html.dyn-cover-mosaic .mosaic-tile-slot .v2-asset-tile," +
+    "html.dyn-cover-mosaic .v2-mosaic-swap-tile .v2-asset-tile{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
     "html.dyn-lb-pending .v2-app-wrapper .v2-block{" +
       "visibility:hidden!important;opacity:0!important;pointer-events:none!important;" +
     "}" +
-    "html.dyn-theme-on:not(.dyn-kind-native) .v2-qr-tile," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .qr-tile," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .qr-code-wrapper," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .qr-code-img," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .v2-logo," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .v2-logo-tile," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .event-logo," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .logo-tile," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .output-logo," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .brand-logo," +
-    "html.dyn-theme-on:not(.dyn-kind-native) .v2-app-wrapper__logo," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .v2-qr-tile," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .v2-qr-tile," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .qr-tile," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .qr-tile," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .qr-code-wrapper," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .qr-code-wrapper," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .qr-code-img," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .qr-code-img," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .v2-logo," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .v2-logo," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .v2-logo-tile," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .v2-logo-tile," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .event-logo," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .event-logo," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .logo-tile," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .logo-tile," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .output-logo," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .output-logo," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .brand-logo," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .brand-logo," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message .v2-app-wrapper__logo," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic .v2-app-wrapper__logo," +
     "html.dyn-cover-message:not(.dyn-kind-native) .capture-content-layer," +
     "html.dyn-cover-message:not(.dyn-kind-native) .message-layer," +
     "html.dyn-cover-message:not(.dyn-kind-native) .message-content," +
@@ -97,9 +111,11 @@
     "html.dyn-theme-on:not(.dyn-show-bg),html.dyn-theme-on:not(.dyn-show-bg) body,html.dyn-theme-on:not(.dyn-show-bg) .output-page{" +
       "background:#000!important;" +
     "}" +
-    "html.dyn-theme-on:not(.dyn-show-bg):not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .v2-app-wrapper__bg-image," +
-    "html.dyn-theme-on:not(.dyn-kind-native):not(.dyn-show-bg):not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .output-wrapper > .asset-view," +
-    "html.dyn-theme-on:not(.dyn-kind-native):not(.dyn-show-bg):not(:has(.output-stream-wrapper)):not(:has(img.fullscreen-asset)) .output-app > .asset-view{" +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message:not(.dyn-show-bg) .v2-app-wrapper__bg-image," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic:not(.dyn-show-bg) .v2-app-wrapper__bg-image," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message:not(.dyn-show-bg) .output-wrapper > .asset-view," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-mosaic:not(.dyn-show-bg) .output-wrapper > .asset-view," +
+    "html.dyn-theme-on:not(.dyn-kind-native).dyn-kind-message:not(.dyn-show-bg) .output-app > .asset-view{" +
       "visibility:hidden!important;opacity:0!important;" +
     "}" +
     "html.dyn-kind-native #dyn-theme-host," +
