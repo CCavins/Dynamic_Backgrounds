@@ -45,7 +45,7 @@ Decision tree:
 | Message engine | `message-<name>-engine.js` | `message-aurora-engine.js` (`engine`: `message-aurora-engine`) |
 | Mosaic JSON | `mosaic-<name>.json` | `mosaic-orbit-swap.json` |
 | Mosaic engine | `mosaic-<name>-engine.js` | `mosaic-orbit-swap-engine.js` |
-| JSON only | same kind prefix, no `-engine` file | `message-stamp.json`, `mosaic-ribbon.json` |
+| JSON only | same kind prefix, no `-engine` file | `message-stamp.json`, `message-class-survey.json`, `mosaic-ribbon.json` |
 | Custom fonts | any basename; prefer `.woff2` | `BrandDisplay.woff2`, `BrandBody.woff2` (listed in `fontFaces`) |
 
 Any valid `id` / `engine` that passes the regex and reserved-id checks is fine — this pattern is only for keeping packs easy to spot.
@@ -55,6 +55,7 @@ Clone these examples:
 | Goal | JSON | Engine |
 | --- | --- | --- |
 | JSON-only message (colors + motion) | `message-stamp.json` | none |
+| JSON-only message + extra Vixi questions | `message-class-survey.json` | none |
 | JSON-only mosaic (size + frame color) | `mosaic-framed.json` | none |
 | JSON-only mosaic (layout only) | `mosaic-ribbon.json` | none |
 | Message + JS engine | `message-aurora.json` | `message-aurora-engine.js` (same file as `../extension/engines/message-aurora-engine.js`) |
@@ -85,6 +86,7 @@ Every field the parser keeps. Extra fields are ignored. Do not invent settings k
   "settings": {},
   "revealMs": 1000,
   "hideMs": 320,
+  "notes": {},
   "fit": [],
   "layout": "grid",
   "cols": 4,
@@ -112,6 +114,7 @@ Every field the parser keeps. Extra fields are ignored. Do not invent settings k
 | `settings` | no | object | Keys: `primary`, `secondary`, `background`, `motion`, `scale`, `frame`, `photoStyle`, plus `type: "select"` / `type: "toggle"` extras |
 | `revealMs` | no | number | Message enter. Clamped 200–4000. Default 1000 |
 | `hideMs` | no | number | Message leave. Clamped 120–2000. Default 320 |
+| `notes` | no | string or object | Author notes only. Ignored at runtime. Use this to label extra questions (`question1` = Favorite car, …). See [Extra Vixi questions](#extra-vixi-questions) |
 | `fit` | no | array | Message text fit rules. See below |
 | `layout` | mosaic unless `engine` | string | `grid`, `row`, `scatter`, or `ribbon`. Default `grid` |
 | `cols` | mosaic grid | number | 1–8. Default 4 |
@@ -521,12 +524,54 @@ Put these on elements the JSON-only compiler (or your engine) should fill:
 - `data-photo` on the image (or the first `img` is also collected)
 - `data-message` on the caption node
 - `data-name` on the name node (can appear more than once)
-- Extra answers after name, in DOM order: `data-field="question1"`, `data-field="question2"`, … or `data-question="1"`. Same order on V1 and V2. Bare `data-message` / `data-name` still mean the first two texts only — existing themes do not need to change.
+- Extra answers after name: `data-field="question1"`, `data-field="question2"`, … or `data-question="1"`. See [Extra Vixi questions](#extra-vixi-questions). Bare `data-message` / `data-name` still mean the first two texts only — existing themes do not need to change.
 - The theme root gets `has-field-question1` (and so on) when that extra is present, plus `no-field` on empty extra nodes so you can hide unused slots.
 - `data-qr` on the box that should receive this kind’s Vixi QR when **Show QR code** is on
 - `data-logo` on the box that should receive this kind’s Vixi logo when **Show logo** is on
 
 If you omit `data-qr` / `data-logo`, the runtime uses a default corner chrome (logo top-left, QR bottom-right). Style those slots for size and placement. Leave them out of the layout only if the theme should never show brand marks.
+
+### Extra Vixi questions
+
+Vixi can send more than name + message. The extension reads on-screen text **in DOM order**, then maps it to a shared field model (same on Classic and V2):
+
+| Order | Capture field | Theme hook |
+| --- | --- | --- |
+| 1st non-empty text | `message` | `data-message` |
+| 2nd | `name` | `data-name` |
+| 3rd, 4th, … | `question1`, `question2`, … | `data-field="question1"` or `data-question="1"` |
+
+V2 skips empty tiles first, then uses that same order. Themes that only bind name + message stay unchanged.
+
+To show extra answers:
+
+1. Add extra question fields on the Vixi event (the on-output tiles become the 3rd, 4th, … texts).
+2. Put matching hooks in the pack HTML. Printed labels are yours — they do not have to match Vixi’s prompt names.
+3. Style empty extras with `.no-field` / `:not(.has-field-question1)` if a guest left that answer blank.
+
+`message-class-survey.json` is the reference. Its printed prompts are Name, Favorite car, Dream job, Favorite color, Favorite sports team, and Anything else? Anything else uses the standard `message` field even though it sits last on the sheet.
+
+### Notes in the JSON (not `//` comments)
+
+Standard JSON cannot contain `//` or `/* */` comments. A file with those will fail `JSON.parse` in most editors and in the preview harness.
+
+Use a `notes` object instead. The importer ignores it. Class Survey does this:
+
+```json
+"notes": {
+  "about": "Teacher handout. Printed prompts are only labels in HTML.",
+  "name": "Name — data-name (2nd text on the capture)",
+  "question1": "Favorite car — data-field=\"question1\"",
+  "question2": "Dream job",
+  "question3": "Favorite color",
+  "question4": "Favorite sports team",
+  "message": "Anything else? — data-message (1st text on the capture)"
+}
+```
+
+`notes` may be a string or an object. Extra top-level keys are also ignored — do not put documentation under `settings`.
+
+**Import only:** `Import packs…` strips `//` line comments and `/* */` block comments *outside* JSON strings before parse, so a local scratch file can use them. Keep shipped packs as valid JSON (`notes`, not `//`) so preview, git, and `res.json()` still work. Comments inside `"html"` / `"css"` strings are not stripped.
 
 ### Conditional chrome layouts (recommended)
 

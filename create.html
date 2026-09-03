@@ -19,7 +19,7 @@
                 <a href="extension.html">Extension</a>
                 <a href="create.html" aria-current="page">Create</a>
             </nav>
-            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.30.14</span></a>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.30.15</span></a>
         </header>
 
         <div class="page-intro">
@@ -67,7 +67,7 @@
             <h2>Other examples</h2>
             <ul class="pack-list">
                 <li><a href="themes/message-stamp.json" download><code>message-stamp.json</code></a> — postage-stamp message card (JSON only; Ink, Paper, Background, Motion)</li>
-                <li><a href="themes/message-class-survey.json" download><code>message-class-survey.json</code></a> — kindergarten class survey (JSON only; name, favorite car, dream job, favorite color, favorite sports team, plus the standard message)</li>
+                <li><a href="themes/message-class-survey.json" download><code>message-class-survey.json</code></a> — Class Survey handout (demo on <a href="index.html">Themes</a> and in <a href="themes/preview.html">preview</a>; not in the extension until you Import packs…). Extra-question labels live in the pack <code>notes</code> object</li>
                 <li><a href="themes/message-grunge-poster.json" download><code>message-grunge-poster.json</code></a> — torn-paper grunge poster (JSON only; Ink, Paper, Photos; wall texture is <code>assets/grunge-wall.webp</code>, not a color setting)</li>
                 <li><a href="themes/mosaic-framed.json" download><code>mosaic-framed.json</code></a> — framed photo scatter (JSON only; Photo size + Frame color)</li>
                 <li><a href="themes/mosaic-ribbon.json" download><code>mosaic-ribbon.json</code></a> — diagonal photo ribbon (JSON only)</li>
@@ -129,6 +129,10 @@
                 </li>
             </ul>
             <p>To preview without a live output, open <a href="themes/preview.html">themes/preview.html</a>. It mirrors extension live settings and message transitions. Do not embed large textures in pack <code>css</code> — use files under <code>assets/</code> (see <a href="themes/SPEC.md#pack-assets-images-and-textures">Pack assets</a> in the spec).</p>
+
+            <h2>Extra Vixi questions</h2>
+            <p>Vixi’s first on-screen text is <code>message</code>, the second is <code>name</code>, and everything after that is <code>question1</code>, <code>question2</code>, … in DOM order (V2 skips empty tiles first). Bind extras with <code>data-field="question1"</code> or <code>data-question="1"</code>. Existing name/message themes do not need to change.</p>
+            <p>Standard JSON has no <code>//</code> comments. Put labels for those extras in a top-level <code>notes</code> object — the importer ignores it. Class Survey is the example. Full rules: <a href="themes/SPEC.md#extra-vixi-questions">Extra Vixi questions</a> in the spec.</p>
 
             <h2>Live popup settings</h2>
             <p>Imported packs use the same live-settings pipeline as bundled themes. Declare controls under <code>settings</code> in your JSON, then wire CSS to <code>var(--primary)</code>, <code>var(--secondary)</code>, <code>var(--background)</code>, <code>var(--frame)</code>, <code>var(--scale)</code>, <code>[data-motion]</code>, and <code>[data-photo-style]</code> on the scoped theme root — not hardcoded hex on layers that should recolor. For a <strong>solid</strong> backdrop, use the <code>background</code> setting (see <code>message-stamp.json</code>). Import copies <strong>font</strong> files with the pack, not images — see <a href="themes/SPEC.md#imported-packs-vs-bundled-image-backdrops">Imported packs vs bundled image backdrops</a>. JSON-only packs need no extra code; engines should call <code>BGMessageThemes.applyVars</code> from <code>applySettings</code>. See <a href="themes/SPEC.md#live-settings-for-imported-themes-pack-authors">Live settings for imported themes</a> in the spec and clone <code>message-stamp.json</code> or <code>mosaic-framed.json</code>.</p>

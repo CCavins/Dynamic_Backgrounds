@@ -347,10 +347,17 @@ a.hint:hover {
     color: rgba(255, 255, 255, 0.45);
 }
 
+.theme-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
 .theme-fullscreen {
     display: inline-flex;
     align-items: center;
-    margin-top: 10px;
+    margin-top: 0;
     padding: 5px 10px;
     border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 999px;

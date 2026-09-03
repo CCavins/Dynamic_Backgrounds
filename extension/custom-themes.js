@@ -65,6 +65,7 @@
   }
 
   let registeredIds = { message: [], mosaic: [] };
+  let lastRegisteredPacks = [];
   const changeListeners = [];
   let readyResolved = false;
   let readyResolve = null;
@@ -108,11 +109,52 @@
     return /<script\b|javascript:|data:text\/html|on[a-z]+\s*=/i.test(String(text || ""));
   }
 
+  function stripJsonComments(text) {
+    const src = String(text || "");
+    let out = "";
+    let i = 0;
+    let inStr = false;
+    let esc = false;
+    while (i < src.length) {
+      const ch = src[i];
+      const next = src[i + 1];
+      if (inStr) {
+        out += ch;
+        if (esc) esc = false;
+        else if (ch === "\\") esc = true;
+        else if (ch === '"') inStr = false;
+        i += 1;
+        continue;
+      }
+      if (ch === '"') {
+        inStr = true;
+        out += ch;
+        i += 1;
+        continue;
+      }
+      if (ch === "/" && next === "/") {
+        i += 2;
+        while (i < src.length && src[i] !== "\n") i += 1;
+        continue;
+      }
+      if (ch === "/" && next === "*") {
+        i += 2;
+        while (i < src.length && !(src[i] === "*" && src[i + 1] === "/")) i += 1;
+        if (i < src.length) i += 2;
+        out += " ";
+        continue;
+      }
+      out += ch;
+      i += 1;
+    }
+    return out;
+  }
+
   function parsePack(raw) {
     let data = raw;
     if (typeof raw === "string") {
       try {
-        data = JSON.parse(raw);
+        data = JSON.parse(stripJsonComments(raw));
       } catch {
         throw new Error("Theme file is not valid JSON.");
       }
@@ -1362,24 +1404,25 @@
     };
   }
 
-  function registerPacks(packs, fontsMap) {
-    unregister();
+  function compileRegisteredPack(pack) {
     const messageApi = root.BGMessageThemes;
     const mosaicApi = root.BGMosaicThemes;
+    if (!pack || !pack.id) return;
+    if (pack.kind === "message" && messageApi && messageApi.themes) {
+      messageApi.themes[pack.id] = compileMessage(pack);
+      if (!registeredIds.message.includes(pack.id)) registeredIds.message.push(pack.id);
+    }
+    if (pack.kind === "mosaic" && mosaicApi && mosaicApi.themes) {
+      mosaicApi.themes[pack.id] = compileMosaic(pack);
+      if (!registeredIds.mosaic.includes(pack.id)) registeredIds.mosaic.push(pack.id);
+    }
+  }
+
+  function applyRegisteredPacks(packs, fontsMap) {
     const rules = root.BGExtensionRules;
     if (rules && typeof rules.applyCustomThemeMeta === "function") {
       rules.applyCustomThemeMeta(packs);
     }
-    (packs || []).forEach((pack) => {
-      if (pack.kind === "message" && messageApi && messageApi.themes) {
-        messageApi.themes[pack.id] = compileMessage(pack);
-        registeredIds.message.push(pack.id);
-      }
-      if (pack.kind === "mosaic" && mosaicApi && mosaicApi.themes) {
-        mosaicApi.themes[pack.id] = compileMosaic(pack);
-        registeredIds.mosaic.push(pack.id);
-      }
-    });
     injectStyle(packs);
     if (fontsMap) {
       injectFonts(packs, fontsMap);
@@ -1389,6 +1432,32 @@
         .catch(() => injectFonts(packs, {}));
     }
     notifyChange();
+  }
+
+  function registerPacks(packs, fontsMap) {
+    unregister();
+    lastRegisteredPacks = [];
+    (packs || []).forEach((pack) => {
+      if (!pack || !pack.id) return;
+      lastRegisteredPacks.push(pack);
+      compileRegisteredPack(pack);
+    });
+    applyRegisteredPacks(lastRegisteredPacks, fontsMap);
+  }
+
+  function addPacks(packs, fontsMap) {
+    const extras = [];
+    (packs || []).forEach((pack) => {
+      if (!pack || !pack.id) return;
+      if (lastRegisteredPacks.some((item) => item.id === pack.id)) return;
+      extras.push(pack);
+    });
+    if (!extras.length) return;
+    extras.forEach((pack) => {
+      lastRegisteredPacks.push(pack);
+      compileRegisteredPack(pack);
+    });
+    applyRegisteredPacks(lastRegisteredPacks, fontsMap);
   }
 
   async function loadBundledPacks() {
@@ -1667,6 +1736,7 @@
     compileSideloadSource,
     registerSideloadEngines,
     registerPacks,
+    addPacks,
     loadAndRegister,
     whenReady,
     onChange,

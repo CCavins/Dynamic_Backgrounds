@@ -128,14 +128,45 @@
         node.textContent = css;
     }
 
+    async function loadGalleryExamplePacks() {
+        const customApi = globalThis.BGCustomThemes;
+        if (!customApi || typeof customApi.parsePack !== "function") return;
+        const files = [
+            ...new Set(
+                [...document.querySelectorAll(".theme-card[data-pack]")]
+                    .map((card) => card.getAttribute("data-pack"))
+                    .filter(Boolean)
+            ),
+        ];
+        if (!files.length) return;
+        const extras = [];
+        await Promise.all(
+            files.map((file) =>
+                fetch(file)
+                    .then((res) => {
+                        if (!res.ok) throw new Error(file);
+                        return res.json();
+                    })
+                    .then((raw) => extras.push(customApi.parsePack(raw)))
+                    .catch(() => {})
+            )
+        );
+        if (extras.length && typeof customApi.addPacks === "function") {
+            customApi.addPacks(extras);
+        }
+    }
+
     async function ensureGalleryThemes() {
         const customApi = globalThis.BGCustomThemes;
         if (customApi && typeof customApi.whenReady === "function") {
             await customApi.whenReady();
         }
+        await loadGalleryExamplePacks();
         injectGalleryPackCss();
         if (customApi && typeof customApi.onChange === "function") {
-            customApi.onChange(() => injectGalleryPackCss());
+            customApi.onChange(() => {
+                loadGalleryExamplePacks().then(() => injectGalleryPackCss());
+            });
         }
     }
 
@@ -409,12 +440,28 @@
             const fileIdx = header.indexOf("captures");
             const nameIdx = header.indexOf("name");
             const msgIdx = header.indexOf("message");
+            const cars = ["a red race car", "something fast", "the school bus"];
+            const jobs = ["astronaut", "veterinarian", "soccer player"];
+            const colors = ["blue", "red", "green"];
+            const teams = ["Patriots", "Celtics", "my school team"];
             const captures = rows
-                .map((row) => ({
-                    src: SAMPLE_DIR + (row[fileIdx] || "").trim(),
-                    name: (row[nameIdx] || "").trim(),
-                    message: (row[msgIdx] || "").trim(),
-                }))
+                .map((row, i) => {
+                    const name = (row[nameIdx] || "").trim();
+                    const message = (row[msgIdx] || "").trim();
+                    return {
+                        src: SAMPLE_DIR + (row[fileIdx] || "").trim(),
+                        name,
+                        message,
+                        fields: {
+                            message,
+                            name,
+                            question1: cars[i % cars.length],
+                            question2: jobs[i % jobs.length],
+                            question3: colors[i % colors.length],
+                            question4: teams[i % teams.length],
+                        },
+                    };
+                })
                 .filter((row) => row.src && row.src !== SAMPLE_DIR);
             return startGallery(captures);
         })

@@ -137,6 +137,8 @@ When a theme is on, turn on that theme’s **Show background** to keep the custo
 
 Build and import your own packs — see [themes/README.md](themes/README.md) and the contract in [themes/SPEC.md](themes/SPEC.md). The Create page on the live site walks through import. Preview packs in [`themes/preview.html`](themes/preview.html) before going live on Vixi. You can place QR/logo exactly with `data-qr` / `data-logo` and reflow layout with `dyn-show-qr` / `dyn-show-logo` CSS.
 
+**Extra Vixi questions:** first on-screen text is `message`, second is `name`, then `question1`, `question2`, … in DOM order. Bind extras with `data-field="question1"` or `data-question="1"`. [Class Survey](themes/message-class-survey.json) is the downloadable example (demo on the Themes page and in preview; Import packs… to use on output). Labels for those hooks live in the pack `notes` object (JSON has no `//` comments). Details: [themes/SPEC.md — Extra Vixi questions](themes/SPEC.md#extra-vixi-questions).
+
 **Import packs…** accepts a mixed selection from a themes folder: `.json`, optional `*-engine.js`, and optional font files (`.woff2` / `.woff` / `.ttf` / `.otf`). Engines match by `engine` / filename; fonts match by each JSON `fontFile` / `fontFaces[].fontFile`. Several packs can share one font file (stored once). Re-importing the same theme `id`, engine id, or font file replaces the previous copy. Engine packs only run after **Allow User Scripts** is enabled (see Finish setup above).
 
 Google Fonts: JSON `fonts` as one CSS URL (multiple `family=` params OK) or an array of URLs. Custom faces:

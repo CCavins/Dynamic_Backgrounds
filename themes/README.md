@@ -13,6 +13,7 @@ To have a model build a pack:
 1. Attach [SPEC.md](SPEC.md) (the contract).
 2. Attach the closest example:
    - JSON-only message (colors + motion): `message-stamp.json`
+   - JSON-only message + extra Vixi questions: `message-class-survey.json`
    - JSON-only mosaic with size + frame: `mosaic-framed.json`
    - JSON-only mosaic layout: `mosaic-ribbon.json`
    - Message with JS: `message-aurora.json` + `message-aurora-engine.js`
@@ -38,7 +39,7 @@ A pack that includes JS runs on matching output pages only after Allow User Scri
 
 Examples to try:
 
-- `message-class-survey.json` — kindergarten class survey (JSON only; name + 4 extra questions + message; Pencil, Paper, Desk, Photos)
+- `message-class-survey.json` — kindergarten class survey example (Themes page demo + preview; sideload with Import packs… — not in the extension catalog). Name + 4 extra questions + message; Pencil, Paper, Desk, Photos. See **Extra Vixi questions** in SPEC.md. Field labels live in the pack `notes` object.
 - `message-stamp.json` — postage-stamp message card (JSON only; Ink, Paper, Background, Motion)
 - `message-grunge-poster.json` — torn-paper grunge poster (JSON only; **Ink**, **Paper**, **Photos**). Brick wall is a separate asset (`assets/grunge-wall.webp`), not a popup color — see SPEC.md.
 - `mosaic-framed.json` — framed photo scatter (JSON only; Photo size + Frame color)
@@ -103,6 +104,7 @@ Clone these examples:
 | Goal | Pack |
 | --- | --- |
 | Message colors + motion | `message-stamp.json` |
+| Message + extra Vixi questions | `message-class-survey.json` |
 | Message + Photos + flat paper + image wall | `message-grunge-poster.json` + `assets/grunge-wall.webp` |
 | Mosaic size + frame color | `mosaic-framed.json` |
 | Mosaic frame + Photos (engine) | `mosaic-slant-rows.json` + `mosaic-slant-rows-engine.js` |
