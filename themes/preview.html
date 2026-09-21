@@ -920,7 +920,7 @@
 <script src="../extension/vendor/three.min.js"></script>
 <script src="../extension/vendor/RoundedBoxGeometry.js"></script>
 <script src="../extension/vendor/tile-field.js?v=1.24.28"></script>
-<script src="../extension/mosaic-themes.js?v=1.30.3"></script>
+<script src="../extension/mosaic-themes.js?v=1.30.24"></script>
 <script src="../extension/engines/api.js"></script>
 <script src="../extension/engines/xmas-snow-particles.js?v=1.24.28"></script>
 <script src="../extension/engines/message-aurora-engine.js?v=1.24.28"></script>
@@ -1956,6 +1956,7 @@
     document.documentElement.classList.toggle("dyn-message-on", entry.kind === "message");
     document.documentElement.classList.toggle("dyn-kind-message", entry.kind === "message");
     applyAspect();
+    pushPreviewChrome();
     if (!(opts && opts.keepSettingsForm)) renderSettingsPanel(entry);
 
     if (entry.kind === "mosaic") {
@@ -1975,8 +1976,37 @@
       }
       const pool = photos.length ? shuffle(photos) : [];
       const api = {
-        nextUrl() {
-          return pool[Math.floor(Math.random() * pool.length)] || "";
+        nextUrl(avoid) {
+          const blocked = new Set();
+          const add = (src) => {
+            if (!src) return;
+            blocked.add(src);
+            try {
+              blocked.add(new URL(src, location.href).href);
+            } catch {
+              /* keep the raw value */
+            }
+          };
+          if (typeof avoid === "string") add(avoid);
+          else if (avoid && typeof avoid[Symbol.iterator] === "function") {
+            for (const src of avoid) add(src);
+          }
+          const stage = document.getElementById("dyn-mosaic-theme");
+          if (stage) {
+            stage.querySelectorAll(".dyn-card img").forEach((img) => add(img.currentSrc || img.src));
+          }
+          const fresh = pool.filter((src) => {
+            if (!src) return false;
+            let abs = src;
+            try {
+              abs = new URL(src, location.href).href;
+            } catch {
+              /* relative is fine */
+            }
+            return !blocked.has(src) && !blocked.has(abs);
+          });
+          const list = fresh.length ? fresh : pool;
+          return list[Math.floor(Math.random() * list.length)] || "";
         },
         isRetiring() {
           return false;
@@ -2047,31 +2077,44 @@
     );
   }
 
-  function syncPreviewBrand() {
-    [messageRoot, mosaicRoot].forEach((root) => {
-      if (!root) return;
-      root.classList.remove("dyn-show-qr", "dyn-show-logo");
-      root.querySelectorAll("[data-qr], [data-logo]").forEach((slot) => slot.replaceChildren());
-      const extra = root.querySelector(":scope > .dyn-brand-chrome");
-      if (extra) extra.remove();
+  function pushPreviewChrome() {
+    if (!rules || typeof rules.applyStorageDelta !== "function") return;
+    rules.applyStorageDelta({
+      messageShowQr: { newValue: previewShowQr },
+      messageShowLogo: { newValue: previewShowLogo },
+      mosaicShowQr: { newValue: previewShowQr },
+      mosaicShowLogo: { newValue: previewShowLogo },
     });
+  }
+
+  function syncPreviewBrand() {
+    pushPreviewChrome();
     const root = document.body.classList.contains("is-mosaic") ? mosaicRoot : messageRoot;
-    if (!root || (!previewShowQr && !previewShowLogo)) return;
-    root.classList.toggle("dyn-show-qr", previewShowQr);
-    root.classList.toggle("dyn-show-logo", previewShowLogo);
-    let qr = root.querySelector("[data-qr]");
-    let logo = root.querySelector("[data-logo]");
-    if ((previewShowQr && !qr) || (previewShowLogo && !logo)) {
-      const chrome = document.createElement("div");
-      chrome.className = "dyn-brand-chrome";
-      chrome.innerHTML = '<div class="dyn-brand-logo" data-logo></div><div class="dyn-brand-qr" data-qr></div>';
-      root.appendChild(chrome);
-      qr = root.querySelector("[data-qr]");
-      logo = root.querySelector("[data-logo]");
+    const kind = document.body.classList.contains("is-mosaic") ? "mosaic" : "message";
+    if (!root) return;
+    if (rules && typeof rules.ensureBrandChrome === "function") {
+      rules.ensureBrandChrome(root, kind);
+    } else {
+      root.classList.toggle("dyn-show-qr", previewShowQr);
+      root.classList.toggle("dyn-show-logo", previewShowLogo);
     }
-    if (previewShowQr && qr) qr.innerHTML = qrPlaceholderMarkup();
-    if (previewShowLogo && logo) {
-      logo.innerHTML = '<img class="preview-brand-logo" alt="" src="preview-vixi-logo.png">';
+    const qr = root.querySelector("[data-qr]");
+    const logo = root.querySelector("[data-logo]");
+    if (qr) {
+      if (root.classList.contains("dyn-show-qr")) {
+        qr.hidden = false;
+        qr.innerHTML = qrPlaceholderMarkup();
+      } else {
+        qr.replaceChildren();
+      }
+    }
+    if (logo) {
+      if (root.classList.contains("dyn-show-logo")) {
+        logo.hidden = false;
+        logo.innerHTML = '<img class="preview-brand-logo" alt="" src="preview-vixi-logo.png">';
+      } else {
+        logo.replaceChildren();
+      }
     }
   }
 
@@ -2671,14 +2714,16 @@
   if (previewQrBox) {
     previewQrBox.addEventListener("change", () => {
       previewShowQr = previewQrBox.checked;
-      syncPreviewBrand();
+      if (active && active.kind === "mosaic") mountEntry(active, { keepSettingsForm: true });
+      else syncPreviewBrand();
       scheduleUrlSync();
     });
   }
   if (previewLogoBox) {
     previewLogoBox.addEventListener("change", () => {
       previewShowLogo = previewLogoBox.checked;
-      syncPreviewBrand();
+      if (active && active.kind === "mosaic") mountEntry(active, { keepSettingsForm: true });
+      else syncPreviewBrand();
       scheduleUrlSync();
     });
   }

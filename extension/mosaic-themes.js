@@ -2012,16 +2012,21 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
         return { cards, center, lastTickAt: 0 };
       },
       tick(root, pool, state, api) {
-        if (!pool.length) return;
+        if (!pool.length || !state.cards || !state.cards.length) return;
         const now = performance.now();
         if (state.lastTickAt && now - state.lastTickAt < TICK * 0.9) return;
         state.lastTickAt = now;
         const n = state.cards.length;
         const centerMod = ((state.center % n) + n) % n;
-        const hiddenI = (centerMod + Math.floor(n / 2)) % n;
-        const hidden = state.cards[hiddenI];
-        const src = api.nextUrl(imgSrc(hidden));
-        if (src) setImg(hidden, src);
+        // Increasing center moves the far-left card to the far right. Give that
+        // card a photo that is not already on screen before it wraps.
+        const wrapDelta = -Math.floor(n / 2);
+        let wrapI = (centerMod + wrapDelta) % n;
+        if (wrapI < 0) wrapI += n;
+        const wrap = state.cards[wrapI];
+        const visible = state.cards.map((card) => imgSrc(card)).filter(Boolean);
+        const src = feedSrc(api, pool, visible);
+        if (src) setImg(wrap, src);
         state.center += 1;
         layoutCoverflow(state.cards, state.center);
       },
@@ -2238,12 +2243,14 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
       },
       tick(root, pool, state, api) {
         const n = state.cards.length;
-        const backIndex = Math.floor((((-state.angle / (360 / n)) % n) + n) % n);
-        const far = (backIndex + Math.floor(n / 2)) % n;
-        const current = imgSrc(state.cards[far]);
-        const src = api.nextUrl(current);
-        if (src) revealFromBottom(state.cards[far], src);
-        state.angle += 360 / Math.max(n, 1);
+        if (!n || !pool.length) return;
+        const step = 360 / n;
+        const front = Math.floor((((-state.angle / step) % n) + n) % n);
+        const incoming = (front - 1 + n) % n;
+        const visible = state.cards.map((card) => imgSrc(card)).filter(Boolean);
+        const src = feedSrc(api, pool, visible);
+        if (src) revealFromBottom(state.cards[incoming], src);
+        state.angle += step;
         layoutOrbit(state.cards, state.angle);
       },
     },
@@ -2621,13 +2628,25 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
           { oc: 0, or: rows - 1 },
           { oc: cols - 1, or: rows - 1 },
         ];
+        function showingImg(item) {
+          return item.tile.querySelector(item.rotation % 360 === 0 ? ".dyn-flip-front img" : ".dyn-flip-back img");
+        }
         function hiddenImg(item) {
           return item.tile.querySelector(item.rotation % 360 === 0 ? ".dyn-flip-back img" : ".dyn-flip-front img");
         }
         function prepHidden() {
+          const avoid = tiles
+            .map((item) => {
+              const img = showingImg(item);
+              return img ? img.currentSrc || img.src : "";
+            })
+            .filter(Boolean);
           tiles.forEach((item) => {
-            const src = pickRandomUrl(state.poolRef) || hiddenImg(item).src;
-            if (src) hiddenImg(item).src = src;
+            const src = pickRandomUrl(state.poolRef, avoid) || hiddenImg(item).src;
+            if (src) {
+              hiddenImg(item).src = src;
+              avoid.push(src);
+            }
           });
         }
         function pickCorner() {
@@ -2663,7 +2682,13 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
           order.slice(0, countN).forEach((idx, k) => {
             later(state, () => {
               const item = tiles[idx];
-              const src = pickRandomUrl(state.poolRef);
+              const avoid = tiles
+                .map((tile) => {
+                  const img = showingImg(tile);
+                  return img ? img.currentSrc || img.src : "";
+                })
+                .filter(Boolean);
+              const src = pickRandomUrl(state.poolRef, avoid);
               if (src) hiddenImg(item).src = src;
               item.rotation += 180;
               item.tile.style.transform = `rotateY(${item.rotation}deg)`;
@@ -3707,8 +3732,16 @@ html.dyn-mosaic-on .logo-tile:not(.dyn-brand-clone):not(#dyn-theme-host *) {
         const OUT_MS = 1500;
         const IN_MS = 1800;
         const DIVE_DEPTH = 2850;
+        function onScreen() {
+          return peds
+            .map((item) => {
+              const img = item.layers[item.active];
+              return img ? img.currentSrc || img.src : "";
+            })
+            .filter(Boolean);
+        }
         function prepareNext(p) {
-          p.pendingSrc = pickRandomUrl(state.poolRef) || "";
+          p.pendingSrc = pickRandomUrl(state.poolRef, onScreen()) || "";
         }
         peds.forEach(prepareNext);
         function swapTexture(p) {
