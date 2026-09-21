@@ -19,7 +19,7 @@
                 <a href="extension.html">Extension</a>
                 <a href="create.html" aria-current="page">Create</a>
             </nav>
-            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.30.15</span></a>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.30.21</span></a>
         </header>
 
         <div class="page-intro">
@@ -48,6 +48,7 @@
                 <li>Open a Vixi output page and hard-refresh it after enabling User Scripts or importing an engine.</li>
             </ol>
             <p>A pack that includes JS runs on matching output pages only after Allow User Scripts is on. Only import engines you wrote or trust. The popup warns the first time. Re-importing the same theme <code>id</code> (or the same engine / font file) replaces the previous copy. Remove an imported theme from the same section — if it was selected, the dropdown returns to Off.</p>
+            <p>To check a pack before Chrome, open <a href="themes/preview.html">preview</a> and use <strong>Import packs…</strong> the same way (JSON, plus <code>*-engine.js</code> and font files if the pack needs them). The preview compiles engines in the page, so Allow User Scripts is not required there. <strong>Open viewer</strong> hides the dock and shows only the stage. Imported packs stay in this browser until you click <strong>Remove</strong>. Importing the same name again replaces that pack and does not replace a built-in theme. Output still needs the extension, and engine packs on output still need Allow User Scripts.</p>
 
             <h2>Why engine packs need Allow User Scripts</h2>
             <p>Chrome blocks running imported JavaScript inside the extension’s normal content scripts (page CSP / MV3). The extension registers your engine with Chrome’s <strong>user scripts</strong> API instead. That API stays off until you opt in on the extension details page. Without the opt-in, mosaic/message mounts fail and the stage stays black. Built-in themes shipped in the extension do not need this step.</p>
@@ -128,7 +129,7 @@
                     — HTML/CSS ports of built-in looks (new ids, so they sit beside the originals)
                 </li>
             </ul>
-            <p>To preview without a live output, open <a href="themes/preview.html">themes/preview.html</a>. It mirrors extension live settings and message transitions. Do not embed large textures in pack <code>css</code> — use files under <code>assets/</code> (see <a href="themes/SPEC.md#pack-assets-images-and-textures">Pack assets</a> in the spec).</p>
+            <p>To preview without a live output, open <a href="themes/preview.html">themes/preview.html</a>. It mirrors extension live settings and message transitions. <strong>Show QR</strong> and <strong>Show logo</strong> drop in a placeholder QR (the word Placeholder across the middle of the square) and the Vixi V, using the theme’s <code>data-qr</code> / <code>data-logo</code> slots or the default corners. Color and setting limits are in <a href="themes/SPEC.md#how-many-settings">How many settings</a>. Do not embed large textures in pack <code>css</code> — use files under <code>assets/</code> (see <a href="themes/SPEC.md#pack-assets-images-and-textures">Pack assets</a> in the spec).</p>
 
             <h2>Extra Vixi questions</h2>
             <p>Vixi’s first on-screen text is <code>message</code>, the second is <code>name</code>, and everything after that is <code>question1</code>, <code>question2</code>, … in DOM order (V2 skips empty tiles first). Bind extras with <code>data-field="question1"</code> or <code>data-question="1"</code>. Existing name/message themes do not need to change.</p>

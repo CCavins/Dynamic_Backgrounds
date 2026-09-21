@@ -1714,6 +1714,181 @@
 
   loadAndRegister().catch(() => {});
 
+  function importFileBaseName(file) {
+    return String(file && file.name ? file.name : "").replace(/^.*[/\\]/, "");
+  }
+
+  function findEngineForPack(pack, engines) {
+    if (!pack || !pack.engine || !engines.length) return null;
+    const engineFile = String(pack.engineFile || "").toLowerCase();
+    const engineId = String(pack.engine || "").toLowerCase();
+    const idEngineName = String(pack.id || "").toLowerCase() + "-engine.js";
+    const byFile = engineFile
+      ? engines.find((item) => item.name.toLowerCase() === engineFile)
+      : null;
+    if (byFile) return byFile;
+    const byId = engines.find((item) => String(item.meta.id || "").toLowerCase() === engineId);
+    if (byId) return byId;
+    return (
+      engines.find((item) => item.name.toLowerCase() === idEngineName) ||
+      engines.find((item) => item.name.toLowerCase().replace(/\.js$/, "") === engineId) ||
+      null
+    );
+  }
+
+  function engineReady(kind, engineId) {
+    if (!engineId) return true;
+    if (engineTheme(kind, engineId)) return true;
+    const builtin = kind === "message" ? MESSAGE_ENGINES.has(engineId) : MOSAIC_ENGINES.has(engineId);
+    return builtin || BUNDLED_ENGINES.has(engineId);
+  }
+
+  function bindImportedFonts(pack, fontAssets) {
+    if (!pack) return pack;
+    const assetsByName = new Map();
+    (fontAssets || []).forEach((asset) => {
+      if (asset && asset.id && asset.name) {
+        assetsByName.set(String(asset.name).toLowerCase(), asset);
+      }
+    });
+    const resolved = [];
+    getPackFontFaces(pack).forEach((face) => {
+      const want = String(face.fontFile || "").toLowerCase();
+      const fromBatch = want ? assetsByName.get(want) : null;
+      if (fromBatch) {
+        resolved.push({
+          fontFile: fromBatch.name,
+          fontFamily: face.fontFamily || fromBatch.family || "",
+          fontId: fromBatch.id,
+        });
+        return;
+      }
+      resolved.push({
+        fontFile: face.fontFile || "",
+        fontFamily: face.fontFamily || "",
+        fontId: face.fontId || (want ? fontIdFromFileName(face.fontFile) : ""),
+      });
+    });
+    pack.fontFaces = resolved;
+    return syncLegacyFontFields(pack);
+  }
+
+  function replaceSideloadEngine(source) {
+    const meta = peekEngineMeta(source);
+    const api = root.BGThemeEngines;
+    if (api && typeof api.unregister === "function") api.unregister(meta.id);
+    return compileSideloadSource(source);
+  }
+
+  async function planThemeImports(files) {
+    const list = [...(files || [])];
+    const jsonFiles = list.filter((file) => /\.json$/i.test(file.name));
+    const jsFiles = list.filter((file) => /\.js$/i.test(file.name));
+    const fontFiles = list.filter((file) => /\.(woff2|woff|ttf|otf)$/i.test(file.name));
+    if (!jsonFiles.length) {
+      throw new Error("Select at least one theme .json file.");
+    }
+
+    const engines = [];
+    const notes = [];
+    for (const file of jsFiles) {
+      const name = importFileBaseName(file);
+      if (/snow-particles/i.test(name)) {
+        notes.push("Skipped " + name + " (helper — not an importable engine).");
+        continue;
+      }
+      const text = await file.text();
+      try {
+        const meta = peekEngineMeta(text);
+        engines.push({ file, text, meta, name });
+      } catch (err) {
+        notes.push(
+          "Skipped " + name + " (" + ((err && err.message) || "not a theme engine") + ")."
+        );
+      }
+    }
+
+    const fonts = [];
+    for (const file of fontFiles) {
+      try {
+        const asset = await ingestFontFile(file);
+        fonts.push({ file, asset, name: asset.name });
+      } catch (err) {
+        notes.push(
+          "Skipped " +
+            importFileBaseName(file) +
+            " (" +
+            ((err && err.message) || "not a usable font") +
+            ")."
+        );
+      }
+    }
+
+    function findFontsForPack(pack) {
+      const faces = getPackFontFaces(pack);
+      const matched = [];
+      const missing = [];
+      faces.forEach((face) => {
+        const want = String(face.fontFile || "").toLowerCase();
+        if (!want) return;
+        const hit = fonts.find((item) => item.name.toLowerCase() === want);
+        if (hit) matched.push(hit);
+        else missing.push(face.fontFile);
+      });
+      return { matched, missing };
+    }
+
+    const usedEngines = new Set();
+    const usedFonts = new Set();
+    const jobs = [];
+    const errors = [];
+    for (const file of jsonFiles) {
+      const name = importFileBaseName(file);
+      let raw = "";
+      let pack = null;
+      try {
+        raw = await file.text();
+        pack = parsePack(raw);
+      } catch (err) {
+        errors.push(name + ": " + ((err && err.message) || "invalid theme"));
+        continue;
+      }
+      const match = findEngineForPack(pack, engines);
+      if (match) usedEngines.add(match.name);
+      const fontPlan = findFontsForPack(pack);
+      fontPlan.matched.forEach((item) => usedFonts.add(item.name));
+      fontPlan.missing.forEach((fontName) => {
+        notes.push(
+          name +
+            ': fontFile "' +
+            fontName +
+            '" not in this selection (will reuse a stored copy if one exists).'
+        );
+      });
+      jobs.push({
+        raw,
+        pack,
+        jsonName: name,
+        engineSource: match ? match.text : "",
+        engineName: match ? match.name : "",
+        fontAssets: fontPlan.matched.map((item) => item.asset),
+      });
+    }
+
+    engines.forEach((item) => {
+      if (!usedEngines.has(item.name)) {
+        notes.push("Unused engine " + item.name + " (no matching theme .json in this selection).");
+      }
+    });
+    fonts.forEach((item) => {
+      if (!usedFonts.has(item.name)) {
+        notes.push("Unused font " + item.name + " (no theme fontFile matched it).");
+      }
+    });
+
+    return { jobs, errors, notes };
+  }
+
   root.BGCustomThemes = {
     FORMAT,
     MESSAGE_ENGINES,
@@ -1743,5 +1918,9 @@
     importPack,
     removePack,
     requestSideloadSync,
+    planThemeImports,
+    engineReady,
+    bindImportedFonts,
+    replaceSideloadEngine,
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

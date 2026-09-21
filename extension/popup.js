@@ -1583,137 +1583,6 @@
     addRuleRow({});
   });
 
-  function fileBaseName(file) {
-    return String(file && file.name ? file.name : "").replace(/^.*[/\\]/, "");
-  }
-
-  function findEngineForPack(pack, engines) {
-    if (!pack || !pack.engine || !engines.length) return null;
-    const engineFile = String(pack.engineFile || "").toLowerCase();
-    const engineId = String(pack.engine || "").toLowerCase();
-    const idEngineName = String(pack.id || "").toLowerCase() + "-engine.js";
-    const byFile = engineFile
-      ? engines.find((item) => item.name.toLowerCase() === engineFile)
-      : null;
-    if (byFile) return byFile;
-    const byId = engines.find((item) => String(item.meta.id || "").toLowerCase() === engineId);
-    if (byId) return byId;
-    return (
-      engines.find((item) => item.name.toLowerCase() === idEngineName) ||
-      engines.find((item) => item.name.toLowerCase().replace(/\.js$/, "") === engineId) ||
-      null
-    );
-  }
-
-  async function planThemeImports(files) {
-    const jsonFiles = files.filter((file) => /\.json$/i.test(file.name));
-    const jsFiles = files.filter((file) => /\.js$/i.test(file.name));
-    const fontFiles = files.filter((file) => /\.(woff2|woff|ttf|otf)$/i.test(file.name));
-    if (!jsonFiles.length) {
-      throw new Error("Select at least one theme .json file.");
-    }
-
-    const engines = [];
-    const notes = [];
-    for (const file of jsFiles) {
-      const name = fileBaseName(file);
-      if (/snow-particles/i.test(name)) {
-        notes.push("Skipped " + name + " (helper — not an importable engine).");
-        continue;
-      }
-      const text = await file.text();
-      try {
-        const meta = customApi.peekEngineMeta(text);
-        engines.push({ file, text, meta, name });
-      } catch (err) {
-        notes.push(
-          "Skipped " + name + " (" + ((err && err.message) || "not a theme engine") + ")."
-        );
-      }
-    }
-
-    const fonts = [];
-    for (const file of fontFiles) {
-      try {
-        const asset = await customApi.ingestFontFile(file);
-        fonts.push({ file, asset, name: asset.name });
-      } catch (err) {
-        notes.push(
-          "Skipped " +
-            fileBaseName(file) +
-            " (" +
-            ((err && err.message) || "not a usable font") +
-            ")."
-        );
-      }
-    }
-
-    function findFontsForPack(pack) {
-      const faces =
-        customApi.getPackFontFaces ? customApi.getPackFontFaces(pack) : [];
-      const matched = [];
-      const missing = [];
-      faces.forEach((face) => {
-        const want = String(face.fontFile || "").toLowerCase();
-        if (!want) return;
-        const hit = fonts.find((item) => item.name.toLowerCase() === want);
-        if (hit) matched.push(hit);
-        else missing.push(face.fontFile);
-      });
-      return { matched, missing };
-    }
-
-    const usedEngines = new Set();
-    const usedFonts = new Set();
-    const jobs = [];
-    const errors = [];
-    for (const file of jsonFiles) {
-      const name = fileBaseName(file);
-      let raw = "";
-      let pack = null;
-      try {
-        raw = await file.text();
-        pack = customApi.parsePack(raw);
-      } catch (err) {
-        errors.push(name + ": " + ((err && err.message) || "invalid theme"));
-        continue;
-      }
-      const match = findEngineForPack(pack, engines);
-      if (match) usedEngines.add(match.name);
-      const fontPlan = findFontsForPack(pack);
-      fontPlan.matched.forEach((item) => usedFonts.add(item.name));
-      fontPlan.missing.forEach((fontName) => {
-        notes.push(
-          name +
-            ': fontFile "' +
-            fontName +
-            '" not in this selection (will reuse a stored copy if one exists).'
-        );
-      });
-      jobs.push({
-        raw,
-        pack,
-        jsonName: name,
-        engineSource: match ? match.text : "",
-        engineName: match ? match.name : "",
-        fontAssets: fontPlan.matched.map((item) => item.asset),
-      });
-    }
-
-    engines.forEach((item) => {
-      if (!usedEngines.has(item.name)) {
-        notes.push("Unused engine " + item.name + " (no matching theme .json in this selection).");
-      }
-    });
-    fonts.forEach((item) => {
-      if (!usedFonts.has(item.name)) {
-        notes.push("Unused font " + item.name + " (no theme fontFile matched it).");
-      }
-    });
-
-    return { jobs, errors, notes };
-  }
-
   if (importInput && customApi) {
     importInput.addEventListener("change", async () => {
       const files = [...(importInput.files || [])];
@@ -1721,7 +1590,7 @@
       if (!files.length) return;
       let plan;
       try {
-        plan = await planThemeImports(files);
+        plan = await customApi.planThemeImports(files);
       } catch (err) {
         setImportStatus(err && err.message ? err.message : "Import failed.", "is-error");
         return;

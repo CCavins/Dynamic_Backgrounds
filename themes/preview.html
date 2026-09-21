@@ -32,6 +32,31 @@
     background: #05050c;
   }
 
+  body.preview-view #dock,
+  body.preview-view .dock-meta {
+    display: none !important;
+  }
+
+  body.preview-view:fullscreen #viewer-hint,
+  body.preview-view:-webkit-full-screen #viewer-hint {
+    display: none;
+  }
+
+  #viewer-hint {
+    position: fixed;
+    z-index: 50;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(12, 12, 18, 0.82);
+    color: #fff;
+    font: 600 13px Inter, system-ui, sans-serif;
+    pointer-events: none;
+  }
+
   #preview-bg {
     position: absolute;
     inset: 0;
@@ -560,6 +585,81 @@
     padding: 0 10px;
   }
 
+  .dock-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    color: var(--dock-text);
+    font: 500 13px Inter, system-ui, sans-serif;
+  }
+
+  .preview-brand-qr {
+    position: relative;
+    width: 100%;
+  }
+
+  .preview-brand-caption {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 1;
+    transform: translate(-50%, -50%);
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #fff;
+    color: #111;
+    font: 700 10px/1.2 Inter, system-ui, sans-serif;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .preview-brand-qr svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: #fff;
+  }
+
+  .preview-brand-logo {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: transparent;
+  }
+
+  #dyn-message-theme > .dyn-brand-chrome,
+  #dyn-mosaic-theme > .dyn-brand-chrome {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+  }
+
+  #dyn-message-theme > .dyn-brand-chrome .dyn-brand-logo,
+  #dyn-mosaic-theme > .dyn-brand-chrome .dyn-brand-logo {
+    position: absolute;
+    top: 3.2%;
+    left: 3.2%;
+    width: min(14%, 180px);
+  }
+
+  #dyn-message-theme > .dyn-brand-chrome .dyn-brand-qr,
+  #dyn-mosaic-theme > .dyn-brand-chrome .dyn-brand-qr {
+    position: absolute;
+    right: 3.2%;
+    bottom: 3.2%;
+    width: min(12%, 160px);
+  }
+
+  #dyn-message-theme:not(.dyn-show-qr) [data-qr],
+  #dyn-mosaic-theme:not(.dyn-show-qr) [data-qr],
+  #dyn-message-theme:not(.dyn-show-logo) [data-logo],
+  #dyn-mosaic-theme:not(.dyn-show-logo) [data-logo] {
+    visibility: hidden !important;
+  }
+
   .dock-btn {
     height: 36px;
     padding: 0 12px;
@@ -569,6 +669,85 @@
     color: var(--dock-text);
     font: 500 13px Inter, system-ui, sans-serif;
     cursor: pointer;
+  }
+
+  .dock-row-import {
+    align-items: center;
+  }
+
+  .dock-import-status {
+    flex: 1 1 180px;
+    margin: 0;
+    min-height: 1.2em;
+    font-size: 12px;
+    color: var(--dock-muted);
+  }
+
+  .dock-import-status.is-error { color: #ff8b8b; }
+  .dock-import-status.is-ok { color: #7dffb3; }
+  .dock-import-status.is-warn { color: #fec651; }
+
+  .import-info {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .info-btn {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--dock-text);
+    font: 600 12px/20px Inter, system-ui, sans-serif;
+    cursor: pointer;
+  }
+
+  .info-btn[aria-expanded="true"],
+  .info-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .import-help,
+  .import-note {
+    position: absolute;
+    z-index: 5;
+    left: 0;
+    bottom: calc(100% + 8px);
+    width: min(340px, 70vw);
+    padding: 12px 14px;
+    border: 1px solid var(--dock-border);
+    border-radius: 12px;
+    background: #16161e;
+    color: var(--dock-text);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+    font: 400 13px/1.45 Inter, system-ui, sans-serif;
+  }
+
+  .import-help p,
+  .import-note p {
+    margin: 0 0 8px;
+  }
+
+  .import-help ul,
+  .import-note ul {
+    margin: 0;
+    padding-left: 18px;
+  }
+
+  .import-note {
+    position: fixed;
+    left: 50%;
+    top: 18px;
+    bottom: auto;
+    transform: translateX(-50%);
+    width: min(460px, calc(100% - 32px));
+  }
+
+  .import-note button {
+    margin-top: 10px;
   }
 
   .dock-btn:hover { background: rgba(255, 255, 255, 0.16); }
@@ -655,6 +834,30 @@
           </div>
         </div>
 
+        <div class="dock-row dock-row-import">
+          <label class="dock-btn">Import packs…<input type="file" id="import-packs" accept=".json,.js,.woff,.woff2,.ttf,.otf,application/json,text/javascript,font/woff,font/woff2" multiple hidden></label>
+          <span class="import-info">
+            <button type="button" class="info-btn" id="import-info" aria-expanded="false" aria-controls="import-help" title="How to import a pack">i</button>
+            <div class="import-help" id="import-help" hidden>
+              <p>Select every file for a theme in the same Import packs… pick:</p>
+              <ul>
+                <li>the theme <code>.json</code></li>
+                <li>its <code>.js</code> engine, when the JSON has an <code>engine</code></li>
+                <li>every font file named in <code>fontFile</code> or <code>fontFaces</code></li>
+              </ul>
+              <p>A Google Fonts link in the JSON does not need a file. The same name replaces that imported pack. A built-in name is left alone.</p>
+            </div>
+          </span>
+          <button type="button" class="dock-btn" id="open-viewer">Open viewer</button>
+          <button type="button" class="dock-btn dock-btn-ghost" id="remove-import" hidden>Remove</button>
+          <p class="dock-import-status" id="import-status" role="status"></p>
+        </div>
+        <div class="import-note" id="import-note" hidden role="alertdialog" aria-labelledby="import-note-title">
+          <p id="import-note-title"><strong>Some files were not included</strong></p>
+          <ul id="import-note-list"></ul>
+          <button type="button" class="dock-btn" id="import-note-close">OK</button>
+        </div>
+
         <div class="dock-row dock-row-stage">
           <label class="dock-field dock-field-aspect">
             <span>Aspect ratio</span>
@@ -668,6 +871,8 @@
               <input id="aspect-h" type="number" min="1" max="9999" step="any" inputmode="decimal" value="9" aria-label="Height">
             </div>
           </div>
+          <label class="dock-check"><input type="checkbox" id="preview-show-qr"> Show QR</label>
+          <label class="dock-check"><input type="checkbox" id="preview-show-logo"> Show logo</label>
         </div>
 
         <div class="dock-section dock-settings" id="settings-panel" hidden>
@@ -726,7 +931,7 @@
 <script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.24.28"></script>
 <script src="./mosaic-slant-rows-engine.js?v=1.24.28"></script>
 <script src="../extension/engines/message-xmas-bauble-engine.js?v=1.24.28"></script>
-<script src="../extension/custom-themes.js?v=1.24.28"></script>
+<script src="../extension/custom-themes.js?v=1.30.17"></script>
 <script>
 (async () => {
   const SAMPLE_DIR = "../samples/patriots/";
@@ -773,6 +978,9 @@
   }
 
   const customPacks = [];
+  const sessionFonts = {};
+  const sessionEngineSources = {};
+  let previewRegistering = false;
   const settled = await Promise.all(
     CUSTOM_FILES.map(([file]) =>
       fetch(file)
@@ -803,17 +1011,75 @@
   if (customApi && typeof customApi.whenReady === "function") {
     await customApi.whenReady();
   }
+  const PREVIEW_IMPORT_KEY = "dyn-preview-imports";
+
+  function readStoredImports() {
+    try {
+      const raw = localStorage.getItem(PREVIEW_IMPORT_KEY);
+      if (!raw) return [];
+      const data = JSON.parse(raw);
+      return Array.isArray(data && data.items) ? data.items : [];
+    } catch {
+      return [];
+    }
+  }
+
+  readStoredImports().forEach((item) => {
+    const pack = item && item.pack;
+    if (!pack || !pack.id) return;
+    if (customPacks.some((entry) => entry.id === pack.id)) return;
+    const builtin =
+      (rules.MESSAGE_THEME_META && rules.MESSAGE_THEME_META[pack.id]) ||
+      (rules.MOSAIC_THEME_META && rules.MOSAIC_THEME_META[pack.id]);
+    if (builtin) return;
+    try {
+      if (item.engineSource && customApi.replaceSideloadEngine) {
+        customApi.replaceSideloadEngine(item.engineSource);
+        if (pack.engine) sessionEngineSources[pack.engine] = item.engineSource;
+      }
+      (item.fontAssets || []).forEach((asset) => {
+        if (asset && asset.id) sessionFonts[asset.id] = asset;
+      });
+      if (item.fontAssets && item.fontAssets.length && customApi.bindImportedFonts) {
+        customApi.bindImportedFonts(pack, item.fontAssets);
+      }
+      customPacks.push({
+        kind: pack.kind,
+        id: pack.id,
+        label: item.label || pack.label || pack.id,
+        pack,
+        custom: true,
+        imported: true,
+        engineSource: item.engineSource || "",
+      });
+    } catch {
+      /* skip a stored pack that no longer compiles */
+    }
+  });
+
   // Register after bundled-pack bootstrap so loadAndRegister() cannot wipe pack CSS.
   function registerPreviewPacks() {
     if (!customPacks.length || !customApi.registerPacks) return;
-    customApi.registerPacks(customPacks.map((item) => item.pack));
-    if (rules.applyCustomThemeMeta) {
-      rules.applyCustomThemeMeta(customPacks.map((item) => item.pack));
+    if (previewRegistering) return;
+    previewRegistering = true;
+    try {
+      customApi.registerPacks(
+        customPacks.map((item) => item.pack),
+        sessionFonts
+      );
+      if (rules.applyCustomThemeMeta) {
+        rules.applyCustomThemeMeta(customPacks.map((item) => item.pack));
+      }
+    } finally {
+      previewRegistering = false;
     }
   }
   registerPreviewPacks();
   if (customApi.onChange) {
-    customApi.onChange(() => registerPreviewPacks());
+    customApi.onChange(() => {
+      if (previewRegistering) return;
+      registerPreviewPacks();
+    });
   }
 
   function parseCsv(text) {
@@ -995,8 +1261,13 @@
     if (settings.scale != null && Math.abs(Number(settings.scale) - Number(defaults.scale || 1)) > 0.001) {
       p.set("scale", String(Math.round(Number(settings.scale) * 100) / 100));
     }
+    if (document.body.classList.contains("preview-view")) p.set("view", "1");
     if (previewBgFit && previewBgFit !== "cover") p.set("bgfit", previewBgFit);
-    if (document.body.classList.contains("dock-collapsed")) p.set("dock", "min");
+    if (previewShowQr) p.set("qr", "1");
+    if (previewShowLogo) p.set("logo", "1");
+    if (!document.body.classList.contains("preview-view") && document.body.classList.contains("dock-collapsed")) {
+      p.set("dock", "min");
+    }
     const qs = p.toString();
     const next = location.pathname + (qs ? "?" + qs : "") + location.hash;
     const cur = location.pathname + location.search + location.hash;
@@ -1044,29 +1315,59 @@
     select.appendChild(group);
   }
 
-  addGroup(
-    themeSelect,
-    "Message · built-in",
-    catalog.filter(
-      (item) =>
-        item.kind === "message" &&
-        (!item.custom || FEATURED_IDS.has(item.id))
-    )
-  );
-  addGroup(
-    themeSelect,
-    "Mosaic · built-in",
-    catalog.filter(
-      (item) =>
-        item.kind === "mosaic" &&
-        (!item.custom || FEATURED_IDS.has(item.id))
-    )
-  );
-  addGroup(
-    themeSelect,
-    "Christmas",
-    catalog.filter((item) => item.custom && isChristmasItem(item))
-  );
+  function fillThemeSelect(preferValue) {
+    const keep = preferValue || themeSelect.value;
+    themeSelect.replaceChildren();
+    addGroup(
+      themeSelect,
+      "Message · built-in",
+      catalog.filter(
+        (item) =>
+          item.kind === "message" &&
+          !item.imported &&
+          (!item.custom || FEATURED_IDS.has(item.id))
+      )
+    );
+    addGroup(
+      themeSelect,
+      "Mosaic · built-in",
+      catalog.filter(
+        (item) =>
+          item.kind === "mosaic" &&
+          !item.imported &&
+          (!item.custom || FEATURED_IDS.has(item.id))
+      )
+    );
+    addGroup(
+      themeSelect,
+      "Christmas",
+      catalog.filter((item) => item.custom && !item.imported && isChristmasItem(item))
+    );
+    addGroup(
+      themeSelect,
+      "Imported",
+      catalog.filter((item) => item.imported)
+    );
+    if (keep && [...themeSelect.options].some((opt) => opt.value === keep)) {
+      themeSelect.value = keep;
+    }
+  }
+
+  function syncCatalogFromPacks() {
+    for (let i = catalog.length - 1; i >= 0; i -= 1) {
+      if (catalog[i].custom) catalog.splice(i, 1);
+    }
+    customPacks.forEach((item) => {
+      const builtinIdx = catalog.findIndex((entry) => entry.id === item.id && !entry.custom);
+      if (builtinIdx >= 0) {
+        if (!item.imported) return;
+        catalog.splice(builtinIdx, 1);
+      }
+      catalog.push(item);
+    });
+  }
+
+  fillThemeSelect();
 
   (rules.STAGE_ASPECT_PRESETS || []).forEach((preset) => {
     const opt = document.createElement("option");
@@ -1080,6 +1381,8 @@
   aspectSelect.appendChild(customOpt);
 
   let stageMode = "vixi";
+  let previewShowQr = false;
+  let previewShowLogo = false;
   let active = null;
   let messageState = null;
   let mosaicState = null;
@@ -1628,7 +1931,7 @@
     metaTitle.textContent = entry.label;
     if (dockChipLabel) dockChipLabel.textContent = entry.label;
     const kind = entry.kind === "mosaic" ? "Mosaic" : "Message";
-    const source = entry.custom ? "example pack" : "built-in";
+    const source = entry.imported ? "imported" : entry.custom ? "example pack" : "built-in";
     const photoNote = photos.length
       ? photos.length + " sample photos (same as homepage)"
       : "no sample photos loaded";
@@ -1639,6 +1942,8 @@
       " · " +
       photoNote +
       ' · <a href="../index.html">Back to gallery</a>';
+    const removeBtn = document.getElementById("remove-import");
+    if (removeBtn) removeBtn.hidden = !entry.imported;
   }
 
   function mountEntry(entry, opts) {
@@ -1691,6 +1996,7 @@
       }
       scheduleUrlSync();
       void renderPreviewBackground();
+      syncPreviewBrand();
       return;
     }
 
@@ -1720,6 +2026,53 @@
     }, MESSAGE_CYCLE_MS);
     scheduleUrlSync();
     void renderPreviewBackground();
+    syncPreviewBrand();
+  }
+
+  function qrPlaceholderMarkup() {
+    const cells = [[0, 0], [22, 0], [0, 22]];
+    let shapes = "";
+    cells.forEach(([x, y]) => {
+      shapes +=
+        '<rect x="' + x + '" y="' + y + '" width="7" height="7" fill="#111"/>' +
+        '<rect x="' + (x + 1) + '" y="' + (y + 1) + '" width="5" height="5" fill="#fff"/>' +
+        '<rect x="' + (x + 2) + '" y="' + (y + 2) + '" width="3" height="3" fill="#111"/>';
+    });
+    [[10, 2], [12, 4], [16, 6], [8, 10], [14, 12], [20, 14], [10, 16], [18, 18], [24, 8], [6, 20], [22, 24]].forEach(([x, y]) => {
+      shapes += '<rect x="' + x + '" y="' + y + '" width="2" height="2" fill="#111"/>';
+    });
+    return (
+      '<div class="preview-brand-qr"><span class="preview-brand-caption">Placeholder</span>' +
+      '<svg viewBox="0 0 29 29" aria-hidden="true">' + shapes + "</svg></div>"
+    );
+  }
+
+  function syncPreviewBrand() {
+    [messageRoot, mosaicRoot].forEach((root) => {
+      if (!root) return;
+      root.classList.remove("dyn-show-qr", "dyn-show-logo");
+      root.querySelectorAll("[data-qr], [data-logo]").forEach((slot) => slot.replaceChildren());
+      const extra = root.querySelector(":scope > .dyn-brand-chrome");
+      if (extra) extra.remove();
+    });
+    const root = document.body.classList.contains("is-mosaic") ? mosaicRoot : messageRoot;
+    if (!root || (!previewShowQr && !previewShowLogo)) return;
+    root.classList.toggle("dyn-show-qr", previewShowQr);
+    root.classList.toggle("dyn-show-logo", previewShowLogo);
+    let qr = root.querySelector("[data-qr]");
+    let logo = root.querySelector("[data-logo]");
+    if ((previewShowQr && !qr) || (previewShowLogo && !logo)) {
+      const chrome = document.createElement("div");
+      chrome.className = "dyn-brand-chrome";
+      chrome.innerHTML = '<div class="dyn-brand-logo" data-logo></div><div class="dyn-brand-qr" data-qr></div>';
+      root.appendChild(chrome);
+      qr = root.querySelector("[data-qr]");
+      logo = root.querySelector("[data-logo]");
+    }
+    if (previewShowQr && qr) qr.innerHTML = qrPlaceholderMarkup();
+    if (previewShowLogo && logo) {
+      logo.innerHTML = '<img class="preview-brand-logo" alt="" src="preview-vixi-logo.png">';
+    }
   }
 
   function findEntry(value) {
@@ -1950,6 +2303,330 @@
     dockChip.addEventListener("click", () => setDockCollapsed(false));
   }
 
+  const VIEW_CHANNEL = "dyn-preview-view";
+
+  function setImportStatus(message, tone) {
+    const el = document.getElementById("import-status");
+    if (!el) return;
+    el.textContent = message || "";
+    el.classList.remove("is-ok", "is-error", "is-warn");
+    if (tone) el.classList.add(tone);
+  }
+
+  function rememberFontAssets(assets) {
+    (assets || []).forEach((asset) => {
+      if (asset && asset.id) sessionFonts[asset.id] = asset;
+    });
+  }
+
+  function fontAssetsForPack(pack) {
+    if (!pack || !customApi.getPackFontFaces) return [];
+    const assets = [];
+    customApi.getPackFontFaces(pack).forEach((face) => {
+      const id = face && face.fontId;
+      if (id && sessionFonts[id]) assets.push(sessionFonts[id]);
+    });
+    return assets;
+  }
+
+  function saveStoredImports() {
+    const items = customPacks.filter((item) => item.imported).map((item) => ({
+      id: item.id,
+      kind: item.kind,
+      label: item.label,
+      pack: item.pack,
+      engineSource: item.engineSource || "",
+      fontAssets: fontAssetsForPack(item.pack),
+    }));
+    localStorage.setItem(PREVIEW_IMPORT_KEY, JSON.stringify({ items }));
+  }
+
+  function builtinThemeName(pack) {
+    const id = pack && pack.id;
+    const label = String((pack && pack.label) || "").trim();
+    const tables = [rules.MESSAGE_THEME_META, rules.MOSAIC_THEME_META];
+    for (let i = 0; i < tables.length; i += 1) {
+      const meta = tables[i];
+      if (!meta) continue;
+      if (id && meta[id]) return meta[id].label || id;
+      const match = Object.keys(meta).find((key) => String((meta[key] && meta[key].label) || "").trim() === label);
+      if (match) return meta[match].label || match;
+    }
+    const shipped = customPacks.find(
+      (item) => !item.imported && (item.id === id || String(item.label || "").trim() === label)
+    );
+    return shipped ? shipped.label || shipped.id : "";
+  }
+
+  function adoptImportedPack(pack, engineSource, fontAssets) {
+    const blocked = builtinThemeName(pack);
+    if (blocked) {
+      throw new Error('"' + blocked + '" is a built-in theme. Use a different name.');
+    }
+    if (engineSource) {
+      if (!customApi.replaceSideloadEngine) {
+        throw new Error("This preview cannot compile theme engines.");
+      }
+      customApi.replaceSideloadEngine(engineSource);
+      if (pack.engine) sessionEngineSources[pack.engine] = engineSource;
+    } else if (pack.engine && customApi.engineReady && !customApi.engineReady(pack.kind, pack.engine)) {
+      throw new Error("Unknown engine. Import the .js file with the JSON.");
+    }
+    if (fontAssets && fontAssets.length && customApi.bindImportedFonts) {
+      rememberFontAssets(fontAssets);
+      customApi.bindImportedFonts(pack, fontAssets);
+    }
+    const entry = {
+      kind: pack.kind,
+      id: pack.id,
+      label: pack.label || pack.id,
+      pack,
+      custom: true,
+      imported: true,
+      engineSource: engineSource || sessionEngineSources[pack.engine] || "",
+    };
+    const label = String(entry.label || "").trim();
+    let idx = customPacks.findIndex((item) => item.imported && item.id === entry.id);
+    if (idx < 0) {
+      idx = customPacks.findIndex((item) => item.imported && String(item.label || "").trim() === label);
+    }
+    if (idx >= 0) customPacks[idx] = entry;
+    else customPacks.push(entry);
+    saveStoredImports();
+    return entry;
+  }
+
+  function removeImportedPack(id) {
+    const idx = customPacks.findIndex((item) => item.imported && item.id === id);
+    if (idx < 0) return;
+    customPacks.splice(idx, 1);
+    saveStoredImports();
+    registerPreviewPacks();
+    syncCatalogFromPacks();
+    fillThemeSelect();
+    const next =
+      catalog.find((item) => item.id === "led-scoreboard") ||
+      catalog.find((item) => !item.imported) ||
+      catalog[0];
+    if (next) mountEntry(next);
+  }
+
+  function applyViewerPayload(data) {
+    if (!data) return;
+    let entry = null;
+    if (data.pack && data.pack.id) {
+      entry = adoptImportedPack(data.pack, data.engineSource || "", data.fontAssets || []);
+      registerPreviewPacks();
+      syncCatalogFromPacks();
+      fillThemeSelect(entry.kind + ":" + entry.id);
+    }
+    const themeId = data.themeId || (entry && entry.id);
+    if (data.settings && themeId) {
+      settingsByTheme[themeId] = { ...(settingsByTheme[themeId] || {}), ...data.settings };
+    }
+    const found = catalog.find((item) => item.id === themeId) || entry;
+    if (found) mountEntry(found);
+  }
+
+  function missingImportPieces(job) {
+    const pack = job && job.pack;
+    if (!pack) return [];
+    const missing = [];
+    if (pack.engine && !job.engineSource) {
+      const saved = sessionEngineSources[pack.engine];
+      const ready = customApi.engineReady && customApi.engineReady(pack.kind, pack.engine);
+      if (!saved && !ready) {
+        missing.push(pack.engineFile || pack.id + "-engine.js");
+      }
+    }
+    const faces = customApi.getPackFontFaces ? customApi.getPackFontFaces(pack) : [];
+    faces.forEach((face) => {
+      const want = String((face && face.fontFile) || "");
+      if (!want) return;
+      const included = (job.fontAssets || []).some(
+        (asset) => String(asset.name || "").toLowerCase() === want.toLowerCase()
+      );
+      if (included) return;
+      const fontId =
+        (face && face.fontId) ||
+        (customApi.fontIdFromFileName && customApi.fontIdFromFileName(want));
+      if (fontId && sessionFonts[fontId]) return;
+      missing.push(want);
+    });
+    return missing;
+  }
+
+  function showImportNotice(skipped) {
+    const note = document.getElementById("import-note");
+    const list = document.getElementById("import-note-list");
+    if (!note || !list) return;
+    list.replaceChildren();
+    skipped.forEach((item) => {
+      const li = document.createElement("li");
+      li.textContent = item.label + " needs " + item.missing.join(", ");
+      list.appendChild(li);
+    });
+    note.hidden = false;
+  }
+
+  const importInfoBtn = document.getElementById("import-info");
+  const importHelp = document.getElementById("import-help");
+  if (importInfoBtn && importHelp) {
+    importInfoBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const open = importHelp.hidden;
+      importHelp.hidden = !open;
+      importInfoBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    importHelp.addEventListener("click", (event) => event.stopPropagation());
+    document.addEventListener("click", () => {
+      importHelp.hidden = true;
+      importInfoBtn.setAttribute("aria-expanded", "false");
+    });
+  }
+  const importNoteClose = document.getElementById("import-note-close");
+  if (importNoteClose) {
+    importNoteClose.addEventListener("click", () => {
+      const note = document.getElementById("import-note");
+      if (note) note.hidden = true;
+    });
+  }
+
+  const importInput = document.getElementById("import-packs");
+  if (importInput && customApi && typeof customApi.planThemeImports === "function") {
+    importInput.addEventListener("change", async () => {
+      const files = [...(importInput.files || [])];
+      importInput.value = "";
+      if (!files.length) return;
+      let plan;
+      try {
+        plan = await customApi.planThemeImports(files);
+      } catch (err) {
+        setImportStatus(err && err.message ? err.message : "Import failed.", "is-error");
+        return;
+      }
+      if (!plan.jobs.length) {
+        setImportStatus(
+          (plan.errors[0] || "No valid theme packs in that selection.") +
+            (plan.notes.length ? " " + plan.notes[0] : ""),
+          "is-error"
+        );
+        return;
+      }
+      if (plan.jobs.some((job) => job.engineSource)) {
+        const ok = window.confirm(
+          "One or more packs include JavaScript that will run on matching output pages. Only import engines you wrote or trust."
+        );
+        if (!ok) return;
+      }
+      const failed = plan.errors.slice();
+      const imported = [];
+      const replaced = [];
+      const skipped = [];
+      plan.jobs.forEach((job) => {
+        const missing = missingImportPieces(job);
+        if (missing.length) {
+          skipped.push({
+            label: (job.pack && (job.pack.label || job.pack.id)) || job.jsonName,
+            missing,
+          });
+          failed.push(
+            ((job.pack && job.pack.label) || job.jsonName) +
+              " is missing " +
+              missing.join(", ")
+          );
+          return;
+        }
+        try {
+          const existed = customPacks.some((item) => item.imported && item.id === job.pack.id);
+          const entry = adoptImportedPack(job.pack, job.engineSource, job.fontAssets);
+          if (existed) replaced.push(entry);
+          else imported.push(entry);
+        } catch (err) {
+          failed.push(job.jsonName + ": " + ((err && err.message) || "import failed"));
+        }
+      });
+      if (skipped.length) showImportNotice(skipped);
+      const okCount = imported.length + replaced.length;
+      if (!okCount) {
+        setImportStatus(failed[0] || "Import failed.", "is-error");
+        return;
+      }
+      registerPreviewPacks();
+      syncCatalogFromPacks();
+      const last = replaced[replaced.length - 1] || imported[imported.length - 1];
+      fillThemeSelect(last.kind + ":" + last.id);
+      themeSelect.value = last.kind + ":" + last.id;
+      mountEntry(findEntry(themeSelect.value));
+      let message =
+        (replaced.length && !imported.length ? "Replaced " : "Imported ") +
+        (okCount === 1 ? last.label : String(okCount)) +
+        (okCount === 1 && last.pack && last.pack.engine ? " (with engine)" : "") +
+        ".";
+      if (okCount > 1) {
+        const parts = [];
+        if (imported.length) parts.push("Imported " + imported.length);
+        if (replaced.length) parts.push("replaced " + replaced.length);
+        message = parts.join(", ") + ".";
+      }
+      const extras = plan.notes.concat(failed).slice(0, 3);
+      if (extras.length) message += " " + extras.join(" ");
+      setImportStatus(message, failed.length ? "is-warn" : "is-ok");
+    });
+  }
+
+  const removeImportBtn = document.getElementById("remove-import");
+  if (removeImportBtn) {
+    removeImportBtn.addEventListener("click", () => {
+      if (!active || !active.imported) return;
+      const label = active.label || active.id;
+      removeImportedPack(active.id);
+      setImportStatus("Removed " + label + ".", "is-ok");
+    });
+  }
+
+  const openViewerBtn = document.getElementById("open-viewer");
+  if (openViewerBtn) {
+    openViewerBtn.addEventListener("click", () => {
+      if (!active) return;
+      syncUrlFromState();
+      const viewerUrl = new URL(location.href);
+      viewerUrl.searchParams.set("view", "1");
+      viewerUrl.searchParams.set("theme", active.id);
+      const payload = {
+        source: VIEW_CHANNEL,
+        type: "pack",
+        themeId: active.id,
+        settings: settingsFor(active.id, active.pack),
+        pack: active.imported ? active.pack : null,
+        engineSource: active.imported
+          ? active.engineSource ||
+            sessionEngineSources[(active.pack && active.pack.engine) || ""] ||
+            ""
+          : "",
+        fontAssets: active.imported ? fontAssetsForPack(active.pack) : [],
+      };
+      let delivered = false;
+      function onReady(event) {
+        if (event.origin !== location.origin) return;
+        const data = event.data;
+        if (!data || data.source !== VIEW_CHANNEL || data.type !== "ready") return;
+        if (!event.source || event.source === window) return;
+        event.source.postMessage(payload, location.origin);
+        delivered = true;
+        window.removeEventListener("message", onReady);
+      }
+      window.addEventListener("message", onReady);
+      // A sized popup keeps Chrome's address bar even after fullscreen.
+      // A normal window can hide that bar.
+      const win = window.open(viewerUrl.toString(), "dyn-preview-viewer");
+      if (!win) {
+        window.removeEventListener("message", onReady);
+        setImportStatus("The browser blocked the viewer window.", "is-error");
+      }
+    });
+  }
+
   const params = new URLSearchParams(location.search);
   const wantRaw = params.get("theme");
   const want =
@@ -1979,16 +2656,99 @@
   }
   if (previewBgFitSelect) previewBgFitSelect.value = previewBgFit;
 
+  if (params.get("view") === "1") document.body.classList.add("preview-view");
   if (params.get("dock") === "min") setDockCollapsed(true);
+  const previewQrBox = document.getElementById("preview-show-qr");
+  const previewLogoBox = document.getElementById("preview-show-logo");
+  if (params.get("qr") === "1") {
+    previewShowQr = true;
+    if (previewQrBox) previewQrBox.checked = true;
+  }
+  if (params.get("logo") === "1") {
+    previewShowLogo = true;
+    if (previewLogoBox) previewLogoBox.checked = true;
+  }
+  if (previewQrBox) {
+    previewQrBox.addEventListener("change", () => {
+      previewShowQr = previewQrBox.checked;
+      syncPreviewBrand();
+      scheduleUrlSync();
+    });
+  }
+  if (previewLogoBox) {
+    previewLogoBox.addEventListener("change", () => {
+      previewShowLogo = previewLogoBox.checked;
+      syncPreviewBrand();
+      scheduleUrlSync();
+    });
+  }
+
+  function presentViewer() {
+    if (!document.body.classList.contains("preview-view")) return;
+    if (document.fullscreenElement || document.webkitFullscreenElement) return;
+    const root = document.documentElement;
+    const request = root.requestFullscreen || root.webkitRequestFullscreen;
+    if (!request) return;
+    Promise.resolve(request.call(root, { navigationUI: "hide" })).catch(() => {});
+  }
+
+  if (document.body.classList.contains("preview-view")) {
+    const hint = document.createElement("p");
+    hint.id = "viewer-hint";
+    hint.textContent = "Click the picture or press F to hide the address bar";
+    document.body.appendChild(hint);
+    document.addEventListener("fullscreenchange", () => {
+      hint.hidden = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    });
+    document.addEventListener("pointerdown", presentViewer);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "f" || event.key === "F") {
+        event.preventDefault();
+        presentViewer();
+      }
+    });
+  }
 
   let start =
     (want && catalog.find((item) => item.id === want)) ||
     catalog.find((item) => item.id === "led-scoreboard") ||
     catalog[0];
-  if (start) applyUrlSettings(start.id, params);
-  urlSyncReady = true;
-  if (start) mountEntry(start);
-  else metaSub.textContent = "No themes available.";
+
+  function bootPreview(entry) {
+    if (entry) applyUrlSettings(entry.id, params);
+    urlSyncReady = true;
+    if (entry) mountEntry(entry);
+    else metaSub.textContent = "No themes available.";
+  }
+
+  if (document.body.classList.contains("preview-view") && window.opener) {
+    let booted = false;
+    window.addEventListener("message", (event) => {
+      if (event.origin !== location.origin) return;
+      const data = event.data;
+      if (!data || data.source !== VIEW_CHANNEL || data.type !== "pack") return;
+      booted = true;
+      urlSyncReady = true;
+      try {
+        applyViewerPayload(data);
+      } catch (err) {
+        metaSub.textContent = err && err.message ? err.message : "Could not open that pack.";
+      }
+      if (!active) bootPreview(start);
+    });
+    const announce = () => {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ source: VIEW_CHANNEL, type: "ready" }, location.origin);
+      }
+    };
+    announce();
+    setTimeout(announce, 400);
+    setTimeout(() => {
+      if (!booted) bootPreview(start);
+    }, 1500);
+  } else {
+    bootPreview(start);
+  }
 })();
 </script>
 </body>

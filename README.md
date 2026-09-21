@@ -135,7 +135,7 @@ When a theme is on, turn on that theme’s **Show background** to keep the custo
 
 ### Custom themes
 
-Build and import your own packs — see [themes/README.md](themes/README.md) and the contract in [themes/SPEC.md](themes/SPEC.md). The Create page on the live site walks through import. Preview packs in [`themes/preview.html`](themes/preview.html) before going live on Vixi. You can place QR/logo exactly with `data-qr` / `data-logo` and reflow layout with `dyn-show-qr` / `dyn-show-logo` CSS.
+Build and import your own packs — see [themes/README.md](themes/README.md) and the contract in [themes/SPEC.md](themes/SPEC.md). The Create page on the live site walks through import. Preview packs in [`themes/preview.html`](themes/preview.html) (Import packs… and Open viewer) before going live on Vixi. You can place QR/logo exactly with `data-qr` / `data-logo` and reflow layout with `dyn-show-qr` / `dyn-show-logo` CSS.
 
 **Extra Vixi questions:** first on-screen text is `message`, second is `name`, then `question1`, `question2`, … in DOM order. Bind extras with `data-field="question1"` or `data-question="1"`. [Class Survey](themes/message-class-survey.json) is the downloadable example (demo on the Themes page and in preview; Import packs… to use on output). Labels for those hooks live in the pack `notes` object (JSON has no `//` comments). Details: [themes/SPEC.md — Extra Vixi questions](themes/SPEC.md#extra-vixi-questions).
 

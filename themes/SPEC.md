@@ -34,6 +34,7 @@ Decision tree:
 - `my-theme-engine.js` — required only when the pack uses a new engine. Classic script. Calls `BGThemeEngines.define({...})`.
 - Optional font file(s) — `.woff2` / `.woff` / `.ttf` / `.otf` when the pack uses `fontFile` / `fontFaces` (see [Custom fonts](#custom-fonts)).
 - Import in the extension popup (**Import packs…**): select one or many `.json` files from a themes folder, plus each pack’s `*-engine.js` if needed, plus any custom fonts those packs name. Matching is automatic (engines by `engine` / filename; fonts by each `fontFile` basename).
+- Test the same selection in [`preview.html`](preview.html) **Import packs…** before installing it in Chrome. Preview runs the pack on the extension’s compile / fit / show path and can **Open viewer** for a chrome-less window. Preview keeps imported packs in this browser (`localStorage`) until you **Remove** them. Importing the same id or label again replaces that imported pack. A built-in theme name is left alone. Engines compile in the page there; output still needs Allow User Scripts.
 - `"engine"` in the JSON must match `id` in `BGThemeEngines.define`.
 - `"engineFile"` is an optional human hint (`message-aurora-engine.js`). It is never fetched.
 
@@ -197,6 +198,31 @@ Each present key is `{ "label": "…", "default": "…" }`. Optional `"type": "s
 
 Invalid colors fall back to `#d52265` / `#fec651`. Mosaic packs that set `motion` are ignored. Wrapping a built-in (`"engine": "polaroid"`) inherits that engine’s sliders; pack `settings` override labels and defaults only.
 
+#### How many settings
+
+There is no small cap on how many settings a pack can declare. The Chrome popup and the preview dock show the same controls.
+
+Colors that recolor a JSON theme by themselves:
+
+| Key | CSS variable | Use |
+| --- | --- | --- |
+| `primary` | `--primary` | Ink, accent |
+| `secondary` | `--secondary` | Paper, second color |
+| `background` | `--background` | Stage or desk color. The label can say Background, Desk, Wall, or anything else |
+| `frame` | `--frame` | Mosaic card mat or border |
+
+A theme can include all four. Paint with `var(--background)` (and the other variables). Do not hardcode the hex on a layer that should change live.
+
+You can also add:
+
+- **More color pickers.** Any other key whose `default` is `#rrggbb` shows up as a color control in the popup and in preview. The value is saved and passed to `applySettings`. It does **not** become a CSS variable. A JSON-only theme will not change color from that extra picker. An engine can read `settings.yourKey` inside `applySettings` and paint it.
+- **Selects.** `"type": "select"` plus `"options": [{ "value", "label" }]`. Photos must be a select with `color`, `bw`, and `sepia`, or it falls back to black and white. There is no fixed limit on how many options.
+- **Toggles.** `"type": "toggle"`.
+- **Motion** (message only): `slow`, `drift`, or `fizz`.
+- **Photo size** (mosaic only): `scale` from `0.7` to `1.5`.
+
+`label` is at most 40 characters. A select option label is at most 60.
+
 #### Live settings for imported themes (pack authors)
 
 **Imported packs use the same live-settings pipeline as bundled themes.** After **Import packs…**, the popup reads your `settings` block, stores values in Chrome storage, and the output page applies them without remounting whenever you change a control while that theme is live.
@@ -245,7 +271,7 @@ applySettings(themeRoot, _state, settings) {
 - **Photos** — if `[data-photo-style]` CSS is missing, the select does nothing visible.
 - **Motion while a card is showing** — `data-motion` updates immediately, but CSS enter animations usually run once per `show`. The next capture replays with the new mode. Prefer testing motion by changing the popup, then triggering a new message.
 - **Engine themes without `applySettings`** — colors freeze after mount until you call `applyVars`.
-- **New setting keys** — only the keys in the table above are supported in pack JSON today. A brand-new key (e.g. `"glow": …`) needs extension work (next section).
+- **New setting keys** — extra hex colors, selects, and toggles do appear in the popup and preview. Only `primary`, `secondary`, `background`, and `frame` are written as CSS variables. Any other color needs an engine `applySettings` that reads `settings.yourKey`. See [How many settings](#how-many-settings).
 - **Large `data:` URIs inside `css`** — a single embedded WebP/PNG (tens of KB of base64 in one rule) can exceed the **100 KB** CSS cap *and* break stylesheet parsing in Chrome, so rules after the bad block never apply. **Ship textures as separate files** under `assets/` (see [Pack assets](#pack-assets-images-and-textures)) and reference them with `url(...)` or paint from JS.
 - **Multiply / opacity overlays on `::before` / `::after`** — if a user-facing color (Paper, Wall, Frame) sits *under* a textured pseudo-element, live popup changes look stuck. Either keep the tint on `background-color` with **no** opaque texture on top, or repaint the flat fill from `applySettings` / `applyVars` (bundled Grunge does this — see below).
 - **Wall tint stacks** — brown washes, gradients, `mix-blend-mode`, and film grain on a `.wall` layer hide a brick photo. If the design is “show this image as the backdrop”, use the image alone (`background-image: cover`) with no color wash unless `background` is an explicit popup setting.
