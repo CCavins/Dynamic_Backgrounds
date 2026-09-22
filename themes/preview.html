@@ -9,12 +9,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --dock-bg: rgba(12, 12, 18, 0.88);
+    --dock-bg: rgba(12, 12, 18, 0.94);
     --dock-border: rgba(255, 255, 255, 0.12);
     --dock-text: #f4f4f7;
     --dock-muted: rgba(255, 255, 255, 0.55);
     --dock-accent: #d52265;
     --dock-focus: #fec651;
+    --side-w: min(340px, 42vw);
+  }
+
+  body.dock-collapsed,
+  body.preview-view {
+    --side-w: 0px;
   }
 
   html, body {
@@ -28,8 +34,29 @@
 
   #stage {
     position: fixed;
-    inset: 0;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: var(--side-w);
     background: #05050c;
+    container-type: size;
+  }
+
+  /* The extension letterbox is fixed to the window. Keep it inside the
+     stage so an open sidebar never covers the theme. */
+  html.dyn-stage-forced #stage > .dyn-stage-letterbox {
+    position: absolute !important;
+    inset: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    margin: auto !important;
+    width: min(100cqw, calc(100cqh * var(--dyn-aw) / var(--dyn-ah))) !important;
+    height: min(100cqh, calc(100cqw * var(--dyn-ah) / var(--dyn-aw))) !important;
+    max-width: none !important;
+    max-height: none !important;
+    transform: none !important;
   }
 
   body.preview-view #dock,
@@ -149,122 +176,102 @@
   #dock {
     position: fixed;
     z-index: 40;
-    left: 12px;
-    right: 12px;
-    bottom: 12px;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: var(--side-w);
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     pointer-events: none;
   }
 
-  .dock-shell {
-    pointer-events: auto;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    max-width: min(760px, 100%);
-    width: 100%;
+  body.dock-collapsed #dock {
+    top: 14px;
+    right: 14px;
+    bottom: auto;
+    width: auto;
   }
 
-  .dock-toggle-row {
+  .dock-expand {
     display: none;
+    pointer-events: auto;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--dock-border);
+    border-radius: 10px;
+    background: var(--dock-bg);
+    color: var(--dock-text);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+  }
+
+  .dock-expand svg {
+    display: block;
+    margin: 0 auto;
+  }
+
+  body.dock-collapsed .dock-expand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .dock-toggle {
+    width: 32px;
     height: 32px;
-    padding: 0 12px;
+    padding: 0;
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.06);
     color: var(--dock-muted);
-    font: 600 11px Inter, system-ui, sans-serif;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
     cursor: pointer;
     flex: 0 0 auto;
   }
 
-  .dock-toggle:hover {
+  .dock-toggle:hover,
+  .dock-expand:hover {
     color: var(--dock-text);
     background: rgba(255, 255, 255, 0.1);
   }
 
   .dock-panel {
+    pointer-events: auto;
     display: flex;
     flex-direction: column;
-    gap: 0;
-    padding: 0;
-    border: 1px solid var(--dock-border);
-    border-radius: 16px;
+    height: 100%;
+    min-height: 0;
+    border-left: 1px solid var(--dock-border);
     background: var(--dock-bg);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
-    overflow: hidden;
-  }
-
-  body.dock-collapsed .dock-shell {
-    max-width: min(360px, 100%);
-    width: auto;
-    align-self: center;
-    margin-inline: auto;
+    box-shadow: -12px 0 40px rgba(0, 0, 0, 0.28);
   }
 
   body.dock-collapsed .dock-panel {
     display: none;
   }
 
-  body.dock-collapsed .dock-toggle-row {
+  .dock-head {
     display: flex;
-    justify-content: center;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 14px 12px 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
-  .dock-chip {
-    display: none;
-    align-items: center;
-    gap: 10px;
-    min-height: 40px;
-    padding: 8px 14px 8px 16px;
-    border: 1px solid var(--dock-border);
-    border-radius: 999px;
-    background: var(--dock-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-    color: var(--dock-text);
-    font: 500 13px Inter, system-ui, sans-serif;
-    cursor: pointer;
-  }
-
-  .dock-chip strong {
-    font-weight: 600;
-    max-width: 220px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .dock-chip span {
-    color: var(--dock-muted);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-
-  body.dock-collapsed .dock-chip {
-    display: inline-flex;
-  }
-
-  body.dock-collapsed .dock-toggle {
-    display: none;
+  .dock-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
   }
 
   .dock-row {
     display: flex;
-    flex-wrap: wrap;
-    align-items: end;
-    gap: 10px 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
     padding: 12px 14px;
   }
 
@@ -298,14 +305,12 @@
     color: var(--dock-muted);
   }
 
-  .dock-field-theme {
-    flex: 1 1 220px;
-    min-width: min(220px, 100%);
-  }
-
-  .dock-field-aspect {
-    flex: 1 1 160px;
-    min-width: 140px;
+  .dock-field-theme,
+  .dock-field-aspect,
+  .dock-field-fit {
+    flex: none;
+    width: 100%;
+    min-width: 0;
   }
 
   .dock-field-custom {
@@ -318,20 +323,25 @@
   }
 
   .dock-field-fit {
-    flex: 1 1 160px;
-    min-width: 140px;
+    width: 100%;
+    min-width: 0;
   }
 
   .dock-actions {
     display: flex;
     align-items: center;
     gap: 6px;
-    flex: 0 0 auto;
+    width: 100%;
   }
 
   .dock-actions-nav {
     display: flex;
     gap: 6px;
+    flex: 1;
+  }
+
+  .dock-actions-nav .dock-btn {
+    flex: 1;
   }
 
   .dock-section {
@@ -373,8 +383,8 @@
 
   .dock-bg-body {
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(140px, 0.9fr);
-    gap: 10px 14px;
+    grid-template-columns: 1fr;
+    gap: 10px;
     align-items: end;
   }
 
@@ -587,9 +597,9 @@
 
   .dock-settings-fields {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px 18px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
   }
 
   .dock-settings .setting-row {
@@ -651,9 +661,15 @@
   }
 
   .dock-settings .setting-row.scale {
-    flex: 1 1 260px;
-    width: auto;
+    flex: 0 0 auto;
+    width: 100%;
+    align-items: center;
     grid-template-columns: max-content minmax(72px, 1fr) 40px;
+  }
+
+  .dock-settings .theme-scale {
+    height: 18px;
+    margin: 0;
   }
 
   .dock-settings .setting-row.toggle {
@@ -753,7 +769,19 @@
   }
 
   .dock-row-import {
+    flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
+  }
+
+  .dock-row-import .dock-btn {
+    align-self: auto;
+  }
+
+  .dock-import-status,
+  .dock-row-import .import-help,
+  .dock-row-import .import-note {
+    flex: 1 1 100%;
   }
 
   .dock-import-status {
@@ -769,9 +797,7 @@
   .dock-import-status.is-warn { color: #fec651; }
 
   .import-info {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
+    display: contents;
   }
 
   .info-btn {
@@ -808,14 +834,25 @@
   }
 
   .import-help {
-    position: fixed;
-    z-index: 80;
-    left: 12px;
+    position: static;
+    z-index: 1;
+    left: auto;
+    top: auto;
     bottom: auto;
-    top: 12px;
-    width: min(340px, calc(100vw - 24px));
-    max-height: min(320px, calc(100vh - 24px));
+    width: auto;
+    max-height: 220px;
+    margin-top: 4px;
     overflow: auto;
+  }
+
+  .import-note {
+    position: static;
+    left: auto;
+    top: auto;
+    bottom: auto;
+    transform: none;
+    width: auto;
+    margin-top: 4px;
   }
 
   .import-help p,
@@ -827,15 +864,6 @@
   .import-note ul {
     margin: 0;
     padding-left: 18px;
-  }
-
-  .import-note {
-    position: fixed;
-    left: 50%;
-    top: 18px;
-    bottom: auto;
-    transform: translateX(-50%);
-    width: min(460px, calc(100% - 32px));
   }
 
   .import-note button {
@@ -854,17 +882,12 @@
   }
 
   .dock-meta {
-    position: fixed;
-    top: 16px;
-    left: 16px;
-    z-index: 40;
-    max-width: min(420px, calc(100% - 32px));
-    padding: 10px 12px;
-    border: 1px solid var(--dock-border);
-    border-radius: 12px;
-    background: var(--dock-bg);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
   }
 
   .dock-meta strong {
@@ -886,8 +909,8 @@
 
   .dock-meta a:hover { text-decoration: underline; }
 
-  @media (max-width: 720px) {
-    .dock-panel { width: 100%; }
+  .dock-panel select {
+    color-scheme: dark;
   }
 </style>
 </head>
@@ -898,20 +921,25 @@
     <div id="dyn-mosaic-theme"></div>
   </div>
 
-  <aside class="dock-meta" id="meta">
-    <strong id="meta-title">Theme preview</strong>
-    <p id="meta-sub">Loading sample captures…</p>
-  </aside>
-
-  <div id="dock">
-    <div class="dock-shell">
-      <div class="dock-toggle-row">
-        <button type="button" class="dock-chip" id="dock-chip" title="Expand tray">
-          <strong id="dock-chip-label">Theme preview</strong>
-          <span>Expand</span>
+  <aside id="dock">
+    <button type="button" class="dock-expand" id="dock-chip" title="Open controls" aria-expanded="false" aria-controls="dock-panel">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path d="M14 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="dock-panel" id="dock-panel">
+      <div class="dock-head">
+        <div class="dock-meta" id="meta">
+          <strong id="meta-title">Theme preview</strong>
+          <p id="meta-sub">Loading sample captures…</p>
+        </div>
+        <button type="button" class="dock-toggle" id="dock-toggle" aria-expanded="true" title="Collapse panel">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path d="M10 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </button>
       </div>
-      <div class="dock-panel">
+      <div class="dock-scroll">
         <div class="dock-row dock-row-browse">
           <label class="dock-field dock-field-theme">
             <span>Theme</span>
@@ -922,7 +950,6 @@
               <button type="button" class="dock-btn" id="prev-theme" title="Previous theme">Prev</button>
               <button type="button" class="dock-btn dock-btn-primary" id="next-theme" title="Next theme">Next</button>
             </div>
-            <button type="button" class="dock-toggle" id="dock-toggle" aria-expanded="true" title="Minimize tray">Min</button>
           </div>
         </div>
 
@@ -1004,7 +1031,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </aside>
 
 <script src="../extension/rules.js?v=1.30.27"></script>
 <script src="../extension/media.js?v=1.24.28"></script>
@@ -1301,7 +1328,6 @@
   const settingsByTheme = Object.create(null);
   const dockToggle = document.getElementById("dock-toggle");
   const dockChip = document.getElementById("dock-chip");
-  const dockChipLabel = document.getElementById("dock-chip-label");
   let urlSyncTimer = 0;
   let urlSyncReady = false;
 
@@ -1325,7 +1351,17 @@
   function setDockCollapsed(collapsed) {
     document.body.classList.toggle("dock-collapsed", Boolean(collapsed));
     if (dockToggle) dockToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    if (dockChip) dockChip.setAttribute("aria-expanded", collapsed ? "false" : "true");
     scheduleUrlSync();
+    if (!active) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        applyAspect();
+        if (!active) return;
+        if (active.kind === "mosaic") mountEntry(active, { keepSettingsForm: true });
+        else if (messageApi.ensureFitStage) messageApi.ensureFitStage(messageRoot);
+      });
+    });
   }
 
   function syncUrlFromState() {
@@ -1401,7 +1437,8 @@
       .forEach((item) => {
         const opt = document.createElement("option");
         opt.value = item.kind + ":" + item.id;
-        opt.textContent = item.label;
+        const kindLabel = item.kind === "mosaic" ? "mosaic" : "message";
+        opt.textContent = item.imported ? item.label + " (" + kindLabel + ")" : item.label;
         group.appendChild(opt);
       });
     select.appendChild(group);
@@ -2021,7 +2058,6 @@
 
   function updateMeta(entry) {
     metaTitle.textContent = entry.label;
-    if (dockChipLabel) dockChipLabel.textContent = entry.label;
     const kind = entry.kind === "mosaic" ? "Mosaic" : "Message";
     const source = entry.imported ? "imported" : entry.custom ? "example pack" : "built-in";
     const photoNote = photos.length
@@ -2615,24 +2651,9 @@
   const importInfoBtn = document.getElementById("import-info");
   const importHelp = document.getElementById("import-help");
   function placeImportHelp() {
-    if (importHelp.parentElement !== document.body) document.body.appendChild(importHelp);
-    const btn = importInfoBtn.getBoundingClientRect();
-    const margin = 8;
-    const width = Math.min(340, window.innerWidth - margin * 2);
-    const left = Math.max(margin, Math.min(btn.left, window.innerWidth - width - margin));
-    const spaceAbove = btn.top - margin * 2;
-    const spaceBelow = window.innerHeight - btn.bottom - margin * 2;
-    const above = spaceAbove >= spaceBelow;
-    importHelp.style.width = width + "px";
-    importHelp.style.left = left + "px";
-    importHelp.style.right = "auto";
-    importHelp.style.bottom = "auto";
-    importHelp.style.maxHeight = Math.max(80, above ? spaceAbove : spaceBelow) + "px";
     importHelp.hidden = false;
-    const placed = importHelp.offsetHeight;
-    importHelp.style.top = above
-      ? Math.max(margin, btn.top - margin - placed) + "px"
-      : btn.bottom + margin + "px";
+    importHelp.style.cssText = "";
+    importHelp.scrollIntoView({ block: "nearest" });
   }
 
   if (importInfoBtn && importHelp) {

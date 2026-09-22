@@ -3,6 +3,11 @@
 scripts/node_modules
 .chrome-dyn-profile/
 .chrome-ext-profile/
+.chrome-test-profile/
+.chrome-test-profile2/
+test-mid-message-chrome.png
+themes/node_modules/
+themes/qc-preview/
 .cursor/debug*.log
 .cursor/**/*.log
 .netlify/
