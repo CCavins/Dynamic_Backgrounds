@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dynamic Themes",
-  "version": "1.30.26",
+  "version": "1.30.27",
   "minimum_chrome_version": "120",
   "description": "Apply Dynamic Themes — mosaic themes, message themes, and optional scene iframes — to matching output URLs.",
   "action": {

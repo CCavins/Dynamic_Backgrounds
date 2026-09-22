@@ -726,6 +726,17 @@
     font: 400 13px/1.45 Inter, system-ui, sans-serif;
   }
 
+  .import-help {
+    position: fixed;
+    z-index: 80;
+    left: 12px;
+    bottom: auto;
+    top: 12px;
+    width: min(340px, calc(100vw - 24px));
+    max-height: min(320px, calc(100vh - 24px));
+    overflow: auto;
+  }
+
   .import-help p,
   .import-note p {
     margin: 0 0 8px;
@@ -914,7 +925,7 @@
     </div>
   </div>
 
-<script src="../extension/rules.js?v=1.24.28"></script>
+<script src="../extension/rules.js?v=1.30.27"></script>
 <script src="../extension/media.js?v=1.24.28"></script>
 <script src="../extension/message-themes.js?v=1.24.28"></script>
 <script src="../extension/vendor/three.min.js"></script>
@@ -1955,8 +1966,10 @@
     document.documentElement.classList.toggle("dyn-theme-on", true);
     document.documentElement.classList.toggle("dyn-message-on", entry.kind === "message");
     document.documentElement.classList.toggle("dyn-kind-message", entry.kind === "message");
-    applyAspect();
+    // QR flags ride a storage delta that rebuilds settings. Apply the aspect
+    // after that so the new ratio is the one the canvas mounts with.
     pushPreviewChrome();
+    applyAspect();
     if (!(opts && opts.keepSettingsForm)) renderSettingsPanel(entry);
 
     if (entry.kind === "mosaic") {
@@ -2348,6 +2361,12 @@
 
   const VIEW_CHANNEL = "dyn-preview-view";
 
+  function viewBus() {
+    if (typeof BroadcastChannel === "undefined") return null;
+    if (!viewBus.bus) viewBus.bus = new BroadcastChannel(VIEW_CHANNEL);
+    return viewBus.bus;
+  }
+
   function setImportStatus(message, tone) {
     const el = document.getElementById("import-status");
     if (!el) return;
@@ -2514,11 +2533,33 @@
 
   const importInfoBtn = document.getElementById("import-info");
   const importHelp = document.getElementById("import-help");
+  function placeImportHelp() {
+    if (importHelp.parentElement !== document.body) document.body.appendChild(importHelp);
+    const btn = importInfoBtn.getBoundingClientRect();
+    const margin = 8;
+    const width = Math.min(340, window.innerWidth - margin * 2);
+    const left = Math.max(margin, Math.min(btn.left, window.innerWidth - width - margin));
+    const spaceAbove = btn.top - margin * 2;
+    const spaceBelow = window.innerHeight - btn.bottom - margin * 2;
+    const above = spaceAbove >= spaceBelow;
+    importHelp.style.width = width + "px";
+    importHelp.style.left = left + "px";
+    importHelp.style.right = "auto";
+    importHelp.style.bottom = "auto";
+    importHelp.style.maxHeight = Math.max(80, above ? spaceAbove : spaceBelow) + "px";
+    importHelp.hidden = false;
+    const placed = importHelp.offsetHeight;
+    importHelp.style.top = above
+      ? Math.max(margin, btn.top - margin - placed) + "px"
+      : btn.bottom + margin + "px";
+  }
+
   if (importInfoBtn && importHelp) {
     importInfoBtn.addEventListener("click", (event) => {
       event.stopPropagation();
       const open = importHelp.hidden;
-      importHelp.hidden = !open;
+      if (open) placeImportHelp();
+      else importHelp.hidden = true;
       importInfoBtn.setAttribute("aria-expanded", open ? "true" : "false");
     });
     importHelp.addEventListener("click", (event) => event.stopPropagation());
@@ -2633,12 +2674,15 @@
     openViewerBtn.addEventListener("click", () => {
       if (!active) return;
       syncUrlFromState();
+      const viewNonce = Date.now().toString(36) + Math.random().toString(36).slice(2);
       const viewerUrl = new URL(location.href);
       viewerUrl.searchParams.set("view", "1");
       viewerUrl.searchParams.set("theme", active.id);
+      viewerUrl.searchParams.set("viewNonce", viewNonce);
       const payload = {
         source: VIEW_CHANNEL,
         type: "pack",
+        nonce: viewNonce,
         themeId: active.id,
         settings: settingsFor(active.id, active.pack),
         pack: active.imported ? active.pack : null,
@@ -2650,22 +2694,43 @@
         fontAssets: active.imported ? fontAssetsForPack(active.pack) : [],
       };
       let delivered = false;
-      function onReady(event) {
-        if (event.origin !== location.origin) return;
-        const data = event.data;
-        if (!data || data.source !== VIEW_CHANNEL || data.type !== "ready") return;
-        if (!event.source || event.source === window) return;
-        event.source.postMessage(payload, location.origin);
-        delivered = true;
+      const bus = viewBus();
+      let blockedTimer = 0;
+      function stopListening() {
         window.removeEventListener("message", onReady);
+        if (bus) bus.removeEventListener("message", onReady);
+      }
+      function onReady(event) {
+        const data = event.data;
+        if (!data || data.source !== VIEW_CHANNEL || data.type !== "ready" || data.nonce !== viewNonce) return;
+        if (event.origin && event.origin !== location.origin) return;
+        if (delivered) return;
+        delivered = true;
+        window.clearTimeout(blockedTimer);
+        stopListening();
+        if (event.source && event.source !== window) {
+          try {
+            event.source.postMessage(payload, location.origin);
+          } catch {
+            /* The tab opened, but this browser did not keep a handle to it. */
+          }
+        }
+        if (bus) bus.postMessage(payload);
+        setImportStatus("");
       }
       window.addEventListener("message", onReady);
+      if (bus) bus.addEventListener("message", onReady);
       // A sized popup keeps Chrome's address bar even after fullscreen.
       // A normal window can hide that bar.
+      // Some browsers open the tab and still return null. That is not a block
+      // unless the new tab never checks in.
       const win = window.open(viewerUrl.toString(), "dyn-preview-viewer");
       if (!win) {
-        window.removeEventListener("message", onReady);
-        setImportStatus("The browser blocked the viewer window.", "is-error");
+        blockedTimer = window.setTimeout(() => {
+          if (delivered) return;
+          stopListening();
+          setImportStatus("The browser blocked the viewer window.", "is-error");
+        }, 1600);
       }
     });
   }
@@ -2766,12 +2831,13 @@
     else metaSub.textContent = "No themes available.";
   }
 
-  if (document.body.classList.contains("preview-view") && window.opener) {
+  if (document.body.classList.contains("preview-view")) {
     let booted = false;
-    window.addEventListener("message", (event) => {
-      if (event.origin !== location.origin) return;
-      const data = event.data;
+    const viewNonce = params.get("viewNonce") || "";
+    function takePack(data) {
       if (!data || data.source !== VIEW_CHANNEL || data.type !== "pack") return;
+      if (viewNonce && data.nonce !== viewNonce) return;
+      if (booted && !(data.pack && data.pack.id)) return;
       booted = true;
       urlSyncReady = true;
       try {
@@ -2780,17 +2846,34 @@
         metaSub.textContent = err && err.message ? err.message : "Could not open that pack.";
       }
       if (!active) bootPreview(start);
+    }
+    window.addEventListener("message", (event) => {
+      if (event.origin !== location.origin) return;
+      takePack(event.data);
     });
+    const bus = viewBus();
+    if (bus) bus.addEventListener("message", (event) => takePack(event.data));
     const announce = () => {
-      if (window.opener && !window.opener.closed) {
-        window.opener.postMessage({ source: VIEW_CHANNEL, type: "ready" }, location.origin);
+      const msg = { source: VIEW_CHANNEL, type: "ready", nonce: viewNonce };
+      if (bus) bus.postMessage(msg);
+      try {
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage(msg, location.origin);
+        }
+      } catch {
+        /* Opener was cleared after the tab opened. */
       }
     };
     announce();
     setTimeout(announce, 400);
-    setTimeout(() => {
-      if (!booted) bootPreview(start);
-    }, 1500);
+    if (window.opener) {
+      setTimeout(() => {
+        if (!booted) bootPreview(start);
+      }, 1500);
+    } else {
+      booted = true;
+      bootPreview(start);
+    }
   } else {
     bootPreview(start);
   }

@@ -1305,10 +1305,14 @@
   }
 
   function setStageAspect(value) {
-    lastGoodSettings = normalizeSettings({
-      ...(lastGoodSettings || DEFAULTS),
+    // Keep the raw copy in sync. A later storage delta rebuilds from
+    // lastRawSettings and would otherwise snap the canvas back to Match Vixi.
+    const base = {
+      ...(lastRawSettings || lastGoodSettings || DEFAULTS),
       stageAspect: value,
-    });
+    };
+    lastRawSettings = base;
+    lastGoodSettings = normalizeSettings(base);
     return lastGoodSettings.stageAspect;
   }
 
