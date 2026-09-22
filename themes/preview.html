@@ -585,6 +585,87 @@
     padding: 0 10px;
   }
 
+  .dock-settings-fields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 18px;
+  }
+
+  .dock-settings .setting-row {
+    grid-template-columns: max-content 92px 32px;
+    gap: 8px;
+    width: max-content;
+    max-width: 100%;
+  }
+
+  .dock-settings .setting-row > * {
+    min-width: 0;
+  }
+
+  .dock-settings .setting-row .theme-hex,
+  .dock-settings .setting-row .theme-color,
+  .dock-settings .setting-row .theme-motion,
+  .dock-settings .setting-row .theme-select {
+    box-sizing: border-box;
+  }
+
+  .dock-settings .setting-row .theme-hex {
+    width: 100%;
+    height: 32px;
+    padding: 0 8px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .dock-settings .setting-row .theme-color {
+    width: 32px;
+    min-width: 32px;
+    max-width: 32px;
+    height: 32px;
+    padding: 3px;
+  }
+
+  .dock-settings .setting-row .theme-color::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+
+  .dock-settings .setting-row .theme-color::-webkit-color-swatch {
+    border: 0;
+    border-radius: 4px;
+  }
+
+  .dock-settings .setting-row.select {
+    flex: 0 1 auto;
+    width: max-content;
+    max-width: 100%;
+    grid-template-columns: max-content max-content;
+  }
+
+  .dock-settings .setting-row.select .theme-motion,
+  .dock-settings .setting-row.select .theme-select {
+    grid-column: auto;
+    width: auto;
+    min-width: 11em;
+    max-width: 100%;
+    height: 32px;
+  }
+
+  .dock-settings .setting-row.scale {
+    flex: 1 1 260px;
+    width: auto;
+    grid-template-columns: max-content minmax(72px, 1fr) 40px;
+  }
+
+  .dock-settings .setting-row.toggle {
+    grid-template-columns: max-content auto;
+  }
+
+  .dock-settings .setting-row.media {
+    flex: 1 1 100%;
+    width: 100%;
+    grid-template-columns: 1fr;
+  }
+
   .dock-check {
     display: inline-flex;
     align-items: center;
