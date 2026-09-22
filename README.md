@@ -4,6 +4,8 @@ Themes for live Vixi output, plus a gallery of full-screen animated backgrounds.
 
 **Live site:** [ccavins.github.io/Dynamic_Backgrounds](https://ccavins.github.io/Dynamic_Backgrounds/)
 
+**Designing a theme:** [themes/DESIGN.md](themes/DESIGN.md) — copy a starting pack, then check it in the preview. Read that before [themes/SPEC.md](themes/SPEC.md).
+
 The site has four pages:
 
 | Page | What it is |

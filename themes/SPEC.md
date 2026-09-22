@@ -280,6 +280,19 @@ Examples to copy: `message-stamp.json`, `message-grunge-poster.json`, `mosaic-fr
 
 #### Pack assets (images and textures)
 
+**Images are not imported like fonts.** Import packs… copies `.woff2` / `.woff` / `.ttf` / `.otf` named in `fontFile` or `fontFaces`. It does not copy `.png`, `.webp`, `.jpg`, or `.svg`. There is no `imageFile` field.
+
+**Christmas packs are drawn, not embedded photos.** Bauble, mantel, postcard, wreath, tree, and snowfall are CSS plus an engine (shapes, canvas, snow). Do not copy them by pasting large base64 images into JSON.
+
+| Goal | Do this |
+| --- | --- |
+| Solid backdrop the user can recolor | `settings.background` and `background: var(--background)` |
+| Tiny icon or mask | `data:` URI in `css` or `html`. Whole `css` must stay under **100 KB**. Whole `html` must stay under **50 KB** |
+| Photo or texture on a live Vixi page | Public `https://…` URL in CSS, or ship the file in the extension (below) |
+| Large fixed art like the Grunge wall | Bundled only: `extension/packs/assets/…` plus the same file under `themes/assets/` for preview. Not an Import packs… file |
+
+A `data:` image that blows the CSS cap is rejected. A large base64 block that still parses can make Chrome drop every rule after it. Relative `url("assets/foo.webp")` works in preview on this site and does **not** load on a Vixi output page — that file is not on the event site.
+
 Pack JSON `css` is capped at **100 KB**. Do **not** embed large textures as `data:image/...;base64,...` inside `css`.
 
 | Approach | When | Notes |

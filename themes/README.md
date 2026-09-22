@@ -1,5 +1,7 @@
 # Custom themes
 
+**Start here:** [DESIGN.md](DESIGN.md). Copy a starting pack, then check it in the preview. The spec below is the contract.
+
 Build a message or mosaic theme as JSON (and optional JS) outside the extension, then import it from the popup. Imported themes stay in Chrome storage and show up in the dropdowns with `(imported)` after the name.
 
 **Contract:** [SPEC.md](SPEC.md) — every field, clamp, reserved id, CSS hook, and engine signature.
@@ -21,7 +23,7 @@ To have a model build a pack:
 3. Paste this prompt, then describe the look:
 
 ```
-You are writing a Dynamic Backgrounds theme pack. Read themes/SPEC.md and clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine". Prefer data-qr / data-logo slots and dyn-show-qr / dyn-show-logo layout variants when the brief mentions QR or logo. Suggested file names: message-<name>.json / message-<name>-engine.js or mosaic-<name>.json / mosaic-<name>-engine.js (optional, not required).
+You are writing a Dynamic Backgrounds theme pack. Read themes/SPEC.md, including How many settings and Pack assets. Clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine". Prefer data-qr / data-logo slots and dyn-show-qr / dyn-show-logo layout variants when the brief mentions QR or logo. Do not embed large base64 images. Christmas themes are drawn with CSS and an engine, not photo files. Import copies font files only, not png/webp. Suggested file names: message-<name>.json / message-<name>-engine.js or mosaic-<name>.json / mosaic-<name>-engine.js (optional, not required).
 ```
 
 ## Import
