@@ -1,6 +1,6 @@
-# Dynamic Backgrounds theme pack spec
+# Dynamic Themes theme pack spec
 
-You are writing a Dynamic Backgrounds theme pack. Follow this spec exactly. Output valid JSON and, if needed, a classic-script engine that calls `BGThemeEngines.define`. Do not invent fields.
+You are writing a Dynamic Themes theme pack. Follow this spec exactly. Output valid JSON and, if needed, a classic-script engine that calls `BGThemeEngines.define`. Do not invent fields.
 
 This file is the contract. The parser and runtime reject anything that does not match it.
 
@@ -687,7 +687,7 @@ The same file works:
 Chrome MV3 blocks running imported engine source inside normal content scripts. Sideloaded engines therefore need an explicit opt-in:
 
 1. First install opens `extension/setup.html` (**Finish setup**).
-2. **Chrome 138+:** `chrome://extensions` → Dynamic Backgrounds → **Details** → turn on **Allow User Scripts**.
+2. **Chrome 138+:** `chrome://extensions` → Dynamic Themes → **Details** → turn on **Allow User Scripts**.
 3. **Older Chrome:** keep **Developer mode** on at `chrome://extensions`.
 4. Reload the extension if you just changed the toggle, confirm the popup setup banner is clear, then hard-refresh the Vixi output tab.
 
@@ -801,7 +801,7 @@ Must not:
 ## Copy-paste prompt
 
 ```
-You are writing a Dynamic Backgrounds theme pack. Read themes/SPEC.md and clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine".
+You are writing a Dynamic Themes theme pack. Read themes/SPEC.md and clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine".
 ```
 
 Then describe the look, kind (message or mosaic), and whether it needs canvas/WebGL.

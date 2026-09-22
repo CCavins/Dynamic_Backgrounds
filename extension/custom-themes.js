@@ -611,7 +611,7 @@
         compileSideloadSource(rec.source);
       } catch (err) {
         if (isEvalCspError(err)) return;
-        console.warn("[Dynamic Backgrounds] custom engine failed:", id, err && err.message);
+        console.warn("[Dynamic Themes] custom engine failed:", id, err && err.message);
       }
     });
   }
@@ -957,7 +957,7 @@
         document.documentElement.removeEventListener(US_RESULT, onDom);
         reject(
           new Error(
-            "Sideloaded engine did not respond. On chrome://extensions open Dynamic Backgrounds → details and turn on Allow User Scripts, then reload this page."
+            "Sideloaded engine did not respond. On chrome://extensions open Dynamic Themes → details and turn on Allow User Scripts, then reload this page."
           )
         );
       }, 8000);

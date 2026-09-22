@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Extension — Dynamic Backgrounds</title>
+    <title>Extension — Dynamic Themes</title>
     <link rel="stylesheet" href="site.css">
 </head>
 <body>
     <div class="wrap">
         <header class="site-header">
             <div class="site-brand">
-                <a href="index.html"><h1>DYNAMIC BACKGROUNDS</h1></a>
+                <a href="index.html"><h1>DYNAMIC THEMES</h1></a>
                 <p>Themes, scenes, and a Chrome extension for live output.</p>
             </div>
             <nav class="site-nav" aria-label="Site">
@@ -19,7 +19,7 @@
                 <a href="extension.html" aria-current="page">Extension</a>
                 <a href="create.html">Create</a>
             </nav>
-            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.30.25</span></a>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.30.26</span></a>
         </header>
 
         <div class="page-intro">
@@ -41,7 +41,7 @@
             <h2>Finish setup (required for imported engines)</h2>
             <p>Built-in mosaic and message themes work right away. Packs you import with a <code>*-engine.js</code> file need one extra Chrome setting, or they mount as a black screen on Vixi.</p>
             <ol>
-                <li>Open <code>chrome://extensions</code> → <strong>Dynamic Backgrounds</strong> → <strong>Details</strong> (the popup and setup tab also have an <strong>Open extension details</strong> button).</li>
+                <li>Open <code>chrome://extensions</code> → <strong>Dynamic Themes</strong> → <strong>Details</strong> (the popup and setup tab also have an <strong>Open extension details</strong> button).</li>
                 <li>Turn on <strong>Allow User Scripts</strong> (Chrome&nbsp;138+). On older Chrome, keep <strong>Developer mode</strong> on at <code>chrome://extensions</code> instead.</li>
                 <li>Click <strong>Reload</strong> on the extension card if you just toggled the setting.</li>
                 <li>In the popup (or the setup tab), confirm the status is green, then hard-refresh the Vixi output tab.</li>
@@ -50,7 +50,7 @@
             <p>After you change files in the folder, click Reload on the extension card. To rebuild the zip from the repo:</p>
             <pre>rm -f extension.zip &amp;&amp; zip -r extension.zip extension -x "*.DS_Store"</pre>
 
-            <h2>Dynamic Backgrounds switch</h2>
+            <h2>Dynamic Themes switch</h2>
             <p>The popup header is the kill switch. <strong>Off</strong> leaves every page alone. <strong>On</strong> applies the rest of the popup — mosaic and message dynamic templates, stage, chrome, and optional iframe rules — to matching output URLs.</p>
 
             <h2>Mosaic vs message</h2>

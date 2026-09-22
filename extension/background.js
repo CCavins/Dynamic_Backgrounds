@@ -10,7 +10,7 @@ function userScriptsEnableHint() {
   const match = String(navigator.userAgent || "").match(/(Chrome|Chromium)\/(\d+)/i);
   const version = match ? Number(match[2]) : 0;
   if (version >= 138) {
-    return "Open chrome://extensions → Dynamic Backgrounds → details → turn on Allow User Scripts, then reload the output page.";
+    return "Open chrome://extensions → Dynamic Themes → details → turn on Allow User Scripts, then reload the output page.";
   }
   return "Open chrome://extensions → turn on Developer mode, then reload the output page.";
 }

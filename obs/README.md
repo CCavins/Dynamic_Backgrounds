@@ -1,4 +1,4 @@
-# Dynamic Backgrounds for OBS
+# Dynamic Themes for OBS
 
 Themes a regular OBS **Browser Source** that is showing a Vixi output URL,
 using the same message/mosaic themes as the Chrome extension. The theming

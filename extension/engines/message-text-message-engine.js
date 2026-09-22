@@ -1,5 +1,5 @@
 /**
- * Dynamic Backgrounds theme engine
+ * Dynamic Themes theme engine
  * id: message-text-message-engine
  * kind: message
  * builtin theme id: text-message

@@ -40,5 +40,5 @@ Give the copy a new `id` and `label`. Do not reuse a built-in name (`led-scorebo
 ## Prompt
 
 ```
-You are writing a Dynamic Backgrounds theme pack. Read themes/DESIGN.md and themes/SPEC.md (How many settings and Pack assets). Copy the closest example from the public repo https://github.com/CCavins/Dynamic_Backgrounds into a local folder. Give it a new id and label. Do not push. Do not embed large base64 images. Then QC the pack at https://vixi-custom-theme-extension.netlify.app/themes/preview.html by importing the JSON, engine, and font files together.
+You are writing a Dynamic Themes theme pack. Read themes/DESIGN.md and themes/SPEC.md (How many settings and Pack assets). Copy the closest example from the public repo https://github.com/CCavins/Dynamic_Backgrounds into a local folder. Give it a new id and label. Do not push. Do not embed large base64 images. Then QC the pack at https://vixi-custom-theme-extension.netlify.app/themes/preview.html by importing the JSON, engine, and font files together.
 ```

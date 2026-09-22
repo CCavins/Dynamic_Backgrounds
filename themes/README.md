@@ -23,7 +23,7 @@ To have a model build a pack:
 3. Paste this prompt, then describe the look:
 
 ```
-You are writing a Dynamic Backgrounds theme pack. Read themes/SPEC.md, including How many settings and Pack assets. Clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine". Prefer data-qr / data-logo slots and dyn-show-qr / dyn-show-logo layout variants when the brief mentions QR or logo. Do not embed large base64 images. Christmas themes are drawn with CSS and an engine, not photo files. Import copies font files only, not png/webp. Suggested file names: message-<name>.json / message-<name>-engine.js or mosaic-<name>.json / mosaic-<name>-engine.js (optional, not required).
+You are writing a Dynamic Themes theme pack. Read themes/SPEC.md, including How many settings and Pack assets. Clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine". Prefer data-qr / data-logo slots and dyn-show-qr / dyn-show-logo layout variants when the brief mentions QR or logo. Do not embed large base64 images. Christmas themes are drawn with CSS and an engine, not photo files. Import copies font files only, not png/webp. Suggested file names: message-<name>.json / message-<name>-engine.js or mosaic-<name>.json / mosaic-<name>-engine.js (optional, not required).
 ```
 
 ## Import

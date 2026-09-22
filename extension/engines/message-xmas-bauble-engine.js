@@ -1,5 +1,5 @@
 /**
- * Dynamic Backgrounds theme engine
+ * Dynamic Themes theme engine
  * id: message-xmas-bauble-engine
  * kind: message
  * Pairs with: themes/message-xmas-bauble.json

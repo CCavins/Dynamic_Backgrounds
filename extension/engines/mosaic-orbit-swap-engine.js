@@ -1,5 +1,5 @@
 /**
- * Dynamic Backgrounds theme engine
+ * Dynamic Themes theme engine
  * id: mosaic-orbit-swap-engine
  * kind: mosaic
  * Pairs with: themes/mosaic-orbit-swap.json

@@ -1,5 +1,5 @@
 /**
- * Dynamic Backgrounds theme engine
+ * Dynamic Themes theme engine
  * id: mosaic-slant-rows-engine
  * kind: mosaic
  * Pairs with: mosaic-slant-rows.json

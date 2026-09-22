@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create — Dynamic Backgrounds</title>
+    <title>Create — Dynamic Themes</title>
     <link rel="stylesheet" href="site.css">
 </head>
 <body>
     <div class="wrap">
         <header class="site-header">
             <div class="site-brand">
-                <a href="index.html"><h1>DYNAMIC BACKGROUNDS</h1></a>
+                <a href="index.html"><h1>DYNAMIC THEMES</h1></a>
                 <p>Themes, scenes, and a Chrome extension for live output.</p>
             </div>
             <nav class="site-nav" aria-label="Site">
@@ -19,7 +19,7 @@
                 <a href="extension.html">Extension</a>
                 <a href="create.html" aria-current="page">Create</a>
             </nav>
-            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.30.25</span></a>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.30.26</span></a>
         </header>
 
         <div class="page-intro">
@@ -145,7 +145,7 @@
 
             <h2>Hand this to an AI</h2>
             <p>Attach <a href="themes/SPEC.md">themes/SPEC.md</a> and the closest example, then paste:</p>
-            <pre>You are writing a Dynamic Backgrounds theme pack. Read themes/SPEC.md and clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine". Prefer data-qr / data-logo slots and dyn-show-qr / dyn-show-logo layout variants when the brief mentions QR or logo. Suggested names: message-&lt;name&gt;.json / message-&lt;name&gt;-engine.js or mosaic-&lt;name&gt;.json / mosaic-&lt;name&gt;-engine.js (optional).</pre>
+            <pre>You are writing a Dynamic Themes theme pack. Read themes/SPEC.md and clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine". Prefer data-qr / data-logo slots and dyn-show-qr / dyn-show-logo layout variants when the brief mentions QR or logo. Suggested names: message-&lt;name&gt;.json / message-&lt;name&gt;-engine.js or mosaic-&lt;name&gt;.json / mosaic-&lt;name&gt;-engine.js (optional).</pre>
             <p>Then describe the look. The spec lists every field, clamp, reserved id, reject rule, and engine hook.</p>
             <p>Limits: up to 24 imported themes. CSS max 256 KB, HTML max 50 KB, engine JS max ~200 KB. Importing the same <code>id</code> again replaces the previous pack.</p>
         </article>

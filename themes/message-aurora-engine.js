@@ -1,5 +1,5 @@
 /**
- * Dynamic Backgrounds theme engine
+ * Dynamic Themes theme engine
  * id: message-aurora-engine
  * kind: message
  * Pairs with: themes/message-aurora.json

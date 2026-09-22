@@ -86,7 +86,7 @@
               available: false,
               hint:
                 chrome.runtime.lastError.message ||
-                "Open chrome://extensions → Dynamic Backgrounds → details → Allow User Scripts.",
+                "Open chrome://extensions → Dynamic Themes → details → Allow User Scripts.",
             });
             return;
           }

@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "Dynamic Backgrounds",
-  "version": "1.30.25",
+  "name": "Dynamic Themes",
+  "version": "1.30.26",
   "minimum_chrome_version": "120",
-  "description": "Apply a Dynamic Backgrounds iframe, mosaic themes, and message themes to matching output URLs.",
+  "description": "Apply Dynamic Themes — mosaic themes, message themes, and optional scene iframes — to matching output URLs.",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Dynamic Backgrounds",
+    "default_title": "Dynamic Themes",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

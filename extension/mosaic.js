@@ -1158,7 +1158,7 @@
       startTick(def.interval);
       return true;
     } catch (err) {
-      console.warn("[Dynamic Backgrounds] mosaic mount failed:", err);
+      console.warn("[Dynamic Themes] mosaic mount failed:", err);
       try {
         disposeMounted();
       } catch {

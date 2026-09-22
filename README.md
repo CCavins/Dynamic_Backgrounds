@@ -1,4 +1,4 @@
-# Dynamic Backgrounds
+# Dynamic Themes
 
 Themes for live Vixi output, plus a gallery of full-screen animated backgrounds. The Chrome extension restyles matching output pages with mosaic themes, message themes, and optional iframe backgrounds.
 
@@ -69,7 +69,7 @@ The site header has a **Download Chrome extension** link (`extension.zip`). Chro
 
 Built-in themes work immediately. Packs imported with a `*-engine.js` file need one Chrome opt-in, or they show a **black screen** on Vixi:
 
-1. Open `chrome://extensions` → **Dynamic Backgrounds** → **Details** (or use **Open extension details** in the popup / setup tab)
+1. Open `chrome://extensions` → **Dynamic Themes** → **Details** (or use **Open extension details** in the popup / setup tab)
 2. Turn on **Allow User Scripts** (Chrome 138+). Older Chrome: keep **Developer mode** on
 3. Reload the extension if you just flipped the toggle
 4. Confirm the popup’s **Finish setup** banner is gone (or green on the setup tab), then hard-refresh the Vixi output tab

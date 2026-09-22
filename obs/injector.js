@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Dynamic Backgrounds for OBS.
+ * Dynamic Themes for OBS.
  *
  * Injects the Chrome extension's theming scripts (read live from ../extension)
  * into OBS Browser Sources via the Chrome DevTools Protocol, so Vixi output
@@ -217,6 +217,6 @@ fs.watchFile(SETTINGS_PATH, { interval: 800 }, () => {
   }, 250);
 });
 
-console.log(`[injector] Dynamic Backgrounds for OBS — polling ${HOST}:${PORT} every ${POLL_MS}ms`);
+console.log(`[injector] Dynamic Themes for OBS — polling ${HOST}:${PORT} every ${POLL_MS}ms`);
 tick();
 setInterval(tick, POLL_MS);

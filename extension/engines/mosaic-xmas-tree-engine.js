@@ -1,5 +1,5 @@
 /**
- * Dynamic Backgrounds theme engine
+ * Dynamic Themes theme engine
  * id: mosaic-xmas-tree-engine
  * kind: mosaic
  * Pairs with: themes/mosaic-xmas-tree.json
