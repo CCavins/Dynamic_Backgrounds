@@ -19,7 +19,7 @@
                 <a href="extension.html">Extension</a>
                 <a href="create.html" aria-current="page">Create</a>
             </nav>
-            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.30.24</span></a>
+            <a class="site-download" href="extension.zip" download>Download Chrome extension <span class="ver" id="ext-version">1.30.25</span></a>
         </header>
 
         <div class="page-intro">
@@ -137,7 +137,7 @@
             <p>Standard JSON has no <code>//</code> comments. Put labels for those extras in a top-level <code>notes</code> object — the importer ignores it. Class Survey is the example. Full rules: <a href="themes/SPEC.md#extra-vixi-questions">Extra Vixi questions</a> in the spec.</p>
 
             <h2>Live popup settings</h2>
-            <p>Imported packs use the same live-settings pipeline as bundled themes. Declare controls under <code>settings</code> in your JSON, then wire CSS to <code>var(--primary)</code>, <code>var(--secondary)</code>, <code>var(--background)</code>, <code>var(--frame)</code>, <code>var(--scale)</code>, <code>[data-motion]</code>, and <code>[data-photo-style]</code> on the scoped theme root — not hardcoded hex on layers that should recolor. For a <strong>solid</strong> backdrop, use the <code>background</code> setting (see <code>message-stamp.json</code>). Import copies <strong>font</strong> files with the pack, not images. A tiny <code>data:</code> image is allowed only while <code>css</code> stays under 100&nbsp;KB and <code>html</code> under 50&nbsp;KB. Christmas packs are drawn (CSS and an engine), not base64 photos. Large art is a hosted HTTPS URL or a file bundled with the extension. See <a href="themes/SPEC.md#pack-assets-images-and-textures">Pack assets</a>. JSON-only packs need no extra code; engines should call <code>BGMessageThemes.applyVars</code> from <code>applySettings</code>. See <a href="themes/SPEC.md#live-settings-for-imported-themes-pack-authors">Live settings for imported themes</a> in the spec and clone <code>message-stamp.json</code> or <code>mosaic-framed.json</code>.</p>
+            <p>Imported packs use the same live-settings pipeline as bundled themes. Declare controls under <code>settings</code> in your JSON, then wire CSS to <code>var(--primary)</code>, <code>var(--secondary)</code>, <code>var(--background)</code>, <code>var(--frame)</code>, <code>var(--scale)</code>, <code>[data-motion]</code>, and <code>[data-photo-style]</code> on the scoped theme root — not hardcoded hex on layers that should recolor. For a <strong>solid</strong> backdrop, use the <code>background</code> setting (see <code>message-stamp.json</code>). Import copies <strong>font</strong> files with the pack, not images. A modest <code>data:</code> image is allowed while <code>css</code> stays under 256&nbsp;KB and <code>html</code> under 50&nbsp;KB. Christmas packs are drawn (CSS and an engine), not base64 photos. A full-bleed photo is a hosted HTTPS URL or a file bundled with the extension. See <a href="themes/SPEC.md#pack-assets-images-and-textures">Pack assets</a>. JSON-only packs need no extra code; engines should call <code>BGMessageThemes.applyVars</code> from <code>applySettings</code>. See <a href="themes/SPEC.md#live-settings-for-imported-themes-pack-authors">Live settings for imported themes</a> in the spec and clone <code>message-stamp.json</code> or <code>mosaic-framed.json</code>.</p>
 
             <h2>QR, logo, and layout variants</h2>
             <p>Put <code>data-qr</code> and <code>data-logo</code> on the boxes that should receive Vixi’s marks when those toggles are on. Style them for exact size and position. Omit them to use the default corners, or leave the toggles off to hide chrome entirely.</p>
@@ -147,7 +147,7 @@
             <p>Attach <a href="themes/SPEC.md">themes/SPEC.md</a> and the closest example, then paste:</p>
             <pre>You are writing a Dynamic Backgrounds theme pack. Read themes/SPEC.md and clone the closest example. Follow the spec exactly. Output valid JSON and, if the brief needs JS, a classic-script engine that calls BGThemeEngines.define. Do not invent fields. Do not use reserved ids. Scope all CSS. If you add an engine, id in define() must match JSON "engine". Prefer data-qr / data-logo slots and dyn-show-qr / dyn-show-logo layout variants when the brief mentions QR or logo. Suggested names: message-&lt;name&gt;.json / message-&lt;name&gt;-engine.js or mosaic-&lt;name&gt;.json / mosaic-&lt;name&gt;-engine.js (optional).</pre>
             <p>Then describe the look. The spec lists every field, clamp, reserved id, reject rule, and engine hook.</p>
-            <p>Limits: up to 24 imported themes. CSS max 100 KB, HTML max 50 KB, engine JS max ~200 KB. Importing the same <code>id</code> again replaces the previous pack.</p>
+            <p>Limits: up to 24 imported themes. CSS max 256 KB, HTML max 50 KB, engine JS max ~200 KB. Importing the same <code>id</code> again replaces the previous pack.</p>
         </article>
 
         <footer>Full contract is in themes/SPEC.md</footer>

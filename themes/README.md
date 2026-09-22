@@ -6,7 +6,7 @@ Build a message or mosaic theme as JSON (and optional JS) outside the extension,
 
 **Contract:** [SPEC.md](SPEC.md) — every field, clamp, reserved id, CSS hook, and engine signature.
 
-**Site walkthrough:** [Create](https://ccavins.github.io/Dynamic_Backgrounds/create.html) · live catalog on [Themes](https://ccavins.github.io/Dynamic_Backgrounds/).
+**Site walkthrough:** [Create](https://vixi-custom-theme-extension.netlify.app/create.html) · live catalog on [Themes](https://vixi-custom-theme-extension.netlify.app/).
 
 ## Hand this to an AI
 
@@ -57,7 +57,7 @@ Examples to try:
 
 To preview without a live output, open [`preview.html`](preview.html) in a browser (also on the [live site](https://vixi-custom-theme-extension.netlify.app/themes/preview.html)). It uses the same pack CSS, `applyVars` / `applySettings` live path, and message enter/exit timing as the Chrome extension. Use the dock for Ink / Paper / Photos (or mosaic controls) while the theme is on screen. **Import packs…** loads a local `.json` plus its `*-engine.js` and font files and keeps them in this browser until you **Remove** them. The same id or label replaces that import. Built-in names are not replaced. **Open viewer** shows that theme with the dock hidden. Click the picture or press F there to hide the browser address bar. **Show QR** and **Show logo** in the preview dock use the same `dyn-show-qr` / `dyn-show-logo` classes as the extension, so a theme that makes room for them reflows the same way. They place a placeholder QR (the word Placeholder across the middle of the square) and a transparent Vixi V logo. Themes with `data-qr` / `data-logo` use those slots. Themes without them get the default corners. Optional **Stage background** upload behaves like Show background on output.
 
-**Do not** embed large textures as base64 inside pack `css` — keep `css` under 100 KB and ship images as files under `assets/` for **bundled** themes. Grunge Poster is the reference (wall WebP + flat Paper fills). Details: [SPEC.md — Pack assets](SPEC.md#pack-assets-images-and-textures).
+**Do not** embed a full-bleed photo as base64 inside pack `css`. A modest image can, if the whole `css` string stays under 256 KB. Ship large textures as files under `assets/` for **bundled** themes. Grunge Poster is the reference (wall WebP + flat Paper fills). Details: [SPEC.md — Pack assets](SPEC.md#pack-assets-images-and-textures).
 
 **Background on imported packs:** the **`background` color** setting (solid fill via `var(--background)`) is the supported path — see [Imported packs vs bundled image backdrops](SPEC.md#imported-packs-vs-bundled-image-backdrops). Import copies **fonts** with the pack, not image files; large base64 in CSS is not safe; relative `url(assets/…)` in CSS does not resolve on Vixi output.
 
@@ -129,4 +129,4 @@ JSON cannot run the built-in canvas / WebGL / dealing scripts. For that exact ru
 
 ## Limits
 
-Up to 24 imported themes. CSS max 100 KB, HTML max 50 KB, engine JS max ~200 KB. **Keep textures out of `css`** — use separate asset files so stylesheets parse reliably and stay under the cap. Importing the same `id` again replaces the previous pack. Full rules are in [SPEC.md](SPEC.md).
+Up to 24 imported themes. CSS max 256 KB, HTML max 50 KB, engine JS max ~200 KB. A modest image may be inlined in `css`; a full-bleed photo should be an `https://` URL or a bundled asset. Importing the same `id` again replaces the previous pack. Full rules are in [SPEC.md](SPEC.md).

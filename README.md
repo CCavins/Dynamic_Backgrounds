@@ -2,7 +2,7 @@
 
 Themes for live Vixi output, plus a gallery of full-screen animated backgrounds. The Chrome extension restyles matching output pages with mosaic themes, message themes, and optional iframe backgrounds.
 
-**Live site:** [ccavins.github.io/Dynamic_Backgrounds](https://ccavins.github.io/Dynamic_Backgrounds/)
+**Live site:** [vixi-custom-theme-extension.netlify.app](https://vixi-custom-theme-extension.netlify.app/)
 
 **Designing a theme:** [themes/DESIGN.md](themes/DESIGN.md) — copy a starting pack, then check it in the preview. Read that before [themes/SPEC.md](themes/SPEC.md).
 
@@ -10,10 +10,10 @@ The site has four pages:
 
 | Page | What it is |
 | --- | --- |
-| [Themes](https://ccavins.github.io/Dynamic_Backgrounds/) | Home. Theme catalog; hover runs one live engine preview |
-| [Backgrounds](https://ccavins.github.io/Dynamic_Backgrounds/backgrounds.html) | Animated scene gallery |
-| [Extension](https://ccavins.github.io/Dynamic_Backgrounds/extension.html) | Install and how the popup works |
-| [Create](https://ccavins.github.io/Dynamic_Backgrounds/create.html) | Import a custom theme JSON (start with `message-stamp.json`) |
+| [Themes](https://vixi-custom-theme-extension.netlify.app/) | Home. Theme catalog; hover runs one live engine preview |
+| [Backgrounds](https://vixi-custom-theme-extension.netlify.app/backgrounds.html) | Animated scene gallery |
+| [Extension](https://vixi-custom-theme-extension.netlify.app/extension.html) | Install and how the popup works |
+| [Create](https://vixi-custom-theme-extension.netlify.app/create.html) | Import a custom theme JSON (start with `message-stamp.json`) |
 
 Theme tiles on the home page are a catalog, not links. Idle cards show a quiet pattern placeholder. Hover (or keyboard focus) mounts the real theme engine for that tile only — at most one live preview at a time — and tears it down when you leave or when the tab is hidden. WebGL (Cube field / Depth Field) loads only when those tiles are previewed.
 
@@ -35,7 +35,7 @@ Theme tiles on the home page are a catalog, not links. Idle cards show a quiet p
 
 ## How to use backgrounds
 
-1. Open the [Backgrounds](https://ccavins.github.io/Dynamic_Backgrounds/backgrounds.html) tab and click a card. Thumbnails are short recorded loops of the real scenes, not live WebGL, so the gallery stays light.
+1. Open the [Backgrounds](https://vixi-custom-theme-extension.netlify.app/backgrounds.html) tab and click a card. Thumbnails are short recorded loops of the real scenes, not live WebGL, so the gallery stays light.
 2. Press **Space** to open settings. Change colors, speed, density, and other scene-specific options.
 3. Press **Space** again to hide the panel. **Reset** restores the defaults.
 4. Settings are saved per background in `localStorage`, so they persist on the next visit.
@@ -47,7 +47,7 @@ Open any scene, press **Space**, set colors and sliders, then **Copy iframe**. T
 
 ```html
 <iframe
-  src="https://ccavins.github.io/Dynamic_Backgrounds/backgrounds/ocean.html?embed=1&cfg=..."
+  src="https://vixi-custom-theme-extension.netlify.app/backgrounds/ocean.html?embed=1&cfg=..."
   style="position:fixed;inset:0;width:100%;height:100%;border:0;z-index:-1"
   title="Ocean"
 ></iframe>
@@ -74,7 +74,7 @@ Built-in themes work immediately. Packs imported with a `*-engine.js` file need 
 3. Reload the extension if you just flipped the toggle
 4. Confirm the popup’s **Finish setup** banner is gone (or green on the setup tab), then hard-refresh the Vixi output tab
 
-JSON-only packs do not need Allow User Scripts. More detail: [Extension](https://ccavins.github.io/Dynamic_Backgrounds/extension.html) · [Create](https://ccavins.github.io/Dynamic_Backgrounds/create.html).
+JSON-only packs do not need Allow User Scripts. More detail: [Extension](https://vixi-custom-theme-extension.netlify.app/extension.html) · [Create](https://vixi-custom-theme-extension.netlify.app/create.html).
 
 The popup has a master **Replace Vixi themes** switch:
 

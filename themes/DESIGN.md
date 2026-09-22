@@ -25,7 +25,7 @@ Give the copy a new `id` and `label`. Do not reuse a built-in name (`led-scorebo
 
 - Select font files (`.woff2`, `.woff`, `.ttf`, `.otf`) in the same import as the JSON. Name them in `fontFile` or `fontFaces`.
 - Import does not take PNG, WebP, JPG, or SVG. There is no `imageFile` field.
-- A tiny `data:` image is allowed only while `css` stays under 100 KB and `html` under 50 KB.
+- A modest `data:` image is allowed while `css` stays under 256 KB and `html` under 50 KB. That 256 KB cap is ours, not the browser’s. A full-bleed photo still will not fit.
 - A real photo on a live output is an `https://` URL in CSS, or art drawn by the engine. Christmas packs are drawn. They are not base64 photos.
 - `url("assets/…")` can show in this site’s preview. It does not load on a Vixi output page.
 

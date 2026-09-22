@@ -2,7 +2,7 @@
   const FORMAT = "dynamic-backgrounds-theme";
   const STYLE_ID = "dyn-custom-theme-style";
   const MAX_PACKS = 24;
-  const MAX_CSS = 100000;
+  const MAX_CSS = 256000;
   const MAX_HTML = 50000;
   const MAX_ENGINE_JS = 200000;
   const MESSAGE_ENGINES = new Set([

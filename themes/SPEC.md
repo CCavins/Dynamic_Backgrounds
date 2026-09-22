@@ -106,7 +106,7 @@ Every field the parser keeps. Extra fields are ignored. Do not invent settings k
 | `label` | yes | string | Popup name, max 80 characters |
 | `engine` | no | string | Built-in theme id **or** a new engine id. Same id regex. Cannot reuse a reserved id unless it is a built-in of the same `kind` (wrap path) |
 | `engineFile` | no | string | Basename ending in `.js`, max 80 chars. Hint only |
-| `css` | no | string | Max 100 KB. Scoped selectors required |
+| `css` | no | string | Max 256 KB. Scoped selectors required |
 | `html` | message unless `engine` | string | Max 50 KB. Message themes need `html` or `engine` |
 | `fonts` | no | string or string[] | Google Fonts stylesheet URL(s) only: each must start with `https://fonts.googleapis.com/`. One URL may list several families (`family=…&family=…`). Or pass an array of URLs (max 8). Dropped if not Google Fonts. Works together with `fontFaces` |
 | `fontFaces` | no | array | Custom fonts for this pack (max 12). Each item: `{ "fontFile": "Face.woff2", "fontFamily": "Face Name" }`. Preferred when you need more than one face |
@@ -272,7 +272,7 @@ applySettings(themeRoot, _state, settings) {
 - **Motion while a card is showing** — `data-motion` updates immediately, but CSS enter animations usually run once per `show`. The next capture replays with the new mode. Prefer testing motion by changing the popup, then triggering a new message.
 - **Engine themes without `applySettings`** — colors freeze after mount until you call `applyVars`.
 - **New setting keys** — extra hex colors, selects, and toggles do appear in the popup and preview. Only `primary`, `secondary`, `background`, and `frame` are written as CSS variables. Any other color needs an engine `applySettings` that reads `settings.yourKey`. See [How many settings](#how-many-settings).
-- **Large `data:` URIs inside `css`** — a single embedded WebP/PNG (tens of KB of base64 in one rule) can exceed the **100 KB** CSS cap *and* break stylesheet parsing in Chrome, so rules after the bad block never apply. **Ship textures as separate files** under `assets/` (see [Pack assets](#pack-assets-images-and-textures)) and reference them with `url(...)` or paint from JS.
+- **Large `data:` URIs inside `css`** — the import cap is **256 KB** for the whole `css` string (our limit, not Chrome’s). A modest image can be a `data:` URI inside that budget. A full-bleed photo still will not fit, and one broken or enormous `data:` rule can make Chrome drop the rules after it. Host that file at `https://…` or bundle it. See [Pack assets](#pack-assets-images-and-textures).
 - **Multiply / opacity overlays on `::before` / `::after`** — if a user-facing color (Paper, Wall, Frame) sits *under* a textured pseudo-element, live popup changes look stuck. Either keep the tint on `background-color` with **no** opaque texture on top, or repaint the flat fill from `applySettings` / `applyVars` (bundled Grunge does this — see below).
 - **Wall tint stacks** — brown washes, gradients, `mix-blend-mode`, and film grain on a `.wall` layer hide a brick photo. If the design is “show this image as the backdrop”, use the image alone (`background-image: cover`) with no color wash unless `background` is an explicit popup setting.
 
@@ -287,19 +287,19 @@ Examples to copy: `message-stamp.json`, `message-grunge-poster.json`, `mosaic-fr
 | Goal | Do this |
 | --- | --- |
 | Solid backdrop the user can recolor | `settings.background` and `background: var(--background)` |
-| Tiny icon or mask | `data:` URI in `css` or `html`. Whole `css` must stay under **100 KB**. Whole `html` must stay under **50 KB** |
+| Tiny icon or a modest image | `data:` URI in `css` or `html`. Whole `css` must stay under **256 KB**. Whole `html` must stay under **50 KB** |
 | Photo or texture on a live Vixi page | Public `https://…` URL in CSS, or ship the file in the extension (below) |
 | Large fixed art like the Grunge wall | Bundled only: `extension/packs/assets/…` plus the same file under `themes/assets/` for preview. Not an Import packs… file |
 
 A `data:` image that blows the CSS cap is rejected. A large base64 block that still parses can make Chrome drop every rule after it. Relative `url("assets/foo.webp")` works in preview on this site and does **not** load on a Vixi output page — that file is not on the event site.
 
-Pack JSON `css` is capped at **100 KB**. Do **not** embed large textures as `data:image/...;base64,...` inside `css`.
+The **256 KB** CSS cap is our import limit, not a browser hard limit. A modest image can be a `data:` URI inside that budget. Do **not** embed a full-bleed photo as `data:image/...;base64,...` inside `css`.
 
 | Approach | When | Notes |
 | --- | --- | --- |
 | **External file** | Textures, brick, grain, SVG masks | Put files beside the pack, e.g. `themes/assets/my-texture.webp` and `extension/packs/assets/my-texture.webp` (keep both copies in sync for gallery preview + bundled extension). Reference with a relative `url("assets/…")` in CSS **only if** the URL resolves on every host (preview page). |
 | **JS paint on mount / live apply** | Extension + preview must share one asset path model | Bundled **Grunge Poster** sets `.wall { background-image }` from `BGMessageThemes.applyGrungeWall()` using `chrome.runtime.getURL('packs/assets/grunge-wall.webp')` on output and `assets/grunge-wall.webp` relative to `themes/preview.html` in the gallery. Add matching files to `web_accessible_resources` when content scripts load them on Vixi pages. |
-| **Small SVG / tiny PNG** | Icons, simple masks under ~2 KB | Inline `data:` URIs are fine when the whole `css` string stays well under 100 KB and you have verified parsing in DevTools. |
+| **Small SVG / modest image** | Icons or one small texture | Inline `data:` URIs are fine when the whole `css` string stays under 256 KB |
 | **`background` color setting** | Solid stage / wall tint the user picks in the popup | **Best default for imported packs.** Declare `background` under `settings`, use `background: var(--background)` or `--wall: var(--background)` in CSS. No image file needed — works on import, preview, and live output via `applyVars`. Clone `message-stamp.json`. |
 | **Public HTTPS `url(...)`** | Imported pack with a hosted texture | `background-image: url("https://…")` in pack CSS can work on output if the host page allows loading that URL. You maintain the hosted file; there is no import-time copy into storage (unlike fonts). |
 | **Bundled extension asset + JS** | Large fixed backdrop (Grunge brick wall) | Ship `extension/packs/assets/…`, resolve with `chrome.runtime.getURL`, mirror under `themes/assets/` for preview, list in `web_accessible_resources`. Optional helper in `message-themes.js` if CSS `url()` cannot resolve on Vixi pages. |
@@ -313,7 +313,7 @@ Import **does** copy custom **font** files into extension storage (select them b
 | Author goal | Supported on import? | What to do |
 | --- | --- | --- |
 | User-pickable **solid** backdrop | **Yes** | `settings.background` + `var(--background)` in CSS |
-| **Small** texture (few KB) in CSS | **Yes** | Inline `data:` URI; keep total `css` under 100 KB |
+| **Modest** image in CSS | **Yes** | Inline `data:` URI; keep total `css` under 256 KB |
 | **Large** texture baked into `css` | **No** | Breaks parsing and/or exceeds cap — same failure mode Grunge hit before v1.24.24 |
 | Relative `url("assets/foo.webp")` in imported CSS only | **No** on Vixi output | Injected pack CSS resolves URLs against the **page** origin, not the extension; the file is not on the event site |
 | Fixed image backdrop like Grunge | **Bundled only** (today) | Ship with the extension (`packs/assets/` + JS), or use a public HTTPS URL in CSS, or a small inline texture |
