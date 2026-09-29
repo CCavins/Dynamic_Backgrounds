@@ -1049,6 +1049,13 @@
 <script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.24.28"></script>
 <script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.24.28"></script>
 <script src="./mosaic-slant-rows-engine.js?v=1.24.28"></script>
+<script src="../extension/engines/message-brushed-engine.js?v=1.31.0"></script>
+<script src="../extension/engines/message-chalk-engine.js?v=1.31.0"></script>
+<script src="../extension/engines/message-ticket-engine.js?v=1.31.0"></script>
+<script src="../extension/engines/mosaic-block-wall-engine.js?v=1.31.0"></script>
+<script src="../extension/engines/mosaic-bowl-lights-engine.js?v=1.31.0"></script>
+<script src="../extension/engines/mosaic-neon-fans-engine.js?v=1.31.0"></script>
+<script src="../extension/engines/mosaic-steel-lights-engine.js?v=1.31.0"></script>
 <script src="../extension/engines/message-xmas-bauble-engine.js?v=1.24.28"></script>
 <script src="../extension/custom-themes.js?v=1.30.17"></script>
 <script>
@@ -1080,6 +1087,13 @@
   }
 
   const CUSTOM_FILES = [
+    ["message-brushed.json", "Brushed", true],
+    ["message-chalk.json", "Chalk", true],
+    ["message-ticket.json", "Ticket", true],
+    ["mosaic-block-wall.json", "Block Wall", true],
+    ["mosaic-bowl-lights.json", "Bowl Lights", true],
+    ["mosaic-neon-fans.json", "Neon Fans", true],
+    ["mosaic-steel-lights.json", "Steel Lights", true],
     ["message-class-survey.json", "Class Survey"],
     ["message-grunge-poster.json", "Grunge Poster"],
     ["mosaic-slant-rows.json", "Slant Rows"],
@@ -1091,7 +1105,18 @@
     ["mosaic-xmas-snowfall.json", "Christmas Snowfall"],
   ];
 
-  const FEATURED_IDS = new Set(["message-class-survey", "message-grunge-poster", "mosaic-slant-rows"]);
+  const FEATURED_IDS = new Set([
+    "message-class-survey",
+    "message-grunge-poster",
+    "mosaic-slant-rows",
+    "message-brushed",
+    "message-chalk",
+    "message-ticket",
+    "mosaic-block-wall",
+    "mosaic-bowl-lights",
+    "mosaic-neon-fans",
+    "mosaic-steel-lights",
+  ]);
   function isChristmasItem(item) {
     return /xmas|christmas/i.test(String(item.id || "") + " " + String(item.label || ""));
   }
@@ -1122,6 +1147,7 @@
         label: CUSTOM_FILES[i][1] || pack.label || pack.id,
         pack,
         custom: true,
+        isNew: Boolean(CUSTOM_FILES[i][2]),
       });
     } catch {
       /* skip bad pack */
@@ -1374,7 +1400,7 @@
       p.set("ah", String(aspectH.value || "9"));
     } else {
       const aspect = resolvedAspect();
-      if (aspect && aspect !== "vixi") p.set("aspect", aspect);
+      if (aspect && aspect !== "16:9") p.set("aspect", aspect);
     }
     const settings = settingsFor(active.id, active.pack);
     const meta = settingsMetaFor(active.id);
@@ -1438,7 +1464,11 @@
         const opt = document.createElement("option");
         opt.value = item.kind + ":" + item.id;
         const kindLabel = item.kind === "mosaic" ? "mosaic" : "message";
-        opt.textContent = item.imported ? item.label + " (" + kindLabel + ")" : item.label;
+        opt.textContent = item.imported
+          ? item.label + " (" + kindLabel + ")"
+          : item.isNew
+            ? item.label + " (new)"
+            : item.label;
         group.appendChild(opt);
       });
     select.appendChild(group);
@@ -1509,7 +1539,7 @@
   customOpt.textContent = "Custom — set width : height";
   aspectSelect.appendChild(customOpt);
 
-  let stageMode = "vixi";
+  let stageMode = "16:9";
   let previewShowQr = false;
   let previewShowLogo = false;
   let active = null;
@@ -2853,7 +2883,7 @@
   } else if (wantAspect && (rules.STAGE_ASPECTS || []).includes(wantAspect)) {
     aspectSelect.value = wantAspect;
   } else {
-    aspectSelect.value = "vixi";
+    aspectSelect.value = "16:9";
   }
   stageMode = aspectSelect.value;
   syncCustomAspectUI();

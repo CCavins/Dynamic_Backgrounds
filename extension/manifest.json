@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dynamic Themes",
-  "version": "1.30.29",
+  "version": "1.31.0",
   "minimum_chrome_version": "120",
   "description": "Apply Dynamic Themes — mosaic themes, message themes, and optional scene iframes — to matching output URLs.",
   "action": {
@@ -59,6 +59,13 @@
         "engines/mosaic-xmas-snowfall-engine.js",
         "engines/message-xmas-bauble-engine.js",
         "engines/mosaic-slant-rows-engine.js",
+        "engines/message-brushed-engine.js",
+        "engines/message-chalk-engine.js",
+        "engines/message-ticket-engine.js",
+        "engines/mosaic-block-wall-engine.js",
+        "engines/mosaic-bowl-lights-engine.js",
+        "engines/mosaic-neon-fans-engine.js",
+        "engines/mosaic-steel-lights-engine.js",
         "custom-themes.js",
         "leaderboard-themes.js",
         "mosaic.js",

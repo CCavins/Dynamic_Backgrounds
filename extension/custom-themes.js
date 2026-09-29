@@ -47,15 +47,44 @@
     "mosaic-xmas-snowfall-engine",
     "message-xmas-bauble-engine",
     "mosaic-slant-rows-engine",
+    "message-brushed-engine",
+    "message-chalk-engine",
+    "message-ticket-engine",
+    "mosaic-block-wall-engine",
+    "mosaic-bowl-lights-engine",
+    "mosaic-neon-fans-engine",
+    "mosaic-steel-lights-engine",
   ]);
   const BUNDLED_PACK_FILES = [
     "packs/message-grunge-poster.json",
     "packs/mosaic-slant-rows.json",
+    "packs/message-brushed.json",
+    "packs/message-chalk.json",
+    "packs/message-ticket.json",
+    "packs/mosaic-block-wall.json",
+    "packs/mosaic-bowl-lights.json",
+    "packs/mosaic-neon-fans.json",
+    "packs/mosaic-steel-lights.json",
   ];
   const BUNDLED_PACK_IDS = {
-    message: ["message-grunge-poster"],
-    mosaic: ["mosaic-slant-rows"],
+    message: ["message-grunge-poster", "message-brushed", "message-chalk", "message-ticket"],
+    mosaic: [
+      "mosaic-slant-rows",
+      "mosaic-block-wall",
+      "mosaic-bowl-lights",
+      "mosaic-neon-fans",
+      "mosaic-steel-lights",
+    ],
   };
+  const NEW_PACK_IDS = new Set([
+    "message-brushed",
+    "message-chalk",
+    "message-ticket",
+    "mosaic-block-wall",
+    "mosaic-bowl-lights",
+    "mosaic-neon-fans",
+    "mosaic-steel-lights",
+  ]);
   const RESERVED = new Set(["off", ...MESSAGE_ENGINES, ...MOSAIC_ENGINES]);
 
   const rulesApi = root.BGExtensionRules;
@@ -698,6 +727,26 @@
 }
 `;
 
+  function rewritePackAssetUrls(css) {
+    return String(css || "").replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g, (full, _quote, raw) => {
+      const value = String(raw || "").trim();
+      if (
+        !value ||
+        value.startsWith("data:") ||
+        value.startsWith("#") ||
+        value.startsWith("http:") ||
+        value.startsWith("https:") ||
+        value.startsWith("chrome-extension:") ||
+        value.startsWith("blob:")
+      ) {
+        return full;
+      }
+      const name = value.split("/").pop();
+      if (!/\.(png|webp|jpe?g|gif|svg)$/i.test(name)) return full;
+      return 'url("' + packAssetUrl(name) + '")';
+    });
+  }
+
   function injectStyle(packs) {
     let style = document.getElementById(STYLE_ID);
     if (!style) {
@@ -709,7 +758,7 @@
       LAYOUT_STYLE +
       "\n" +
       (packs || [])
-        .map((pack) => String(pack.css || "").trim())
+        .map((pack) => rewritePackAssetUrls(String(pack.css || "").trim()))
         .filter(Boolean)
         .join("\n\n");
   }
@@ -1486,6 +1535,7 @@
         const raw = await res.json();
         const pack = parsePack(raw);
         pack.bundled = true;
+        if (NEW_PACK_IDS.has(pack.id)) pack.isNew = true;
         out.push(pack);
       } catch {
         /* skip missing bundled pack */

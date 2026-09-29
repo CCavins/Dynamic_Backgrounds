@@ -8,6 +8,13 @@
     "mosaic-xmas-tree-engine.js",
     "mosaic-xmas-snowfall-engine.js",
     "message-xmas-bauble-engine.js",
-    "mosaic-slant-rows-engine.js"
+    "mosaic-slant-rows-engine.js",
+    "message-brushed-engine.js",
+    "message-chalk-engine.js",
+    "message-ticket-engine.js",
+    "mosaic-block-wall-engine.js",
+    "mosaic-bowl-lights-engine.js",
+    "mosaic-neon-fans-engine.js",
+    "mosaic-steel-lights-engine.js"
   ]
 }

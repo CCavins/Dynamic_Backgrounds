@@ -325,7 +325,7 @@
     items.forEach((item) => {
       const option = document.createElement("option");
       option.value = item.id;
-      option.textContent = item.label;
+      option.textContent = item.isNew ? item.label + " (new)" : item.label;
       group.appendChild(option);
     });
     select.appendChild(group);
@@ -489,7 +489,7 @@
       if (entry.hidden) return;
       const label = entry.label || id;
       const group = themeSelectGroup(id, entry);
-      groups[group].push({ id, label });
+      groups[group].push({ id, label, isNew: Boolean(entry.isNew) });
     });
     addOptGroup(select, "Built-in", groups["Built-in"]);
     addOptGroup(select, "Christmas", groups.Christmas);
