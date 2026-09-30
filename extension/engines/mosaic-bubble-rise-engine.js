@@ -231,24 +231,24 @@
 
   function makeMote(layer, spawnAnywhere, h) {
     const far = layer === "far";
-    const r = far ? rand(1.4, 4.2) : rand(3.5, 9);
+    const r = far ? rand(1.1, 3.4) : rand(2.2, 5.2);
     return {
       x: Math.random(),
       y: spawnAnywhere ? Math.random() * h : h + rand(8, 80),
       r: r,
-      rise: (far ? rand(18, 42) : rand(36, 78)),
-      amp: far ? rand(4, 12) : rand(8, 20),
-      freq: rand(0.4, 1.1),
+      rise: far ? rand(12, 28) : rand(30, 64),
+      amp: far ? rand(3, 9) : rand(6, 14),
+      freq: rand(0.35, 0.9),
       phase: rand(0, Math.PI * 2),
-      alpha: far ? rand(0.18, 0.4) : rand(0.28, 0.55),
+      alpha: far ? rand(0.12, 0.32) : rand(0.35, 0.62),
     };
   }
 
   function seedMotes(state) {
     const w = state.w || 1200;
     const h = state.h || 700;
-    const farN = Math.round(36 * w / 1200);
-    const nearN = Math.round(14 * w / 1200);
+    const farN = Math.round(58 * w / 1200);
+    const nearN = Math.max(3, Math.round(5 * w / 1200));
     state.far = [];
     state.near = [];
     for (let i = 0; i < farN; i += 1) state.far.push(makeMote("far", true, h));
