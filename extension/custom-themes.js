@@ -54,6 +54,7 @@
     "mosaic-bowl-lights-engine",
     "mosaic-neon-fans-engine",
     "mosaic-steel-lights-engine",
+    "mosaic-bubble-rise-engine",
   ]);
   const BUNDLED_PACK_FILES = [
     "packs/message-grunge-poster.json",
@@ -65,6 +66,7 @@
     "packs/mosaic-bowl-lights.json",
     "packs/mosaic-neon-fans.json",
     "packs/mosaic-steel-lights.json",
+    "packs/mosaic-bubble-rise.json",
   ];
   const BUNDLED_PACK_IDS = {
     message: ["message-grunge-poster", "message-brushed", "message-chalk", "message-ticket"],
@@ -74,6 +76,7 @@
       "mosaic-bowl-lights",
       "mosaic-neon-fans",
       "mosaic-steel-lights",
+      "mosaic-bubble-rise",
     ],
   };
   const NEW_PACK_IDS = new Set([
@@ -84,6 +87,7 @@
     "mosaic-bowl-lights",
     "mosaic-neon-fans",
     "mosaic-steel-lights",
+    "mosaic-bubble-rise",
   ]);
   const RESERVED = new Set(["off", ...MESSAGE_ENGINES, ...MOSAIC_ENGINES]);
 

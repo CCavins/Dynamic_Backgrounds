@@ -808,9 +808,12 @@
   }
 
   function extraScaleRow(key, label, value, range) {
-    const min = Math.round(((range && range.min) || 0.5) * 100);
-    const max = Math.round(((range && range.max) || 1.8) * 100);
-    const pct = Math.max(min, Math.min(max, Math.round((Number(value) || 1) * 100)));
+    const minRaw = range && isFinite(Number(range.min)) ? Number(range.min) : 0.5;
+    const maxRaw = range && isFinite(Number(range.max)) ? Number(range.max) : 1.8;
+    const min = Math.round(minRaw * 100);
+    const max = Math.round(maxRaw * 100);
+    const n = Number(value);
+    const pct = Math.max(min, Math.min(max, Math.round((isFinite(n) ? n : 1) * 100)));
     const row = document.createElement("label");
     row.className = "setting-row scale";
     if (key === "qrScale") row.dataset.chromeToggle = "qr";

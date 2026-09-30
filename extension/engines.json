@@ -15,6 +15,7 @@
     "mosaic-block-wall-engine.js",
     "mosaic-bowl-lights-engine.js",
     "mosaic-neon-fans-engine.js",
-    "mosaic-steel-lights-engine.js"
+    "mosaic-steel-lights-engine.js",
+    "mosaic-bubble-rise-engine.js"
   ]
 }
