@@ -663,6 +663,10 @@ textarea {
   align-items: center;
 }
 
+.setting-row[hidden] {
+  display: none;
+}
+
 .setting-row + .setting-row {
   margin-top: var(--v2-xs);
 }

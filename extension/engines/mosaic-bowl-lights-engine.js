@@ -9,17 +9,21 @@
     throw new Error("BGThemeEngines is not loaded before mosaic-bowl-lights-engine.js");
   }
 
-  const COLS = 12;
+  const COLS = 14;
   const ROWS = [
     { r: 0.46, rake: 8 },
     { r: 0.51, rake: 10 },
     { r: 0.56, rake: 12 },
     { r: 0.61, rake: 14 }
   ];
-  const COUNT = COLS * ROWS.length;
+  const PORT_ROWS = [
+    { r: 0.62, rake: 6 },
+    { r: 0.72, rake: 11 },
+    { r: 0.82, rake: 15 },
+    { r: 0.92, rake: 19 }
+  ];
   const ASPECT = 3 / 4;
-  const ARC = (210 * Math.PI) / 180;
-  const HALF = ARC / 2;
+  const ARC = (245 * Math.PI) / 180;
   const LOOP = 36;
   const DUST = 320;
   const DUST_FG = 180;
@@ -46,12 +50,18 @@
     return isFinite(n) && n > 0 ? n : 1;
   }
 
+  function isPortrait(root) {
+    return !!(root && root.classList && root.classList.contains("dyn-portrait"));
+  }
+
   function ensureWrap(card) {
     if (card.querySelector(".plate")) return;
     const spin = document.createElement("div");
     spin.className = "spin";
     const plate = document.createElement("div");
     plate.className = "plate";
+    plate.style.backfaceVisibility = "visible";
+    plate.style.webkitBackfaceVisibility = "visible";
     while (card.firstChild) plate.appendChild(card.firstChild);
     spin.appendChild(plate);
     card.appendChild(spin);
@@ -59,9 +69,10 @@
 
   function wrapAngle(a) {
     const span = ARC;
-    let x = a + HALF;
+    const half = span / 2;
+    let x = a + half;
     x = ((x % span) + span) % span;
-    return x - HALF;
+    return x - half;
   }
 
   function pose(state) {
@@ -69,27 +80,75 @@
     if (!stage || !stage.clientWidth) return;
     const W = stage.clientWidth;
     const H = stage.clientHeight;
+    const portrait = isPortrait(state.root);
     const grow = readScale(state.root);
-    const w = W * 0.118 * grow;
-    const h = w / ASPECT;
-    const gap = Math.min(w, h) * 0.16;
+    let w = (portrait ? W * 0.15 : W * 0.118) * grow;
+    let h = w / ASPECT;
+    if (portrait && h > H * 0.11) {
+      h = H * 0.11;
+      w = h * ASPECT;
+    }
+    const gap = Math.min(w, h) * (portrait ? 0.55 : 0.16);
     const rowPitch = (h + gap) / H;
     const stackMid = -0.6;
     const t = state.phase;
+    if (portrait) {
+      stage.style.perspective = Math.round(W * 0.92) + "px";
+      stage.style.perspectiveOrigin = "50% 62%";
+    } else {
+      stage.style.perspective = "";
+      stage.style.perspectiveOrigin = "";
+    }
     state.cards.forEach(function (card) {
-      const row = ROWS[card._row];
-      const theta = wrapAngle(-HALF + ((card._slot + 0.5) / COLS) * ARC - t);
+      const row = portrait ? PORT_ROWS[card._row] : ROWS[card._row];
+      const rowBias = portrait ? (card._row - 1.5) * ((14 * Math.PI) / 180) : 0;
+      const depth = portrait ? 0.78 + card._row * 0.12 : 1;
+      const cw = w * depth;
+      const ch = h * depth;
+      const theta = wrapAngle(-ARC / 2 + ((card._slot + 0.5) / COLS) * ARC - t + rowBias);
       const R = row.r * W;
       const x = R * Math.sin(theta);
-      const y = (stackMid + (1.5 - card._row) * rowPitch) * H;
+      const anchor = portrait ? 0.72 : 0.78;
+      const y = portrait
+        ? (-0.5 + card._row * Math.max(rowPitch, 0.18)) * H
+        : (stackMid + (1.5 - card._row) * rowPitch) * H;
       const z = -R * Math.cos(theta);
-      const yaw = ((-theta * 180) / Math.PI) * 0.2;
-      card.style.width = ((w / W) * 100).toFixed(3) + "%";
-      card.style.height = ((h / H) * 100).toFixed(3) + "%";
-      card.style.marginLeft = (-w / 2).toFixed(1) + "px";
-      card.style.marginTop = (-h / 2).toFixed(1) + "px";
-      card.style.zIndex = String(80 + Math.round(z));
-      card.style.opacity = z > W * 0.06 ? "0" : "1";
+      const yaw = ((-theta * 180) / Math.PI) * (portrait ? 0.14 : 0.2);
+      const depthCam = portrait ? W * 0.92 : W * 0.5;
+      const denom = depthCam - z;
+      const proj = denom > 16 ? depthCam / denom : 1;
+      const screenX = W / 2 + x * proj;
+      const halfW = (cw / 2) * Math.abs(proj);
+      const offRight = screenX - halfW > W;
+      const offLeft = screenX + halfW < 0;
+      if (offRight) card._blOff = false;
+      else if (offLeft && !card._blOff) {
+        card._blOff = true;
+        swapOffscreen(card, state);
+      }
+      if (card._blW !== cw) {
+        card._blW = cw;
+        card.style.left = "50%";
+        card.style.top = portrait ? "72%" : "78%";
+        card.style.width = ((cw / W) * 100).toFixed(3) + "%";
+        card.style.height = ((ch / H) * 100).toFixed(3) + "%";
+        card.style.marginLeft = (-cw / 2).toFixed(1) + "px";
+        card.style.marginTop = (-ch / 2).toFixed(1) + "px";
+        card.style.opacity = "1";
+        card.style.visibility = "visible";
+        const plate = card.querySelector(".plate");
+        if (plate) {
+          plate.style.backfaceVisibility = "visible";
+          plate.style.webkitBackfaceVisibility = "visible";
+        }
+        const spinEl = card.querySelector(".spin");
+        if (spinEl) spinEl.style.willChange = "auto";
+      }
+      const zIndex = 80 + Math.round(z);
+      if (card._blZ !== zIndex) {
+        card._blZ = zIndex;
+        card.style.zIndex = String(zIndex);
+      }
       const spin = card.querySelector(".spin");
       if (spin) {
         spin.style.transform =
@@ -106,6 +165,18 @@
           "deg)";
       }
     });
+  }
+
+  function swapOffscreen(card, state) {
+    const api = state.api;
+    const img = card.querySelector("img");
+    if (!img) return;
+    const current = img.currentSrc || img.src;
+    const src =
+      api && typeof api.nextUrl === "function"
+        ? api.nextUrl(current)
+        : "";
+    if (src && src !== current) img.src = src;
   }
 
   function crowdPos() {
@@ -207,7 +278,7 @@
     function pop() {
       if (!state.fxOn || !host.isConnected) return;
       const nodes = host.children;
-      const burst = 3 + (Math.random() < 0.65 ? 2 : 0) + (Math.random() < 0.35 ? 2 : 0);
+      const burst = 1 + (Math.random() < 0.35 ? 1 : 0);
       for (let k = 0; k < burst; k += 1) {
         const el = nodes[Math.floor(Math.random() * nodes.length)];
         const p = crowdPos();
@@ -215,38 +286,17 @@
         el.style.top = p.y.toFixed(1) + "%";
         el.style.setProperty("--flash-s", rand(0.35, 1.85).toFixed(2));
         el.classList.remove("on");
-        void el.offsetWidth;
         el.classList.add("on");
       }
-      state.flashTimer = window.setTimeout(pop, rand(70, 420));
+      state.flashTimer = window.setTimeout(pop, rand(700, 1800));
     }
-    state.flashTimer = window.setTimeout(pop, rand(60, 200));
-  }
-
-  function refreshSome(state, hostApi, pool) {
-    const api = hostApi || state.api;
-    const cards = state.cards.slice();
-    for (let i = cards.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const tmp = cards[i];
-      cards[i] = cards[j];
-      cards[j] = tmp;
-    }
-    const n = Math.min(cards.length, 6 + Math.floor(Math.random() * 5));
-    for (let k = 0; k < n; k += 1) {
-      const img = cards[k].querySelector("img");
-      const src =
-        api && typeof api.nextUrl === "function"
-          ? api.nextUrl(img && img.src)
-          : (pool && pool[Math.floor(Math.random() * pool.length)]) || "";
-      if (img && src && (img.currentSrc || img.src) !== src) img.src = src;
-    }
+    state.flashTimer = window.setTimeout(pop, rand(500, 1200));
   }
 
   enginesApi.define({
     id: "mosaic-bowl-lights-engine",
     kind: "mosaic",
-    interval: 3600,
+    interval: 9000,
 
     mount(themeRoot, pool, hostApi, settings) {
       const mosaicApi = global.BGMosaicThemes || {};
@@ -340,9 +390,8 @@
       return state;
     },
 
-    tick(_themeRoot, pool, state, hostApi) {
-      if (!state || !state.cards) return;
-      refreshSome(state, hostApi, pool);
+    tick(_themeRoot, _pool, state, hostApi) {
+      if (state && hostApi) state.api = hostApi;
     },
 
     applySettings(themeRoot, _state, settings) {
@@ -355,6 +404,10 @@
         if (state.raf) {
           window.cancelAnimationFrame(state.raf);
           state.raf = 0;
+        }
+        if (state.settleRaf) {
+          window.cancelAnimationFrame(state.settleRaf);
+          state.settleRaf = 0;
         }
         if (state.flashTimer) {
           window.clearTimeout(state.flashTimer);

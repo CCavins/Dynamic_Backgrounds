@@ -113,6 +113,17 @@
     return persistedSide;
   }
 
+  function pinScene(themeRoot) {
+    const sl = themeRoot && themeRoot.querySelector(".sl");
+    if (sl) sl.style.transform = "none";
+  }
+
+  function photoScale(root) {
+    const n = parseFloat(root && getComputedStyle(root).getPropertyValue("--scale"));
+    if (!isFinite(n) || n <= 0) return 1;
+    return Math.max(0.72, Math.min(1.28, n));
+  }
+
   function nextEnter(root) {
     const dir = Math.random() < 0.5 ? "left" : "top";
     if (root && root.dataset) root.dataset.slEnter = dir;
@@ -125,8 +136,9 @@
     const W = stage.clientWidth;
     const H = stage.clientHeight;
     const portrait = isPortrait(state.root);
+    const photo = photoScale(state.root);
     const grow = state.heroGrow || 1;
-    let heroW = portrait ? W * 0.66 * grow : W * 0.4 * grow;
+    let heroW = (portrait ? Math.min(W * 0.56, H * 0.4) : Math.min(W * 0.34, H * 0.62)) * photo * grow;
     let heroH = heroW / ASPECT_HERO;
     const maxH = H * (portrait ? 0.5 : 0.9);
     if (heroH > maxH) {
@@ -215,7 +227,7 @@
     function pop() {
       if (!state.fxOn || !host.isConnected) return;
       const nodes = host.children;
-      const burst = 2 + (Math.random() < 0.55 ? 1 : 0) + (Math.random() < 0.28 ? 1 : 0);
+      const burst = 1;
       for (let k = 0; k < burst; k += 1) {
         const el = nodes[Math.floor(Math.random() * nodes.length)];
         el.style.left = rand(4, 96).toFixed(1) + "%";
@@ -225,9 +237,9 @@
         void el.offsetWidth;
         el.classList.add("on");
       }
-      state.flashTimer = window.setTimeout(pop, rand(90, 620));
+      state.flashTimer = window.setTimeout(pop, rand(800, 2000));
     }
-    state.flashTimer = window.setTimeout(pop, rand(80, 280));
+    state.flashTimer = window.setTimeout(pop, rand(600, 1400));
   }
 
   function applyBgTint(themeRoot, settings) {
@@ -236,23 +248,27 @@
     if (hex) themeRoot.style.setProperty("--bg-tint", hex);
   }
 
-  function refreshPhotos(state, hostApi, pool) {
+  function refreshOne(state, hostApi, pool, skipIndex) {
     const api = hostApi || state.api;
+    const sats = [];
     state.cards.forEach(function (card, i) {
-      if (i === state.heroIndex) return;
-      const img = card.querySelector("img");
-      const src =
-        api && typeof api.nextUrl === "function"
-          ? api.nextUrl(img && img.src)
-          : (pool && pool[Math.floor(Math.random() * pool.length)]) || "";
-      if (img && src && (img.currentSrc || img.src) !== src) img.src = src;
+      if (i !== skipIndex) sats.push(card);
     });
+    if (!sats.length) return null;
+    const card = sats[Math.floor(Math.random() * sats.length)];
+    const img = card.querySelector("img");
+    const src =
+      api && typeof api.nextUrl === "function"
+        ? api.nextUrl(img && (img.currentSrc || img.src))
+        : (pool && pool[Math.floor(Math.random() * pool.length)]) || "";
+    if (img && src && (img.currentSrc || img.src) !== src) img.src = src;
+    return card;
   }
 
   enginesApi.define({
     id: "mosaic-steel-lights-engine",
     kind: "mosaic",
-    interval: 4200,
+    interval: 9000,
 
     mount(themeRoot, pool, hostApi, settings) {
       const mosaicApi = global.BGMosaicThemes || {};
@@ -285,6 +301,7 @@
       const leftover = shell.querySelector(".ribbon");
       if (leftover) leftover.remove();
       themeRoot.style.setProperty("--steel-frame", FRAME_URI);
+      pinScene(themeRoot);
       applyBgTint(themeRoot, settings);
       const fx = ensureFx(shell.querySelector(".bg"));
       seedDust(fx.dust);
@@ -327,8 +344,10 @@
       return state;
     },
 
-    applySettings(themeRoot, _state, settings) {
+    applySettings(themeRoot, state, settings) {
+      pinScene(themeRoot);
       applyBgTint(themeRoot, settings);
+      if (state) layout(state);
     },
 
     tick(_themeRoot, pool, state, hostApi) {
@@ -338,22 +357,24 @@
       while (next === state.heroIndex) next = Math.floor(Math.random() * n);
       state.heroIndex = next;
       state.heroSide = flipSide(state.root);
-      state.heroGrow = rand(0.94, 1.08);
-      const dir = nextEnter(state.root);
-      refreshPhotos(state, hostApi, pool);
+      state.heroGrow = 1;
+      const fresh = refreshOne(state, hostApi, pool, next);
+      state.cards.forEach(function (card, i) {
+        const delay = i === next ? "1.6s" : "0s";
+        const dur = i === next ? "2s" : "1.8s";
+        card.style.transition =
+          "left " + dur + " ease " + delay +
+          ", top " + dur + " ease " + delay +
+          ", width " + dur + " ease " + delay +
+          ", height " + dur + " ease " + delay;
+      });
       layout(state);
-      state.busy = true;
-      enterFrom(state.cards, dir);
+      const incoming = state.cards[next];
+      if (incoming) incoming.style.zIndex = "4";
       window.setTimeout(function () {
-        state.busy = false;
-        state.cards.forEach(function (card) {
-          const spin = card.querySelector(".spin") || card;
-          spin.style.transition = "";
-          spin.style.transform = "";
-          card.style.transition = "";
-          card.style.transform = "";
-        });
-      }, 1400);
+        if (incoming && state.heroIndex === next) incoming.style.zIndex = "12";
+      }, 1600);
+      if (fresh) enterFrom([fresh], nextEnter(state.root));
     },
 
     unmount(themeRoot, state) {

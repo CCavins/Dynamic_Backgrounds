@@ -7,7 +7,7 @@
   "engine": "mosaic-bowl-lights-engine",
   "engineFile": "mosaic-bowl-lights-engine.js",
   "count": 48,
-  "interval": 3600,
+  "interval": 9000,
   "notes": {
     "about": "Four stacked rows of fan photos flow along the stadium bowl. Left and right sides sit close to camera; the center recedes into the stands."
   },

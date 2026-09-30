@@ -617,6 +617,17 @@
           meta.defaults[key] =
             spec.default != null ? String(spec.default) : String(spec.options[0].value);
         } else if (spec.type === "toggle") meta.defaults[key] = Boolean(spec.default);
+        else if (spec.type === "scale") {
+          const n = Number(spec.default);
+          meta.defaults[key] = isFinite(n) ? n : 1;
+          meta.scales = meta.scales || {};
+          const min = Number(spec.min);
+          const max = Number(spec.max);
+          meta.scales[key] = {
+            min: isFinite(min) ? min : 0.5,
+            max: isFinite(max) && max > (isFinite(min) ? min : 0.5) ? max : 1.8,
+          };
+        }
         else if (spec.default != null && isHexColor(spec.default)) meta.defaults[key] = spec.default;
       });
       if (pack.kind === "message") {
@@ -636,6 +647,7 @@
           engine: pack.engine || "",
           labels: meta.labels,
           selects: meta.selects || {},
+          scales: meta.scales || {},
           defaults: themeHasMosaicControls(meta) ? meta.defaults : undefined,
         };
       }
@@ -802,7 +814,17 @@
       ) {
         return;
       }
-      if (typeof defaults[key] === "boolean") {
+      if (meta.scales && meta.scales[key]) {
+        const range = meta.scales[key];
+        const n = Number(src[key]);
+        const fallback = Number(defaults[key]);
+        const value = isFinite(n) ? n : isFinite(fallback) ? fallback : 1;
+        const min = Number(range.min);
+        const max = Number(range.max);
+        const lo = isFinite(min) ? min : 0.5;
+        const hi = isFinite(max) && max > lo ? max : 1.8;
+        next[key] = Math.min(hi, Math.max(lo, Math.round(value * 100) / 100));
+      } else if (typeof defaults[key] === "boolean") {
         if (typeof src[key] === "boolean") next[key] = src[key];
         else if (src[key] === true || src[key] === "true" || src[key] === 1 || src[key] === "1") {
           next[key] = true;
@@ -2408,6 +2430,11 @@
         logoSlot.replaceChildren();
         logoSlot.hidden = true;
       }
+    }
+    try {
+      themeRoot.dispatchEvent(new CustomEvent("dyn-chrome-scale"));
+    } catch (err) {
+      /* detached */
     }
   }
 

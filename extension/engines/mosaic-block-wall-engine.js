@@ -52,30 +52,19 @@
       face.className = "face " + name;
       box.appendChild(face);
     });
-    function addTracers(face) {
-      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      svg.setAttribute("class", "tracers");
-      svg.setAttribute("viewBox", "0 0 100 100");
-      svg.setAttribute("preserveAspectRatio", "none");
-      svg.setAttribute("width", "100%");
-      svg.setAttribute("height", "100%");
-      svg.setAttribute("aria-hidden", "true");
-      for (let n = 0; n < 8; n += 1) {
-        ["tail", "mid", "head"].forEach(function (kind) {
-          const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-          rect.setAttribute("class", "tr " + kind + " t" + n);
-          rect.setAttribute("x", "0");
-          rect.setAttribute("y", "0");
-          rect.setAttribute("width", "100");
-          rect.setAttribute("height", "100");
-          rect.setAttribute("pathLength", "1000");
-          svg.appendChild(rect);
-        });
-      }
-      face.appendChild(svg);
+    function addGlow(face) {
+      const glow = document.createElement("div");
+      glow.className = "glow";
+      const spin = document.createElement("div");
+      spin.className = "glow-spin";
+      const light = document.createElement("div");
+      light.className = "glow-light";
+      spin.appendChild(light);
+      glow.appendChild(spin);
+      face.appendChild(glow);
     }
-    addTracers(front);
-    addTracers(back);
+    addGlow(front);
+    addGlow(back);
     box.appendChild(front);
     box.appendChild(back);
     const shade = document.createElement("div");
@@ -215,43 +204,20 @@
     card.classList.toggle("is-flipped");
   }
 
-  function flipSome(state, hostApi, pool) {
+  function flipOne(state, hostApi, pool) {
     const api = hostApi || state.api;
     const sats = [];
     state.cards.forEach(function (card, i) {
       if (i !== state.heroIndex && !card.classList.contains("is-hero")) sats.push(card);
     });
-    const n = Math.min(sats.length, 3 + Math.floor(Math.random() * 5));
-    for (let i = sats.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const t = sats[i];
-      sats[i] = sats[j];
-      sats[j] = t;
-    }
-    for (let k = 0; k < n; k += 1) {
-      window.setTimeout(function () {
-        if (state.fxOn) flipCard(sats[k], api, pool);
-      }, k * rand(40, 160));
-    }
-  }
-
-  function refreshPhotos(state, hostApi, pool) {
-    const api = hostApi || state.api;
-    state.cards.forEach(function (card, i) {
-      if (i === state.heroIndex) return;
-      const img = card.querySelector("img");
-      const src =
-        api && typeof api.nextUrl === "function"
-          ? api.nextUrl(img && img.src)
-          : (pool && pool[Math.floor(Math.random() * pool.length)]) || "";
-      if (img && src && (img.currentSrc || img.src) !== src) img.src = src;
-    });
+    if (!sats.length) return;
+    flipCard(sats[Math.floor(Math.random() * sats.length)], api, pool);
   }
 
   enginesApi.define({
     id: "mosaic-block-wall-engine",
     kind: "mosaic",
-    interval: 4000,
+    interval: 9000,
 
     mount(themeRoot, pool, hostApi) {
       const mosaicApi = global.BGMosaicThemes || {};
@@ -306,10 +272,10 @@
       layout(state);
       function beat() {
         if (!state.fxOn) return;
-        flipSome(state, hostApi, urls);
-        state.flipTimer = window.setTimeout(beat, rand(1100, 2400));
+        flipOne(state, hostApi, urls);
+        state.flipTimer = window.setTimeout(beat, rand(5600, 9000));
       }
-      state.flipTimer = window.setTimeout(beat, 900);
+      state.flipTimer = window.setTimeout(beat, 2400);
       if (typeof ResizeObserver !== "undefined") {
         state.ro = new ResizeObserver(function () {
           if (state.busy) return;
@@ -331,10 +297,25 @@
       state.heroR = cell.r;
       pose(state.cards[prev], prev, false);
       pose(state.cards[next], next, true);
-      refreshPhotos(state, hostApi, pool);
+      state.cards.forEach(function (card, i) {
+        const delay = i === next ? "1.6s" : "0s";
+        const dur = i === next ? "2s" : "1.8s";
+        const timing = dur + " ease " + delay;
+        card.style.transition =
+          "left " + timing +
+          ", top " + timing +
+          ", width " + timing +
+          ", height " + timing +
+          ", --depth " + timing;
+        const spinEl = card.querySelector(".spin");
+        if (spinEl) spinEl.style.transition = "transform " + timing;
+      });
       layout(state);
-      flipCard(state.cards[next], hostApi || state.api, pool);
-      flipSome(state, hostApi, pool);
+      const incoming = state.cards[next];
+      if (incoming) incoming.style.zIndex = "4";
+      window.setTimeout(function () {
+        if (incoming && state.heroIndex === next) incoming.style.zIndex = "12";
+      }, 1600);
     },
 
     unmount(themeRoot, state) {

@@ -759,6 +759,15 @@
         container.appendChild(
           selectRow(key, labels[key] || key, values[key] || defaults[key], selects[key])
         );
+      } else if (meta.scales && meta.scales[key]) {
+        container.appendChild(
+          extraScaleRow(
+            key,
+            labels[key] || key,
+            values[key] != null ? values[key] : defaults[key],
+            meta.scales[key]
+          )
+        );
       } else if (typeof defaults[key] === "boolean") {
         container.appendChild(toggleRow(key, labels[key] || key, Boolean(values[key])));
       } else if (/^#[0-9a-fA-F]{6}$/.test(defaults[key])) {
@@ -795,6 +804,30 @@
   function readHexSettings(container, raw) {
     container.querySelectorAll(".theme-hex").forEach((input) => {
       if (input.dataset.key) raw[input.dataset.key] = input.value;
+    });
+  }
+
+  function extraScaleRow(key, label, value, range) {
+    const min = Math.round(((range && range.min) || 0.5) * 100);
+    const max = Math.round(((range && range.max) || 1.8) * 100);
+    const pct = Math.max(min, Math.min(max, Math.round((Number(value) || 1) * 100)));
+    const row = document.createElement("label");
+    row.className = "setting-row scale";
+    if (key === "qrScale") row.dataset.chromeToggle = "qr";
+    if (key === "logoScale") row.dataset.chromeToggle = "logo";
+    row.innerHTML =
+      `<span>${label}</span>` +
+      `<input type="range" class="theme-extra-scale" data-key="${key}" min="${min}" max="${max}" step="1" value="${pct}">` +
+      `<span class="theme-extra-scale-value">${pct}%</span>`;
+    return row;
+  }
+
+  function syncMosaicChromeRows() {
+    if (!mosaicThemeSettings) return;
+    mosaicThemeSettings.querySelectorAll("[data-chrome-toggle]").forEach((row) => {
+      const which = row.dataset.chromeToggle;
+      const on = which === "qr" ? mosaicShowQr && mosaicShowQr.checked : mosaicShowLogo && mosaicShowLogo.checked;
+      row.hidden = !on;
     });
   }
 
@@ -1039,12 +1072,20 @@
     bindToggleInputs(mosaicThemeSettings, persist);
     bindSelectInputs(mosaicThemeSettings, persist);
     mosaicThemeSettings.querySelectorAll(".theme-scale").forEach((input) => {
-      const valueEl = mosaicThemeSettings.querySelector(".theme-scale-value");
+      const valueEl = input.parentElement && input.parentElement.querySelector(".theme-scale-value");
       input.addEventListener("input", () => {
         if (valueEl) valueEl.textContent = input.value + "%";
         schedulePersist();
       });
     });
+    mosaicThemeSettings.querySelectorAll(".theme-extra-scale").forEach((input) => {
+      const valueEl = input.parentElement && input.parentElement.querySelector(".theme-extra-scale-value");
+      input.addEventListener("input", () => {
+        if (valueEl) valueEl.textContent = input.value + "%";
+        schedulePersist();
+      });
+    });
+    syncMosaicChromeRows();
 
     mosaicThemeSettings.hidden = false;
   }
@@ -1128,6 +1169,9 @@
     readSelectSettings(mosaicThemeSettings, raw);
     const scale = mosaicThemeSettings.querySelector(".theme-scale");
     if (scale) raw.scale = Number(scale.value) / 100;
+    mosaicThemeSettings.querySelectorAll(".theme-extra-scale").forEach((input) => {
+      raw[input.dataset.key] = Number(input.value) / 100;
+    });
     readToggleSettings(mosaicThemeSettings, raw);
     return rulesApi.normalizeOneThemeSettings(storeId, raw);
   }
@@ -1381,7 +1425,11 @@
     messageShowQr,
     messageShowLogo,
   ].forEach((input) => {
-    if (input) input.addEventListener("change", persist);
+    if (!input) return;
+    input.addEventListener("change", () => {
+      syncMosaicChromeRows();
+      persist();
+    });
   });
   messageTheme.addEventListener("change", () => {
     stashCurrentThemeForm();

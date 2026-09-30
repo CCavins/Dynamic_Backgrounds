@@ -489,6 +489,10 @@
     align-items: center;
   }
 
+  .setting-row[hidden] {
+    display: none;
+  }
+
   .setting-row.media {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -1033,7 +1037,7 @@
     </div>
   </aside>
 
-<script src="../extension/rules.js?v=1.30.27"></script>
+<script src="../extension/rules.js?v=1.32.1"></script>
 <script src="../extension/media.js?v=1.24.28"></script>
 <script src="../extension/message-themes.js?v=1.24.28"></script>
 <script src="../extension/vendor/three.min.js"></script>
@@ -1049,15 +1053,15 @@
 <script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.24.28"></script>
 <script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.24.28"></script>
 <script src="./mosaic-slant-rows-engine.js?v=1.24.28"></script>
-<script src="../extension/engines/message-brushed-engine.js?v=1.31.0"></script>
-<script src="../extension/engines/message-chalk-engine.js?v=1.31.0"></script>
-<script src="../extension/engines/message-ticket-engine.js?v=1.31.0"></script>
-<script src="../extension/engines/mosaic-block-wall-engine.js?v=1.31.0"></script>
-<script src="../extension/engines/mosaic-bowl-lights-engine.js?v=1.31.0"></script>
-<script src="../extension/engines/mosaic-neon-fans-engine.js?v=1.31.0"></script>
-<script src="../extension/engines/mosaic-steel-lights-engine.js?v=1.31.0"></script>
+<script src="../extension/engines/message-brushed-engine.js?v=1.32.1"></script>
+<script src="../extension/engines/message-chalk-engine.js?v=1.32.1"></script>
+<script src="../extension/engines/message-ticket-engine.js?v=1.32.1"></script>
+<script src="../extension/engines/mosaic-block-wall-engine.js?v=1.32.11"></script>
+<script src="../extension/engines/mosaic-bowl-lights-engine.js?v=1.32.9"></script>
+<script src="../extension/engines/mosaic-neon-fans-engine.js?v=1.32.1"></script>
+<script src="../extension/engines/mosaic-steel-lights-engine.js?v=1.32.1"></script>
 <script src="../extension/engines/message-xmas-bauble-engine.js?v=1.24.28"></script>
-<script src="../extension/custom-themes.js?v=1.30.17"></script>
+<script src="../extension/custom-themes.js?v=1.32.1"></script>
 <script>
 (async () => {
   const SAMPLE_DIR = "../samples/patriots/";
@@ -1127,7 +1131,7 @@
   let previewRegistering = false;
   const settled = await Promise.all(
     CUSTOM_FILES.map(([file]) =>
-      fetch(file)
+      fetch(file + "?v=1.32.11b")
         .then((r) => {
           if (!r.ok) throw new Error(file);
           return r.json();
@@ -1826,6 +1830,21 @@
     return row;
   }
 
+  function extraScaleRow(key, label, value, range) {
+    const min = Math.round(((range && range.min) || 0.5) * 100);
+    const max = Math.round(((range && range.max) || 1.8) * 100);
+    const pct = Math.max(min, Math.min(max, Math.round((Number(value) || 1) * 100)));
+    const row = document.createElement("label");
+    row.className = "setting-row scale";
+    if (key === "qrScale") row.dataset.chromeToggle = "qr";
+    if (key === "logoScale") row.dataset.chromeToggle = "logo";
+    row.innerHTML =
+      `<span>${label}</span>` +
+      `<input type="range" class="theme-extra-scale" data-key="${key}" min="${min}" max="${max}" step="1" value="${pct}">` +
+      `<span class="theme-extra-scale-value">${pct}%</span>`;
+    return row;
+  }
+
   function scaleRow(label, value) {
     const pct = Math.max(90, Math.min(150, Math.round((Number(value) || 1) * 100)));
     const row = document.createElement("label");
@@ -1874,6 +1893,15 @@
         container.appendChild(
           selectRow(key, labels[key] || key, values[key] || defaults[key], selects[key])
         );
+      } else if (meta.scales && meta.scales[key]) {
+        container.appendChild(
+          extraScaleRow(
+            key,
+            labels[key] || key,
+            values[key] != null ? values[key] : defaults[key],
+            meta.scales[key]
+          )
+        );
       } else if (typeof defaults[key] === "boolean") {
         container.appendChild(toggleRow(key, labels[key] || key, Boolean(values[key])));
       } else if (/^#[0-9a-fA-F]{6}$/.test(defaults[key])) {
@@ -1897,6 +1925,9 @@
     if (motion) raw.motion = motion.value;
     const scale = settingsFields.querySelector(".theme-scale");
     if (scale) raw.scale = Number(scale.value) / 100;
+    settingsFields.querySelectorAll(".theme-extra-scale").forEach((input) => {
+      raw[input.dataset.key] = Number(input.value) / 100;
+    });
     const wallpaper = settingsFields.querySelector(".theme-wallpaper");
     if (wallpaper) raw.wallpaper = wallpaper.value;
     const storeId = settingsStoreId(id);
@@ -2017,13 +2048,22 @@
       });
     });
     settingsFields.querySelectorAll(".theme-scale").forEach((input) => {
-      const valueEl = settingsFields.querySelector(".theme-scale-value");
+      const valueEl = input.parentElement && input.parentElement.querySelector(".theme-scale-value");
       input.addEventListener("input", () => {
         if (valueEl) valueEl.textContent = input.value + "%";
         settingsByTheme[entry.id] = readSettingsForm(entry.id);
         applyLiveSettings();
       });
     });
+    settingsFields.querySelectorAll(".theme-extra-scale").forEach((input) => {
+      const valueEl = input.parentElement && input.parentElement.querySelector(".theme-extra-scale-value");
+      input.addEventListener("input", () => {
+        if (valueEl) valueEl.textContent = input.value + "%";
+        settingsByTheme[entry.id] = readSettingsForm(entry.id);
+        applyLiveSettings();
+      });
+    });
+    syncNeonChromeRows();
     settingsFields.querySelectorAll(".theme-motion").forEach((input) => {
       input.addEventListener("change", () => {
         settingsByTheme[entry.id] = readSettingsForm(entry.id);
@@ -2276,6 +2316,12 @@
         logo.replaceChildren();
       }
     }
+    try {
+      root.dispatchEvent(new CustomEvent("dyn-chrome-scale"));
+    } catch (err) {
+      /* detached */
+    }
+    syncNeonChromeRows();
   }
 
   function findEntry(value) {
@@ -2908,9 +2954,18 @@
     previewShowLogo = true;
     if (previewLogoBox) previewLogoBox.checked = true;
   }
+  function syncNeonChromeRows() {
+    if (!settingsFields) return;
+    settingsFields.querySelectorAll("[data-chrome-toggle]").forEach((row) => {
+      const which = row.dataset.chromeToggle;
+      const on = which === "qr" ? previewShowQr : previewShowLogo;
+      row.hidden = !on;
+    });
+  }
   if (previewQrBox) {
     previewQrBox.addEventListener("change", () => {
       previewShowQr = previewQrBox.checked;
+      syncNeonChromeRows();
       if (active && active.kind === "mosaic") mountEntry(active, { keepSettingsForm: true });
       else syncPreviewBrand();
       scheduleUrlSync();
@@ -2919,6 +2974,7 @@
   if (previewLogoBox) {
     previewLogoBox.addEventListener("change", () => {
       previewShowLogo = previewLogoBox.checked;
+      syncNeonChromeRows();
       if (active && active.kind === "mosaic") mountEntry(active, { keepSettingsForm: true });
       else syncPreviewBrand();
       scheduleUrlSync();

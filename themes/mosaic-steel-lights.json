@@ -7,7 +7,7 @@
   "engine": "mosaic-steel-lights-engine",
   "engineFile": "mosaic-steel-lights-engine.js",
   "count": 16,
-  "interval": 4200,
+  "interval": 9000,
   "notes": {
     "about": "Night-stadium collage. A large brushed-steel hero sits off-center and swaps sides; new fan photos drift in from the left or the top."
   },

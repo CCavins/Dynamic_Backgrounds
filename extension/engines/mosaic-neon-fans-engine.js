@@ -97,21 +97,96 @@
     return arr;
   }
 
-  function packRegion(cards, stage, rect, stageW, heroW, heroH) {
+  function clampChromeScale(value) {
+    const n = Number(value);
+    if (!isFinite(n) || n <= 0) return 1;
+    return Math.max(0.5, Math.min(1.8, n));
+  }
+
+  function applyChromeScale(themeRoot, settings) {
+    if (!themeRoot) return;
+    const logoOn = themeRoot.classList.contains("dyn-show-logo");
+    const qrOn = themeRoot.classList.contains("dyn-show-qr");
+    const logoN = logoOn ? clampChromeScale(settings && settings.logoScale) : 1;
+    const qrN = qrOn ? clampChromeScale(settings && settings.qrScale) : 1;
+    const logo = themeRoot.querySelector("[data-logo]");
+    const qr = themeRoot.querySelector("[data-qr]");
+    if (logo) {
+      logo.style.transformOrigin = "top left";
+      logo.style.transform = Math.abs(logoN - 1) < 0.015 ? "" : "scale(" + logoN.toFixed(2) + ")";
+    }
+    if (qr) {
+      qr.style.transformOrigin = "bottom right";
+      qr.style.transform = Math.abs(qrN - 1) < 0.015 ? "" : "scale(" + qrN.toFixed(2) + ")";
+    }
+  }
+
+  function brandKeepouts(root, stage) {
+    if (!root || !stage) return [];
+    const stageBox = stage.getBoundingClientRect();
+    const boxes = [];
+    function push(selector, on, fallbackRatio) {
+      if (!on) return;
+      const el = root.querySelector(selector);
+      if (!el || el.hidden) return;
+      const r = el.getBoundingClientRect();
+      const w = r.width;
+      const h = r.height > 8 ? r.height : w * fallbackRatio;
+      if (w < 8 || h < 8) return;
+      const inset = Math.min(w, h) * 0.16;
+      boxes.push({
+        x: r.left - stageBox.left + inset,
+        y: r.top - stageBox.top + inset,
+        w: Math.max(8, w - inset * 2),
+        h: Math.max(8, h - inset * 2)
+      });
+    }
+    push("[data-logo]", root.classList.contains("dyn-show-logo"), 0.62);
+    push("[data-qr]", root.classList.contains("dyn-show-qr"), 1);
+    return boxes;
+  }
+
+  function coveredByChrome(box, keepouts) {
+    if (!keepouts || !keepouts.length) return false;
+    const area = box.w * box.h;
+    if (!(area > 0)) return false;
+    for (let i = 0; i < keepouts.length; i += 1) {
+      const k = keepouts[i];
+      const ix = Math.min(box.x + box.w, k.x + k.w) - Math.max(box.x, k.x);
+      const iy = Math.min(box.y + box.h, k.y + k.h) - Math.max(box.y, k.y);
+      if (ix > 0 && iy > 0 && (ix * iy) / area > 0.22) return true;
+    }
+    return false;
+  }
+
+  function packRegion(cards, stage, rect, stageW, heroW, heroH, keepouts) {
     if (!cards.length || rect.w < 8 || rect.h < 8) return;
     const pad = Math.max(2, stageW * 0.002);
-    const items = shuffle(cards.map(function (card) {
+    const items = cards.slice().sort(function (a, b) {
+      return (a._nfOrder || 0) - (b._nfOrder || 0);
+    }).map(function (card) {
       const square = cardShape(card) === "sq";
-      const spots = [];
-      for (let t = 0; t < 90; t += 1) spots.push({ u: Math.random(), v: Math.random() });
+      if (!card._nfSpots) {
+        const spots = [];
+        const seed = (card._nfOrder || 0) + 1;
+        let u = (seed * 0.37) % 1;
+        let v = (seed * 0.61) % 1;
+        for (let t = 0; t < 28; t += 1) {
+          spots.push({ u: u, v: v });
+          u = (u + 0.19) % 1;
+          v = (v + 0.27) % 1;
+        }
+        card._nfSpots = spots;
+        card._nfWeight = 0.72 + (seed % 6) * 0.06;
+      }
       return {
         card: card,
         aspect: square ? ASPECT_S : ASPECT_P,
         square: square,
-        weight: rand(0.58, 1.2),
-        spots: spots
+        weight: card._nfWeight,
+        spots: card._nfSpots
       };
-    }));
+    });
 
     function overlaps(a, b, g) {
       const m = g == null ? pad : g;
@@ -145,7 +220,7 @@
               break;
             }
           }
-          if (!hit) {
+          if (!hit && !coveredByChrome(box, keepouts)) {
             found = box;
             break;
           }
@@ -174,14 +249,20 @@
     if (!placed) return;
     const maxW = heroW * 0.8;
     const maxH = heroH * 0.8;
-    shuffle(placed.slice()).forEach(function (p) {
+    placed.forEach(function (p) {
       let loS = 1;
       let hiS = 1.65;
       let bestS = 1;
       for (let k = 0; k < 8; k += 1) {
         const mid = (loS + hiS) / 2;
         const box = { x: p.x, y: p.y, w: p.w * mid, h: p.h * mid };
-        if (box.w > maxW || box.h > maxH || box.x + box.w > rect.x + rect.w - pad || box.y + box.h > rect.y + rect.h - pad) {
+        if (
+          box.w > maxW ||
+          box.h > maxH ||
+          box.x + box.w > rect.x + rect.w - pad ||
+          box.y + box.h > rect.y + rect.h - pad ||
+          coveredByChrome(box, keepouts)
+        ) {
           hiS = mid;
           continue;
         }
@@ -214,8 +295,9 @@
     const W = stage.clientWidth;
     const H = stage.clientHeight;
     const portrait = isPortrait(state.root);
+    const photo = photoScale(state.root);
     const grow = state.heroGrow || 1;
-    let heroW = portrait ? W * 0.58 * grow : W * 0.34 * grow;
+    let heroW = (portrait ? Math.min(W * 0.5, H * 0.4) : Math.min(W * 0.28, H * 0.58)) * photo * grow;
     let heroH = heroW / ASPECT_P;
     const minBand = H * (portrait ? 0.1 : 0.072);
     const minSide = W * (portrait ? 0.08 : 0.11);
@@ -231,6 +313,7 @@
     const heroY = (H - heroH) / 2;
     const hero = state.cards[state.heroIndex];
     applyCard(hero, stage, heroX, heroY, heroW, heroH, 0, 20, true, false);
+    const keepouts = brandKeepouts(state.root, stage);
 
     const bins = { n: [], s: [], w: [], e: [] };
     state.cards.forEach(function (card, i) {
@@ -245,7 +328,7 @@
       e: { x: heroX + heroW, y: 0, w: W - heroX - heroW, h: H }
     };
     Object.keys(bins).forEach(function (key) {
-      packRegion(bins[key], stage, regions[key], W, heroW, heroH);
+      packRegion(bins[key], stage, regions[key], W, heroW, heroH, keepouts);
     });
   }
 
@@ -255,7 +338,9 @@
     });
   }
 
-  function playFlip(cards, before) {
+  function playFlip(cards, before, timing) {
+    const pace = timing || {};
+    const pending = [];
     cards.forEach(function (card, i) {
       const last = card.getBoundingClientRect();
       const first = before[i];
@@ -264,11 +349,26 @@
       const dy = first.top - last.top;
       const sx = first.width / last.width;
       const sy = first.height / last.height;
+      if (Math.abs(dx) < 1.5 && Math.abs(dy) < 1.5 && Math.abs(sx - 1) < 0.03 && Math.abs(sy - 1) < 0.03) {
+        card.style.transition = "";
+        card.style.transform = "";
+        return;
+      }
       card.style.transition = "none";
-      card.style.transform = "translate(" + dx.toFixed(2) + "px," + dy.toFixed(2) + "px) scale(" + sx.toFixed(4) + "," + sy.toFixed(4) + ")";
-      void card.offsetWidth;
-      card.style.transition = "transform 0.88s cubic-bezier(0.22, 0.8, 0.2, 1)";
-      card.style.transform = "translate(0,0) scale(1,1)";
+      card.style.transform =
+        "translate(" + dx.toFixed(2) + "px," + dy.toFixed(2) + "px) scale(" + sx.toFixed(4) + "," + sy.toFixed(4) + ")";
+      pending.push({
+        card: card,
+        delay: pace.delayFor ? pace.delayFor(i) : 0,
+        duration: pace.durationFor ? pace.durationFor(i) : 1.8
+      });
+    });
+    if (!pending.length) return;
+    void pending[0].card.offsetWidth;
+    pending.forEach(function (item) {
+      item.card.style.transition =
+        "transform " + item.duration + "s " + item.delay + "s cubic-bezier(0.22, 0.82, 0.28, 1)";
+      item.card.style.transform = "translate(0,0) scale(1,1)";
     });
   }
 
@@ -285,6 +385,43 @@
       else wing[i] = slot % 2 === 0 ? "e" : "w";
     });
     return wing;
+  }
+
+  function photoScale(root) {
+    const n = parseFloat(root && getComputedStyle(root).getPropertyValue("--scale"));
+    if (!isFinite(n) || n <= 0) return 1;
+    return Math.max(0.72, Math.min(1.28, n));
+  }
+
+  function pinScene(themeRoot) {
+    const nf = themeRoot && themeRoot.querySelector(".nf");
+    if (nf) nf.style.transform = "none";
+  }
+
+  function installPerfStyle() {
+    if (document.getElementById("nf-perf-style")) return;
+    const style = document.createElement("style");
+    style.id = "nf-perf-style";
+    style.textContent = [
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .nf{transform:none!important;}',
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .dyn-card,',
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .dyn-card .spin,',
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .dyn-card .drift,',
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .dyn-card .rock,',
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .sky,',
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .dots,',
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .shards,',
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .gleam{will-change:auto!important;}',
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .dyn-card .rock,',
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .dots,',
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .shards,',
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .gleam{animation:none!important;}',
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .sky{animation:nf-zoom 46s ease-in-out infinite!important;}',
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .dyn-card .drift{animation:nf-float-a 36s ease-in-out infinite!important;}',
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .dyn-card:nth-child(odd) .drift{animation-delay:-12s!important;}',
+      '#dyn-mosaic-theme[data-theme="mosaic-neon-fans"] .dyn-card:nth-child(3n) .drift{animation-delay:-20s!important;}'
+    ].join("");
+    (document.head || document.documentElement).appendChild(style);
   }
 
   function hexToHue(hex) {
@@ -317,7 +454,7 @@
   enginesApi.define({
     id: "mosaic-neon-fans-engine",
     kind: "mosaic",
-    interval: 3600,
+    interval: 9000,
 
     mount(themeRoot, pool, hostApi, settings) {
       const mosaicApi = global.BGMosaicThemes || {};
@@ -343,6 +480,8 @@
       themeRoot.style.setProperty("--neon-frame-sq", FRAME_SQ_URI);
       themeRoot.style.setProperty("--dots-img", DOTS_URI);
       themeRoot.style.setProperty("--shards-img", SHARDS_URI);
+      installPerfStyle();
+      pinScene(themeRoot);
       applyHue(themeRoot, settings);
       const stage = shell.querySelector(".stage");
       const urls = uniqueUrls(pool);
@@ -352,6 +491,7 @@
         const card = makeCard(src);
         card.style.position = "absolute";
         card.style.margin = "0";
+        card._nfOrder = i;
         ensureSpin(card);
         stage.appendChild(card);
         cards.push(card);
@@ -366,12 +506,23 @@
         wing: assignWings(COUNT, 0),
         heroGrow: 1,
         busy: false,
-        ro: null
+        ro: null,
+        settings: settings || {}
       };
+      state.onChrome = function () {
+        applyChromeScale(themeRoot, state.settings);
+        if (!state.busy) layout(state);
+      };
+      themeRoot.addEventListener("dyn-chrome-scale", state.onChrome);
       layout(state);
       if (typeof ResizeObserver !== "undefined") {
         state.ro = new ResizeObserver(function () {
           if (state.busy) return;
+          const w = stage.clientWidth;
+          const h = stage.clientHeight;
+          if (w === state.seenW && h === state.seenH) return;
+          state.seenW = w;
+          state.seenH = h;
           layout(state);
         });
         state.ro.observe(stage);
@@ -379,23 +530,46 @@
       return state;
     },
 
-    applySettings(themeRoot, _state, settings) {
+    applySettings(themeRoot, state, settings) {
+      installPerfStyle();
+      pinScene(themeRoot);
       applyHue(themeRoot, settings);
+      if (state) {
+        state.settings = settings || state.settings || {};
+        applyChromeScale(themeRoot, state.settings);
+        layout(state);
+      }
     },
 
     tick(_themeRoot, pool, state, hostApi) {
       if (!state || !state.cards || state.cards.length < 2 || state.busy) return;
       const n = state.cards.length;
-      let next = state.heroIndex;
-      while (next === state.heroIndex) next = Math.floor(Math.random() * n);
+      const prev = state.heroIndex;
+      let next = prev;
+      while (next === prev) next = Math.floor(Math.random() * n);
       const before = firstRects(state.cards);
-      state.wing[state.heroIndex] = state.wing[next] === "hero" ? "left" : state.wing[next];
+      state.wing[prev] = state.wing[next] === "hero" ? "left" : state.wing[next];
       state.wing[next] = "hero";
       state.heroIndex = next;
-      state.heroGrow = rand(0.94, 1.16);
+      state.heroGrow = 1;
       layout(state);
+      const incoming = state.cards[next];
+      if (incoming) incoming.style.zIndex = "4";
       state.busy = true;
-      playFlip(state.cards, before);
+      const leaveS = 1.85;
+      const enterDelayS = 1.55;
+      const enterS = 2.05;
+      playFlip(state.cards, before, {
+        delayFor: function (i) {
+          return i === next ? enterDelayS : 0;
+        },
+        durationFor: function (i) {
+          return i === next ? enterS : leaveS;
+        }
+      });
+      window.setTimeout(function () {
+        if (incoming && state.heroIndex === next) incoming.style.zIndex = "12";
+      }, enterDelayS * 1000);
       window.setTimeout(function () {
         state.busy = false;
         state.cards.forEach(function (card) {
@@ -403,21 +577,20 @@
           card.style.transform = "";
         });
         const api = hostApi || state.api;
-        const extras = [];
-        state.cards.forEach(function (card, i) {
-          if (i !== state.heroIndex) extras.push(card);
-        });
-        const victim = extras[Math.floor(Math.random() * extras.length)];
-        const img = victim && victim.querySelector("img");
+        const card = state.cards[prev];
+        const img = card && card.querySelector("img");
         const src =
           api && typeof api.nextUrl === "function"
-            ? api.nextUrl(img && img.src)
+            ? api.nextUrl(img && (img.currentSrc || img.src))
             : (pool && pool[Math.floor(Math.random() * pool.length)]) || "";
         if (img && src && (img.currentSrc || img.src) !== src) img.src = src;
-      }, 920);
+      }, (enterDelayS + enterS) * 1000 + 80);
     },
 
     unmount(themeRoot, state) {
+      if (state && state.onChrome && themeRoot) {
+        themeRoot.removeEventListener("dyn-chrome-scale", state.onChrome);
+      }
       if (state && state.ro) {
         try {
           state.ro.disconnect();

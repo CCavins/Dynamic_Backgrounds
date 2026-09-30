@@ -272,6 +272,14 @@
           }))
           .filter((option) => option.value);
         if (!next.options.length) return;
+      } else if (spec.type === "scale") {
+        next.type = "scale";
+        const n = Number(spec.default);
+        next.default = isFinite(n) ? n : 1;
+        const min = Number(spec.min);
+        const max = Number(spec.max);
+        next.min = isFinite(min) ? min : 0.5;
+        next.max = isFinite(max) && max > next.min ? max : 1.8;
       } else if (isHex(spec.default)) {
         next.default = String(spec.default).toLowerCase();
       } else if (spec.default != null) {
