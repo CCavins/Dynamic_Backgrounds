@@ -76,12 +76,6 @@ BGThemeEngines.define({
         ]);
       } catch (err) {}
     }
-    const sky = themeRoot.querySelector(".sky");
-    if (sky) {
-      sky.style.animation = "none";
-      void sky.offsetWidth;
-      sky.style.animation = "";
-    }
     fitAll(themeRoot, helpers.fitText);
     pinNeArrow(themeRoot);
     if (helpers.finishShow) await helpers.finishShow(themeRoot, state.photos);
@@ -89,14 +83,15 @@ BGThemeEngines.define({
   },
 
   hide(themeRoot, state) {
+    if (themeRoot) themeRoot.classList.add("bg-hold");
     const helpers = globalThis.BGMessageThemes || {};
-    if (helpers.hideTheme) return helpers.hideTheme(themeRoot, state, 280);
+    if (helpers.hideTheme) return helpers.hideTheme(themeRoot, state, 860);
     themeRoot.classList.add("off");
     return new Promise(function (resolve) {
       setTimeout(function () {
         themeRoot.classList.remove("on", "off");
         resolve();
-      }, 280);
+      }, 860);
     });
   },
 
@@ -152,7 +147,7 @@ function fitAll(themeRoot, fit) {
     lines.style.fontSize = linePx + "px";
   }
   if (copy && hero && hero.textContent) {
-    const limitW = Math.max(80, copy.clientWidth * 0.92);
+    const limitW = Math.max(80, copy.clientWidth * 0.78);
     let heroPx = Math.max(46, Math.round((linePx || stageH * 0.17) * 1.72));
     hero.style.whiteSpace = "nowrap";
     hero.style.width = "max-content";
@@ -168,7 +163,8 @@ function fitAll(themeRoot, fit) {
     while (guard < 80 && heroPx > 34) {
       const hb = hero.getBoundingClientRect();
       const cb = copy.getBoundingClientRect();
-      if (hb.left >= cb.left + 2 && hb.right <= cb.right - 2) break;
+      const pad = Math.max(28, cb.width * 0.1);
+      if (hb.left >= cb.left + pad && hb.right <= cb.right - pad) break;
       heroPx -= 2;
       hero.style.fontSize = heroPx + "px";
       guard += 1;
