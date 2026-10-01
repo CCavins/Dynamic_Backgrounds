@@ -1053,14 +1053,14 @@
 <script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.24.28"></script>
 <script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.24.28"></script>
 <script src="./mosaic-slant-rows-engine.js?v=1.24.28"></script>
-<script src="../extension/engines/message-brushed-engine.js?v=1.32.1"></script>
+<script src="../extension/engines/message-brushed-engine.js?v=1.33.7"></script>
 <script src="../extension/engines/message-chalk-engine.js?v=1.32.1"></script>
 <script src="../extension/engines/message-ticket-engine.js?v=1.32.1"></script>
 <script src="../extension/engines/mosaic-block-wall-engine.js?v=1.32.13"></script>
 <script src="../extension/engines/mosaic-bowl-lights-engine.js?v=1.32.9"></script>
 <script src="../extension/engines/mosaic-neon-fans-engine.js?v=1.32.1"></script>
 <script src="../extension/engines/mosaic-steel-lights-engine.js?v=1.32.1"></script>
-<script src="../extension/engines/mosaic-bubble-rise-engine.js?v=1.33.4"></script>
+<script src="../extension/engines/mosaic-bubble-rise-engine.js?v=1.33.5"></script>
 <script src="../extension/engines/message-xmas-bauble-engine.js?v=1.24.28"></script>
 <script src="../extension/custom-themes.js?v=1.32.1"></script>
 <script>
@@ -1134,7 +1134,7 @@
   let previewRegistering = false;
   const settled = await Promise.all(
     CUSTOM_FILES.map(([file]) =>
-      fetch(file + "?v=1.33.3")
+      fetch(file + "?v=1.33.7")
         .then((r) => {
           if (!r.ok) throw new Error(file);
           return r.json();

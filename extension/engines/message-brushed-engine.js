@@ -95,15 +95,15 @@ BGThemeEngines.define({
   },
 
   hide(themeRoot, state) {
-    stopDust(state);
+    if (themeRoot) themeRoot.classList.add("bg-hold");
     const helpers = globalThis.BGMessageThemes || {};
-    if (helpers.hideTheme) return helpers.hideTheme(themeRoot, state, 280);
+    if (helpers.hideTheme) return helpers.hideTheme(themeRoot, state, 980);
     themeRoot.classList.add("off");
     return new Promise(function (resolve) {
       setTimeout(function () {
         themeRoot.classList.remove("on", "off");
         resolve();
-      }, 280);
+      }, 980);
     });
   },
 
@@ -554,7 +554,7 @@ function seedDust(el, first) {
 }
 
 function startDust(state) {
-  stopDust(state);
+  if (state && state.dustRaf) return;
   const host = state && state.dustHost;
   if (!host) return;
   host.textContent = "";

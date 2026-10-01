@@ -231,27 +231,30 @@
 
   function makeMote(layer, spawnAnywhere, h) {
     const far = layer === "far";
-    const r = far ? rand(1.1, 3.4) : rand(2.2, 5.2);
+    const r = far ? rand(1.4, 4.2) : rand(3.5, 9);
     return {
       x: Math.random(),
       y: spawnAnywhere ? Math.random() * h : h + rand(8, 80),
       r: r,
-      rise: far ? rand(12, 28) : rand(30, 64),
-      amp: far ? rand(3, 9) : rand(6, 14),
-      freq: rand(0.35, 0.9),
+      rise: (far ? rand(18, 42) : rand(36, 78)),
+      amp: far ? rand(4, 12) : rand(8, 20),
+      freq: rand(0.4, 1.1),
       phase: rand(0, Math.PI * 2),
-      alpha: far ? rand(0.12, 0.32) : rand(0.35, 0.62),
+      alpha: far ? rand(0.18, 0.4) : rand(0.28, 0.55),
     };
   }
 
   function seedMotes(state) {
     const w = state.w || 1200;
     const h = state.h || 700;
-    const farN = Math.round(58 * w / 1200);
-    const nearN = Math.max(3, Math.round(5 * w / 1200));
+    const scale = w / 1200;
     state.far = [];
     state.near = [];
-    for (let i = 0; i < farN; i += 1) state.far.push(makeMote("far", true, h));
+    const farSmall = Math.round(36 * scale);
+    const farMid = Math.round(10 * scale);
+    const nearN = Math.max(3, Math.round(4 * scale));
+    for (let i = 0; i < farSmall; i += 1) state.far.push(makeMote("far", true, h));
+    for (let i = 0; i < farMid; i += 1) state.far.push(makeMote("near", true, h));
     for (let i = 0; i < nearN; i += 1) state.near.push(makeMote("near", true, h));
   }
 
