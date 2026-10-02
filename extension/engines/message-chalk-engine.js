@@ -147,11 +147,12 @@ function fitAll(themeRoot, fit) {
     lines.style.fontSize = linePx + "px";
   }
   if (copy && hero && hero.textContent) {
-    const limitW = Math.max(80, copy.clientWidth * 0.78);
+    const limitW = Math.max(80, copy.clientWidth * 0.72);
     let heroPx = Math.max(46, Math.round((linePx || stageH * 0.17) * 1.72));
     hero.style.whiteSpace = "nowrap";
     hero.style.width = "max-content";
     hero.style.maxWidth = "none";
+    hero.style.overflow = "visible";
     hero.style.fontSize = heroPx + "px";
     let guard = 0;
     while (guard < 140 && heroPx > 34 && hero.scrollWidth > limitW) {
@@ -160,11 +161,13 @@ function fitAll(themeRoot, fit) {
       guard += 1;
     }
     guard = 0;
+    const stageBox = themeRoot.getBoundingClientRect();
     while (guard < 80 && heroPx > 34) {
-      const hb = hero.getBoundingClientRect();
-      const cb = copy.getBoundingClientRect();
-      const pad = Math.max(28, cb.width * 0.1);
-      if (hb.left >= cb.left + pad && hb.right <= cb.right - pad) break;
+      const letters = [...hero.querySelectorAll("b")];
+      const hb = (letters[letters.length - 1] || hero).getBoundingClientRect();
+      const leftEdge = (letters[0] || hero).getBoundingClientRect().left;
+      const edge = Math.max(56, stageBox.width * 0.07);
+      if (leftEdge >= stageBox.left + edge && hb.right <= stageBox.right - edge) break;
       heroPx -= 2;
       hero.style.fontSize = heroPx + "px";
       guard += 1;
