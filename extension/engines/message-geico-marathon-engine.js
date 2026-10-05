@@ -16,7 +16,6 @@ var SIGNS = [
   { line: "Want us to call\nyou a taxi?", file: "geico-marathon-taxi.png" },
   { line: "Does this sign make\nme look supportive?", file: "geico-marathon-hands.png" },
 ];
-var tintCache = {};
 
 BGThemeEngines.define({
   id: "message-geico-marathon-engine",
@@ -26,6 +25,7 @@ BGThemeEngines.define({
     var helpers = globalThis.BGMessageThemes || {};
     var stage = helpers.ensureFitStage ? helpers.ensureFitStage(themeRoot) : themeRoot;
     if (!stage.querySelector(".board")) stage.innerHTML = FALLBACK_HTML;
+    var stopPhotos = hideGuestPhotos(themeRoot);
     var logo = themeRoot.querySelector("[data-brand='geico']");
     var state = {
       stage: stage,
@@ -38,6 +38,7 @@ BGThemeEngines.define({
       captureKey: null,
       color: (settings && settings.primary) || "#d6f25c",
       alive: true,
+      stopPhotos: stopPhotos,
     };
     paintSign(state);
     if (typeof this.applySettings === "function") this.applySettings(themeRoot, state, settings);
@@ -55,12 +56,13 @@ BGThemeEngines.define({
 
   async show(themeRoot, capture, state) {
     var helpers = globalThis.BGMessageThemes || {};
-    if (helpers.commonShowPrep) helpers.commonShowPrep(themeRoot, state);
+    var returning = themeRoot.classList.contains("on");
+    if (!returning && helpers.commonShowPrep) helpers.commonShowPrep(themeRoot, state);
     var message = (capture && capture.message) || "";
     var name = (capture && capture.name) || "";
+    scrubGuestPhotos(themeRoot);
     if (state && state.racer) state.racer.textContent = message;
     if (state && state.from) state.from.textContent = name;
-    if (state && state.logo) state.logo.src = assetUrl("geico-marathon-logo.png");
     var key = message + "\n" + name;
     if (state && state.captureKey == null) {
       state.captureKey = key;
@@ -85,82 +87,93 @@ BGThemeEngines.define({
       } catch (err) {}
     }
     fitBoard(themeRoot);
-    if (state && state.logo) state.logo.src = assetUrl("geico-marathon-logo.png");
+    scrubGuestPhotos(themeRoot);
+    if (returning) {
+      await wait(30);
+      setDissolved(themeRoot, false);
+      return;
+    }
     if (helpers.finishShow) await helpers.finishShow(themeRoot, []);
     else themeRoot.classList.add("on");
   },
 
-  hide(themeRoot, state) {
-    var helpers = globalThis.BGMessageThemes || {};
-    if (helpers.hideTheme) return helpers.hideTheme(themeRoot, state, 280);
-    themeRoot.classList.add("off");
-    return wait(280).then(function () {
-      themeRoot.classList.remove("on", "off");
-    });
+  hide(themeRoot) {
+    if (!themeRoot.classList.contains("on")) return Promise.resolve();
+    setDissolved(themeRoot, true);
+    return wait(440);
   },
 
   unmount(_themeRoot, state) {
     if (!state) return;
     state.alive = false;
+    if (typeof state.stopPhotos === "function") state.stopPhotos();
   },
 });
+
+function setDissolved(themeRoot, out) {
+  ["copy", "glyph"].forEach(function (name) {
+    var node = themeRoot.querySelector("." + name);
+    if (node) node.classList.toggle("is-out", out);
+  });
+}
 
 function paintSign(state) {
   if (!state || !state.sign) return Promise.resolve();
   var sign = SIGNS[state.index % SIGNS.length];
-  var token = (state.paintToken = (state.paintToken || 0) + 1);
   state.sign.innerHTML = sign.line
     .split("\n")
     .map(escapeHtml)
     .join("<br>");
-  if (state.logo) state.logo.src = assetUrl("geico-marathon-logo.png");
-  return tintGlyph(assetUrl(sign.file), state.color || "#d6f25c").then(function (src) {
-    if (!state.alive || state.paintToken !== token || !state.glyph) return;
-    state.glyph.src = src;
-  });
+  if (!state.glyph) return Promise.resolve();
+  var mask = 'url("' + assetUrl(sign.file) + '")';
+  state.glyph.style.webkitMaskImage = mask;
+  state.glyph.style.maskImage = mask;
+  return Promise.resolve();
 }
 
-function tintGlyph(url, color) {
-  var key = url + "@" + color;
-  if (tintCache[key]) return Promise.resolve(tintCache[key]);
-  return new Promise(function (resolve) {
-    var img = new Image();
-    img.onload = function () {
-      try {
-        var canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        var ctx = canvas.getContext("2d", { willReadFrequently: true });
-        ctx.drawImage(img, 0, 0);
-        var image = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        var px = image.data;
-        var rgb = parseHex(color);
-        for (var i = 0; i < px.length; i += 4) {
-          if (!px[i + 3]) continue;
-          px[i] = rgb[0];
-          px[i + 1] = rgb[1];
-          px[i + 2] = rgb[2];
-        }
-        ctx.putImageData(image, 0, 0);
-        tintCache[key] = canvas.toDataURL("image/png");
-      } catch (err) {
-        tintCache[key] = url;
+function concealPhoto(img) {
+  if (!img || img.tagName !== "IMG") return;
+  if (img.closest && img.closest("#preview-bg, #dyn-bg-media, #dyn-bg-embed")) return;
+  img.removeAttribute("src");
+  img.removeAttribute("srcset");
+  img.style.setProperty("display", "none", "important");
+  img.style.setProperty("opacity", "0", "important");
+  img.style.setProperty("visibility", "hidden", "important");
+}
+
+function scrubGuestPhotos(themeRoot) {
+  if (!themeRoot) return;
+  themeRoot.querySelectorAll("img").forEach(concealPhoto);
+}
+
+function hideGuestPhotos(themeRoot) {
+  if (!themeRoot) return function () {};
+  scrubGuestPhotos(themeRoot);
+  var hide = concealPhoto;
+  themeRoot.querySelectorAll("img").forEach(hide);
+  if (typeof MutationObserver !== "function") return function () {};
+  var observer = new MutationObserver(function (records) {
+    records.forEach(function (record) {
+      if (record.type === "attributes") {
+        hide(record.target);
+        return;
       }
-      resolve(tintCache[key]);
-    };
-    img.onerror = function () {
-      resolve(url);
-    };
-    img.src = url;
+      record.addedNodes.forEach(function (node) {
+        if (!node || node.nodeType !== 1) return;
+        if (node.tagName === "IMG") hide(node);
+        if (node.querySelectorAll) node.querySelectorAll("img").forEach(hide);
+      });
+    });
   });
-}
-
-function parseHex(color) {
-  var hex = String(color || "").trim();
-  var match = /^#?([0-9a-f]{6})$/i.exec(hex);
-  if (!match) return [214, 242, 92];
-  var value = parseInt(match[1], 16);
-  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+  observer.observe(themeRoot, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["src", "srcset"],
+  });
+  return function () {
+    observer.disconnect();
+  };
 }
 
 function fitBoard(themeRoot) {
@@ -219,9 +232,9 @@ function wait(ms) {
 
 var FALLBACK_HTML =
   '<div class="board">' +
-  '<div class="bar"><img class="logo" alt="GEICO" data-brand="geico"></div>' +
+  '<div class="bar"><div class="logo" data-brand="geico"></div></div>' +
   '<div class="copy"><p class="racer" data-message></p><p class="sign" data-sign></p><p class="from" data-name></p></div>' +
-  '<img class="glyph" data-glyph alt="">' +
+  '<div class="glyph" data-glyph></div>' +
   '<div class="slot-logo" data-logo></div><div class="slot-qr" data-qr></div>' +
   "</div>";
 })();

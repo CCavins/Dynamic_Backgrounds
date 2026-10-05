@@ -1162,9 +1162,6 @@
             <span>Output URL</span>
             <input id="output-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…/go/o/…">
           </label>
-          <div class="output-actions">
-            <button type="button" class="dock-btn dock-btn-primary" id="output-apply">Use</button>
-          </div>
           <p class="dock-import-status" id="output-status" role="status"></p>
         </div>
 
@@ -1338,7 +1335,7 @@
 
 <script src="../extension/rules.js?v=1.32.1"></script>
 <script src="../extension/media.js?v=1.24.28"></script>
-<script src="../extension/message-themes.js?v=1.24.28"></script>
+<script src="../extension/message-themes.js?v=1.34.2"></script>
 <script src="../extension/vendor/three.min.js"></script>
 <script src="../extension/vendor/RoundedBoxGeometry.js"></script>
 <script src="../extension/vendor/tile-field.js?v=1.24.28"></script>
@@ -1355,7 +1352,7 @@
 <script src="../extension/engines/message-brushed-engine.js?v=1.33.25b"></script>
 <script src="../extension/engines/message-chalk-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/message-ticket-engine.js?v=1.32.1"></script>
-<script src="../extension/engines/message-geico-marathon-engine.js?v=1.34.1"></script>
+<script src="../extension/engines/message-geico-marathon-engine.js?v=1.34.3"></script>
 <script src="../extension/engines/mosaic-block-wall-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/mosaic-bowl-lights-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/mosaic-neon-fans-engine.js?v=1.33.24c"></script>
@@ -1436,7 +1433,7 @@
   let previewRegistering = false;
   const settled = await Promise.all(
     CUSTOM_FILES.map(([file]) =>
-      fetch(file + "?v=1.34.1")
+      fetch(file + "?v=1.34.3")
         .then((r) => {
           if (!r.ok) throw new Error(file);
           return r.json();
@@ -1636,6 +1633,7 @@
   let outputRetry = 0;
   let activeMosaicPool = null;
   let shownCaptureKey = "";
+  let playlistStatus = "playing";
   const OUTPUT_URL_KEY = "dyn-preview-output-url";
   const SOURCE_KEY = "dyn-preview-source";
   const LIVE_MESSAGE_KEY = "dyn-preview-live-message";
@@ -2661,7 +2659,13 @@
 
   function captureKey(capture) {
     if (!capture) return "";
-    return [capture.src || "", capture.message || "", capture.name || ""].join("\n");
+    const src = String(capture.src || "").split("?")[0];
+    return [src, capture.message || "", capture.name || ""].join("\n");
+  }
+
+  function playlistIsHolding() {
+    const status = String(playlistStatus || "playing").toLowerCase();
+    return status !== "playing";
   }
 
   function captureAt(index) {
@@ -2961,7 +2965,6 @@
   });
 
   const outputInput = document.getElementById("output-url");
-  const outputApply = document.getElementById("output-apply");
   const sourceSamplesBtn = document.getElementById("source-samples");
   const sourceOutputBtn = document.getElementById("source-output");
   let sourceChosen = false;
@@ -3010,13 +3013,35 @@
     scheduleUrlSync();
   }
 
-  function showOutput() {
-    setSourceToggle("output");
-    renderLiveSettings();
-    const next = outputInput ? outputInput.value.trim() : "";
-    if (!next) {
+  function storedOutputUrl() {
+    try {
+      return (localStorage.getItem(OUTPUT_URL_KEY) || "").trim();
+    } catch {
+      return "";
+    }
+  }
+
+  function usableOutputUrl(value) {
+    try {
+      const url = new URL(String(value || "").trim());
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }
+
+  function outputUrlFromField() {
+    const typed = outputInput ? outputInput.value.trim() : "";
+    if (typed) return typed;
+    return storedOutputUrl();
+  }
+
+  function startOutput(url) {
+    const next = String(url || "").trim();
+    if (outputInput && next && outputInput.value.trim() !== next) outputInput.value = next;
+    if (!usableOutputUrl(next)) {
       if (usingOutput) leaveOutputMode();
-      setOutputStatus("Paste an output URL.", "is-warn");
+      setOutputStatus(next ? "That URL needs to start with http:// or https://." : "Paste an output URL.", "is-warn");
       return;
     }
     if (usingOutput && outputUrl === next) {
@@ -3028,24 +3053,32 @@
     });
   }
 
+  function showOutput() {
+    const next = outputUrlFromField();
+    if (outputInput && next && !outputInput.value.trim()) outputInput.value = next;
+    setSourceToggle("output");
+    renderLiveSettings();
+    startOutput(next);
+  }
+
+  let outputTypeTimer = 0;
   if (outputInput) {
-    outputInput.addEventListener("input", () => rememberOutputUrl(outputInput.value));
+    outputInput.addEventListener("input", () => {
+      rememberOutputUrl(outputInput.value);
+      if (!document.body.classList.contains("is-output-source")) return;
+      clearTimeout(outputTypeTimer);
+      outputTypeTimer = setTimeout(() => {
+        if (!document.body.classList.contains("is-output-source")) return;
+        const next = outputInput.value.trim();
+        if (!usableOutputUrl(next) || (usingOutput && outputUrl === next)) return;
+        startOutput(next);
+      }, 400);
+    });
     outputInput.addEventListener("keydown", (event) => {
       if (event.key !== "Enter") return;
       event.preventDefault();
-      if (outputApply) outputApply.click();
-    });
-  }
-  if (outputApply) {
-    outputApply.addEventListener("click", () => {
-      const next = outputInput ? outputInput.value.trim() : "";
-      if (!next) {
-        setOutputStatus("Paste an output URL.", "is-warn");
-        return;
-      }
-      void connectOutput(next).catch((err) => {
-        setOutputStatus(err && err.message ? err.message : "Could not read that output.", "is-error");
-      });
+      clearTimeout(outputTypeTimer);
+      if (document.body.classList.contains("is-output-source")) startOutput(outputInput.value);
     });
   }
   if (sourceSamplesBtn) {
@@ -3918,6 +3951,7 @@
     liveCapture = null;
     liveApplication = "";
     shownCaptureKey = "";
+    playlistStatus = "playing";
     activeMosaicPool = null;
     hideNative();
     photos = samplePhotos.slice();
@@ -3972,6 +4006,7 @@
       });
       setLivePhotoList(next);
     }
+    if (typeof payload.status === "string" && payload.status) playlistStatus = payload.status;
     const scene = payload.currentScene;
     if (!scene || !scene.application) return;
     liveScene = scene;
@@ -4099,6 +4134,10 @@
 
   function followLive() {
     if (!usingOutput) return;
+    if (playlistIsHolding()) {
+      setOutputStatus("Playlist paused — holding this screen.", "is-ok");
+      return;
+    }
     const kind = forcedOutputKind(outputUrl) || liveApplication;
     markLiveFold(kind);
     photos = livePhotos.slice();

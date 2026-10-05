@@ -4272,16 +4272,26 @@ html.dyn-show-bg #dyn-message-theme:not(.on) > *:not(#dyn-bg-media):not(#dyn-bg-
   }
 
   /** Capture photo slot — never the selected Show-background media img. */
+  function isGeicoBoard(node) {
+    return Boolean(
+      node &&
+        typeof node.closest === "function" &&
+        node.closest("#dyn-message-theme[data-theme='message-geico-marathon']")
+    );
+  }
+
   function findMessagePhoto(themeRoot) {
-    if (!themeRoot) return null;
+    if (!themeRoot || themeRoot.dataset.theme === "message-geico-marathon") return null;
     const preferred = themeRoot.querySelector(
       ".well img, [data-photo], .tm-hero-img, .photo-panel img, .photo-holder img, .photo-well img, .program img, .aurora-card img"
     );
-    if (preferred && !isBackgroundMediaNode(preferred)) return preferred;
+    if (preferred && !isBackgroundMediaNode(preferred) && !isGeicoBoard(preferred)) return preferred;
     const framePhoto = themeRoot.querySelector(".frame img");
-    if (framePhoto && !isBackgroundMediaNode(framePhoto)) return framePhoto;
+    if (framePhoto && !isBackgroundMediaNode(framePhoto) && !isGeicoBoard(framePhoto)) return framePhoto;
     return (
-      [...themeRoot.querySelectorAll("img")].find((img) => !isBackgroundMediaNode(img)) || null
+      [...themeRoot.querySelectorAll("img")].find(
+        (img) => !isBackgroundMediaNode(img) && !isGeicoBoard(img)
+      ) || null
     );
   }
 
