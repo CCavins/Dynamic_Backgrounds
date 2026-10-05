@@ -12,6 +12,7 @@
     "message-brushed-engine.js",
     "message-chalk-engine.js",
     "message-ticket-engine.js",
+    "message-geico-marathon-engine.js",
     "mosaic-block-wall-engine.js",
     "mosaic-bowl-lights-engine.js",
     "mosaic-neon-fans-engine.js",

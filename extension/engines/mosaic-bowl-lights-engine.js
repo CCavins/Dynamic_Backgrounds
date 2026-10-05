@@ -27,7 +27,7 @@
   const LOOP = 36;
   const DUST = 320;
   const DUST_FG = 180;
-  const HUE_REF = "#2f7bff";
+  const TINT_NEUTRAL = "#ffffff";
 
   function uniqueUrls(pool) {
     const out = [];
@@ -188,46 +188,25 @@
     };
   }
 
-  function hexToHue(hex) {
-    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim());
-    if (!m) return 219;
-    const n = parseInt(m[1], 16);
-    const r = ((n >> 16) & 255) / 255;
-    const g = ((n >> 8) & 255) / 255;
-    const b = (n & 255) / 255;
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    if (max === min) return 219;
-    const d = max - min;
-    let h = 0;
-    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
-    else if (max === g) h = (b - r) / d + 2;
-    else h = (r - g) / d + 4;
-    return h * 60;
-  }
-
   function applyHue(themeRoot, settings) {
     if (!themeRoot || !themeRoot.style) return;
-    const hex = settings && settings.tint ? settings.tint : "#ffffff";
-    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim());
-    let shift = 0;
-    if (m) {
-      const n = parseInt(m[1], 16);
-      const r = (n >> 16) & 255;
-      const g = (n >> 8) & 255;
-      const b = n & 255;
-      if (r !== g || g !== b) {
-        shift = hexToHue(hex) - hexToHue(HUE_REF);
-        if (shift > 180) shift -= 360;
-        if (shift < -180) shift += 360;
-      }
+    const tint = (settings && settings.tint) || TINT_NEUTRAL;
+    const dark = (settings && settings.bgTint) || TINT_NEUTRAL;
+    const tintOn = enginesApi.differs && enginesApi.differs(tint, TINT_NEUTRAL);
+    const darkOn = enginesApi.differs && enginesApi.differs(dark, TINT_NEUTRAL);
+    themeRoot.style.setProperty("--tint", tintOn ? tint : TINT_NEUTRAL);
+    themeRoot.style.setProperty("--bg-tint", darkOn ? dark : TINT_NEUTRAL);
+    themeRoot.style.setProperty("--gold", tintOn ? tint : "#f0c56a");
+    themeRoot.style.setProperty("--blue", darkOn ? dark : (tintOn ? tint : "#2f7bff"));
+    if (tintOn && darkOn) {
+      themeRoot.dataset.bitmap = "duo";
+      themeRoot.style.setProperty("--bitmap-fill", tint);
+    } else if (tintOn || darkOn) {
+      themeRoot.dataset.bitmap = "1";
+      themeRoot.style.setProperty("--bitmap-fill", tintOn ? tint : dark);
+    } else {
+      delete themeRoot.dataset.bitmap;
     }
-    themeRoot.style.setProperty("--hue-shift", shift.toFixed(1) + "deg");
-    const lift = settings && settings.bgTint;
-    themeRoot.style.setProperty(
-      "--bg-tint",
-      /^#?[0-9a-f]{6}$/i.test(String(lift || "")) ? lift : "#ffffff"
-    );
     const sat = parseFloat(settings && settings.sat);
     themeRoot.style.setProperty("--bg-sat", isFinite(sat) ? String(sat) : "1");
   }

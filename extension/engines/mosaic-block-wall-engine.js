@@ -299,6 +299,13 @@
     flipCard(sats[Math.floor(Math.random() * sats.length)], api, pool);
   }
 
+  function applyBackgroundBitmap(themeRoot, settings) {
+    if (!themeRoot) return;
+    const hex = settings && settings.background;
+    if (hex && enginesApi.differs && enginesApi.differs(hex, "#050814")) themeRoot.dataset.bitmap = "1";
+    else delete themeRoot.dataset.bitmap;
+  }
+
   enginesApi.define({
     id: "mosaic-block-wall-engine",
     kind: "mosaic",
@@ -355,6 +362,7 @@
         fxOn: true,
         flipTimer: 0
       };
+      applyBackgroundBitmap(themeRoot, settings);
       layout(state);
       function beat() {
         if (!state.fxOn) return;
@@ -413,6 +421,7 @@
       if (!state) return;
       state.settings = settings || state.settings;
       if (themeRoot) state.root = themeRoot;
+      applyBackgroundBitmap(themeRoot, state.settings);
       layout(state);
     },
 

@@ -104,6 +104,39 @@
     object-position: center;
   }
 
+  #output-native {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #05050c;
+    overflow: hidden;
+  }
+
+  #output-native[hidden] {
+    display: none;
+  }
+
+  #output-native img,
+  #output-native video,
+  #output-native iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    object-fit: contain;
+    background: #05050c;
+  }
+
+  #output-native p {
+    margin: 0;
+    padding: 24px;
+    color: #fff;
+    font: 600 22px Inter, system-ui, sans-serif;
+    text-align: center;
+  }
+
   #dyn-message-theme,
   #dyn-mosaic-theme {
     position: absolute;
@@ -282,6 +315,178 @@
 
   .dock-row-browse {
     padding-top: 14px;
+  }
+
+  .dock-row-source {
+    padding-bottom: 12px;
+  }
+
+  .source-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .source-toggle-btn {
+    height: 32px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--dock-muted);
+    font: 600 12px Inter, system-ui, sans-serif;
+    cursor: pointer;
+  }
+
+  .source-toggle-btn.is-on {
+    background: var(--dock-accent);
+    color: #fff;
+  }
+
+  .dock-row-output {
+    gap: 8px;
+    padding-bottom: 8px;
+  }
+
+  body:not(.is-output-source) #output-row,
+  body:not(.is-output-source) #live-themes {
+    display: none;
+  }
+
+  body.is-output-source #theme-browse,
+  body.is-output-source #settings-panel,
+  body.is-output-source #preview-bg-panel,
+  body.is-output-source .dock-row-stage .dock-check {
+    display: none;
+  }
+
+  #output-status.dock-import-status {
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+
+  #output-status:empty {
+    display: none;
+  }
+
+  #live-themes.dock-row {
+    gap: 0;
+    padding: 0;
+  }
+
+  .dock-fold {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .dock-fold summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    list-style: none;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dock-text);
+  }
+
+  .dock-fold summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .dock-fold summary::after {
+    content: "";
+    margin-left: auto;
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid var(--dock-muted);
+    border-bottom: 1.5px solid var(--dock-muted);
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+  }
+
+  .dock-fold[open] summary::after {
+    transform: rotate(225deg);
+  }
+
+  .dock-fold:not([open]) > .dock-fold-body {
+    display: none;
+  }
+
+  .live-kind {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px 2px;
+  }
+
+  .live-kind + .live-kind {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .live-kind .dock-fold {
+    border-top: 0;
+    margin: 0 -14px;
+  }
+
+  .live-kind .dock-fold > summary {
+    padding-top: 2px;
+  }
+
+  .live-kind.is-current > .dock-field > span::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: #3dd68c;
+    box-shadow: 0 0 0 3px rgba(61, 214, 140, 0.18);
+    vertical-align: 1px;
+  }
+
+  .kind-chrome {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+  }
+
+
+  .dock-fold-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 14px 12px;
+  }
+
+  .dock-fold-note {
+    margin: 0;
+    font-size: 12px;
+    color: var(--dock-muted);
+  }
+
+  .dock-fold-reset {
+    align-self: flex-start;
+  }
+
+  .output-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .dock-field-output input {
+    width: 100%;
+    padding: 0 11px;
+  }
+
+  .output-actions .dock-btn {
+    flex: 1;
   }
 
   .dock-row-stage {
@@ -921,6 +1126,7 @@
 <body>
   <div id="stage" aria-hidden="true">
     <div id="preview-bg"></div>
+    <div id="output-native" hidden></div>
     <div id="dyn-message-theme"></div>
     <div id="dyn-mosaic-theme"></div>
   </div>
@@ -944,17 +1150,110 @@
         </button>
       </div>
       <div class="dock-scroll">
-        <div class="dock-row dock-row-browse">
+        <div class="dock-row dock-row-source" id="source-row">
+          <div class="source-toggle" role="tablist" aria-label="Preview source">
+            <button type="button" class="source-toggle-btn is-on" id="source-samples" role="tab" aria-selected="true">Samples</button>
+            <button type="button" class="source-toggle-btn" id="source-output" role="tab" aria-selected="false">Output URL</button>
+          </div>
+        </div>
+
+        <div class="dock-row dock-row-output" id="output-row" hidden>
+          <label class="dock-field dock-field-output">
+            <span>Output URL</span>
+            <input id="output-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…/go/o/…">
+          </label>
+          <div class="output-actions">
+            <button type="button" class="dock-btn dock-btn-primary" id="output-apply">Use</button>
+          </div>
+          <p class="dock-import-status" id="output-status" role="status"></p>
+        </div>
+
+        <div class="dock-row" id="live-themes" hidden>
+          <div class="live-kind" id="live-message-block">
+            <label class="dock-field">
+              <span>Message template</span>
+              <select id="live-message-theme"></select>
+            </label>
+            <details class="dock-fold" id="live-message-fold">
+              <summary>Settings</summary>
+              <div class="dock-fold-body dock-settings is-open">
+                <div class="dock-settings-fields" id="live-message-settings"></div>
+                <div class="kind-chrome">
+                  <label class="dock-check"><input type="checkbox" data-chrome="qr"> Show QR</label>
+                  <label class="dock-check"><input type="checkbox" data-chrome="logo"> Show logo</label>
+                </div>
+                <div class="kind-bg dock-bg" data-kind-bg="message">
+                  <div class="setting-row media">
+                    <div class="media-head">
+                      <span>Background</span>
+                      <span class="media-file-name" data-bg-name>No file</span>
+                    </div>
+                    <div class="media-actions">
+                      <label class="dock-btn">Choose file…<input type="file" data-bg-file accept="image/*,video/*,.gif" hidden></label>
+                      <button type="button" class="dock-btn dock-btn-ghost" data-bg-clear>Clear</button>
+                    </div>
+                    <p class="media-status" data-bg-status role="status"></p>
+                  </div>
+                  <label class="dock-field dock-field-fit">
+                    <span>Fit</span>
+                    <select data-bg-fit>
+                      <option value="cover">Fill — crop to cover</option>
+                      <option value="contain">Fit — letterbox</option>
+                      <option value="fill">Stretch</option>
+                      <option value="center">Center — native size</option>
+                    </select>
+                  </label>
+                </div>
+                <button type="button" class="dock-btn dock-btn-ghost dock-fold-reset" id="reset-message-settings">Reset message</button>
+              </div>
+            </details>
+          </div>
+          <div class="live-kind" id="live-mosaic-block">
+            <label class="dock-field">
+              <span>Mosaic template</span>
+              <select id="live-mosaic-theme"></select>
+            </label>
+            <details class="dock-fold" id="live-mosaic-fold">
+              <summary>Settings</summary>
+              <div class="dock-fold-body dock-settings is-open">
+                <div class="dock-settings-fields" id="live-mosaic-settings"></div>
+                <div class="kind-chrome">
+                  <label class="dock-check"><input type="checkbox" data-chrome="qr"> Show QR</label>
+                  <label class="dock-check"><input type="checkbox" data-chrome="logo"> Show logo</label>
+                </div>
+                <div class="kind-bg dock-bg" data-kind-bg="mosaic">
+                  <div class="setting-row media">
+                    <div class="media-head">
+                      <span>Background</span>
+                      <span class="media-file-name" data-bg-name>No file</span>
+                    </div>
+                    <div class="media-actions">
+                      <label class="dock-btn">Choose file…<input type="file" data-bg-file accept="image/*,video/*,.gif" hidden></label>
+                      <button type="button" class="dock-btn dock-btn-ghost" data-bg-clear>Clear</button>
+                    </div>
+                    <p class="media-status" data-bg-status role="status"></p>
+                  </div>
+                  <label class="dock-field dock-field-fit">
+                    <span>Fit</span>
+                    <select data-bg-fit>
+                      <option value="cover">Fill — crop to cover</option>
+                      <option value="contain">Fit — letterbox</option>
+                      <option value="fill">Stretch</option>
+                      <option value="center">Center — native size</option>
+                    </select>
+                  </label>
+                </div>
+                <button type="button" class="dock-btn dock-btn-ghost dock-fold-reset" id="reset-mosaic-settings">Reset mosaic</button>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <div class="dock-row dock-row-browse" id="theme-browse">
           <label class="dock-field dock-field-theme">
             <span>Theme</span>
             <select id="theme-select"></select>
           </label>
-          <div class="dock-actions">
-            <div class="dock-actions-nav">
-              <button type="button" class="dock-btn" id="prev-theme" title="Previous theme">Prev</button>
-              <button type="button" class="dock-btn dock-btn-primary" id="next-theme" title="Next theme">Next</button>
-            </div>
-          </div>
         </div>
 
         <div class="dock-row dock-row-import">
@@ -1044,7 +1343,7 @@
 <script src="../extension/vendor/RoundedBoxGeometry.js"></script>
 <script src="../extension/vendor/tile-field.js?v=1.24.28"></script>
 <script src="../extension/mosaic-themes.js?v=1.30.24"></script>
-<script src="../extension/engines/api.js"></script>
+<script src="../extension/engines/api.js?v=1.33.24b"></script>
 <script src="../extension/engines/xmas-snow-particles.js?v=1.24.28"></script>
 <script src="../extension/engines/message-aurora-engine.js?v=1.24.28"></script>
 <script src="../extension/engines/message-text-message-engine.js?v=1.24.28"></script>
@@ -1053,16 +1352,17 @@
 <script src="../extension/engines/mosaic-xmas-tree-engine.js?v=1.24.28"></script>
 <script src="../extension/engines/mosaic-xmas-snowfall-engine.js?v=1.24.28"></script>
 <script src="./mosaic-slant-rows-engine.js?v=1.24.28"></script>
-<script src="../extension/engines/message-brushed-engine.js?v=1.33.7"></script>
-<script src="../extension/engines/message-chalk-engine.js?v=1.33.13"></script>
+<script src="../extension/engines/message-brushed-engine.js?v=1.33.25b"></script>
+<script src="../extension/engines/message-chalk-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/message-ticket-engine.js?v=1.32.1"></script>
-<script src="../extension/engines/mosaic-block-wall-engine.js?v=1.32.13"></script>
-<script src="../extension/engines/mosaic-bowl-lights-engine.js?v=1.32.9"></script>
-<script src="../extension/engines/mosaic-neon-fans-engine.js?v=1.32.1"></script>
-<script src="../extension/engines/mosaic-steel-lights-engine.js?v=1.32.1"></script>
+<script src="../extension/engines/message-geico-marathon-engine.js?v=1.34.1"></script>
+<script src="../extension/engines/mosaic-block-wall-engine.js?v=1.33.24"></script>
+<script src="../extension/engines/mosaic-bowl-lights-engine.js?v=1.33.24"></script>
+<script src="../extension/engines/mosaic-neon-fans-engine.js?v=1.33.24c"></script>
+<script src="../extension/engines/mosaic-steel-lights-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/mosaic-bubble-rise-engine.js?v=1.33.5"></script>
 <script src="../extension/engines/message-xmas-bauble-engine.js?v=1.24.28"></script>
-<script src="../extension/custom-themes.js?v=1.32.1"></script>
+<script src="../extension/custom-themes.js?v=1.34.0"></script>
 <script>
 (async () => {
   const SAMPLE_DIR = "../samples/patriots/";
@@ -1095,6 +1395,7 @@
     ["message-brushed.json", "Brushed", true],
     ["message-chalk.json", "Chalk", true],
     ["message-ticket.json", "Ticket", true],
+    ["message-geico-marathon.json", "Geico NY Marathon", true],
     ["mosaic-block-wall.json", "Block Wall", true],
     ["mosaic-bowl-lights.json", "Bowl Lights", true],
     ["mosaic-neon-fans.json", "Neon Fans", true],
@@ -1118,6 +1419,7 @@
     "message-brushed",
     "message-chalk",
     "message-ticket",
+    "message-geico-marathon",
     "mosaic-block-wall",
     "mosaic-bowl-lights",
     "mosaic-neon-fans",
@@ -1134,7 +1436,7 @@
   let previewRegistering = false;
   const settled = await Promise.all(
     CUSTOM_FILES.map(([file]) =>
-      fetch(file + "?v=1.33.13")
+      fetch(file + "?v=1.34.1")
         .then((r) => {
           if (!r.ok) throw new Error(file);
           return r.json();
@@ -1320,7 +1622,24 @@
     captures = [];
   }
 
-  const photos = captures.map((row) => row.src).filter(Boolean);
+  const sampleCaptures = captures.slice();
+  const samplePhotos = sampleCaptures.map((row) => row.src).filter(Boolean);
+  let photos = samplePhotos.slice();
+  let usingOutput = false;
+  let livePhotos = [];
+  let liveCapture = null;
+  let liveApplication = "";
+  let liveScene = null;
+  let shownNativeKey = "";
+  let outputUrl = "";
+  let outputWs = null;
+  let outputRetry = 0;
+  let activeMosaicPool = null;
+  let shownCaptureKey = "";
+  const OUTPUT_URL_KEY = "dyn-preview-output-url";
+  const SOURCE_KEY = "dyn-preview-source";
+  const LIVE_MESSAGE_KEY = "dyn-preview-live-message";
+  const LIVE_MOSAIC_KEY = "dyn-preview-live-mosaic";
 
   const catalog = [];
   Object.keys(rules.MESSAGE_THEME_META || {}).forEach((id) => {
@@ -1398,9 +1717,13 @@
   }
 
   function syncUrlFromState() {
-    if (!urlSyncReady || !active) return;
+    if (!urlSyncReady || (!active && !usingOutput)) return;
     const p = new URLSearchParams();
-    p.set("theme", active.id);
+    const themeId =
+      (active && active.id) ||
+      (liveThemeId("mosaic") !== "off" ? liveThemeId("mosaic") : "") ||
+      (liveThemeId("message") !== "off" ? liveThemeId("message") : "");
+    if (themeId) p.set("theme", themeId);
     if (stageMode === "custom") {
       p.set("aspect", "custom");
       p.set("aw", String(aspectW.value || "16"));
@@ -1409,23 +1732,36 @@
       const aspect = resolvedAspect();
       if (aspect && aspect !== "16:9") p.set("aspect", aspect);
     }
-    const settings = settingsFor(active.id, active.pack);
-    const meta = settingsMetaFor(active.id);
-    const defaults = (meta && meta.defaults) || {};
-    ["primary", "secondary", "background"].forEach((key) => {
-      if (!settings[key]) return;
-      if (defaults[key] && hexFromParam(settings[key]) === hexFromParam(defaults[key])) return;
-      const hex = hexForUrl(settings[key]);
-      if (hex) p.set(key, hex);
-    });
-    if (settings.motion && settings.motion !== defaults.motion) p.set("motion", settings.motion);
-    if (settings.scale != null && Math.abs(Number(settings.scale) - Number(defaults.scale || 1)) > 0.001) {
-      p.set("scale", String(Math.round(Number(settings.scale) * 100) / 100));
+    if (active) {
+      const settings = settingsFor(active.id, active.pack);
+      const meta = settingsMetaFor(active.id);
+      const defaults = (meta && meta.defaults) || {};
+      ["primary", "secondary", "background"].forEach((key) => {
+        if (!settings[key]) return;
+        if (defaults[key] && hexFromParam(settings[key]) === hexFromParam(defaults[key])) return;
+        const hex = hexForUrl(settings[key]);
+        if (hex) p.set(key, hex);
+      });
+      if (settings.motion && settings.motion !== defaults.motion) p.set("motion", settings.motion);
+      if (settings.scale != null && Math.abs(Number(settings.scale) - Number(defaults.scale || 1)) > 0.001) {
+        p.set("scale", String(Math.round(Number(settings.scale) * 100) / 100));
+      }
+    }
+    if (usingOutput && outputUrl) {
+      p.set("output", outputUrl);
+      const messageTheme = liveThemeId("message");
+      const mosaicTheme = liveThemeId("mosaic");
+      if (messageTheme) p.set("mt", messageTheme);
+      if (mosaicTheme) p.set("mo", mosaicTheme);
+      const cfg = {};
+      [messageTheme, mosaicTheme, active && active.id].forEach((id) => {
+        const patch = shareableSettings(id);
+        if (patch) cfg[id] = patch;
+      });
+      if (Object.keys(cfg).length) p.set("cfg", encodeShare(cfg));
     }
     if (document.body.classList.contains("preview-view")) p.set("view", "1");
-    if (previewBgFit && previewBgFit !== "cover") p.set("bgfit", previewBgFit);
-    if (previewShowQr) p.set("qr", "1");
-    if (previewShowLogo) p.set("logo", "1");
+    applyChromeParams(p);
     if (!document.body.classList.contains("preview-view") && document.body.classList.contains("dock-collapsed")) {
       p.set("dock", "min");
     }
@@ -1438,6 +1774,126 @@
   function scheduleUrlSync() {
     clearTimeout(urlSyncTimer);
     urlSyncTimer = setTimeout(syncUrlFromState, 100);
+  }
+
+  function encodeShare(value) {
+    const json = JSON.stringify(value);
+    const bytes = new TextEncoder().encode(json);
+    let binary = "";
+    bytes.forEach((byte) => {
+      binary += String.fromCharCode(byte);
+    });
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  }
+
+  function decodeShare(raw) {
+    const text = String(raw || "").replace(/-/g, "+").replace(/_/g, "/");
+    const padded = text + "=".repeat((4 - (text.length % 4)) % 4);
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (ch) => ch.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }
+
+  function settingsRootFor(id) {
+    if (!usingOutput) return settingsFields;
+    const entry = catalog.find((item) => item.id === id);
+    if (!entry) return null;
+    return document.getElementById(entry.kind === "message" ? "live-message-settings" : "live-mosaic-settings");
+  }
+
+  function shareableSettings(id) {
+    if (!id || id === "off") return null;
+    const entry = catalog.find((item) => item.id === id);
+    const root = settingsRootFor(id);
+    if (root && root.querySelector(".theme-hex, .theme-toggle, .theme-select, .theme-motion, .theme-scale, .theme-extra-scale")) {
+      try {
+        settingsByTheme[id] = readSettingsForm(id, root);
+      } catch {
+        /* Keep the last stored settings. */
+      }
+    }
+    const settings = settingsFor(id, entry && entry.pack);
+    const defaults = (settingsMetaFor(id) && settingsMetaFor(id).defaults) || {};
+    const patch = {};
+    Object.keys(settings).forEach((key) => {
+      const value = settings[key];
+      if (value == null || typeof value === "object") return;
+      if (key === "revealMs") return;
+      const fallback = defaults[key];
+      if (typeof value === "string" && typeof fallback === "string") {
+        const left = hexFromParam(value);
+        const right = hexFromParam(fallback);
+        if (left && right && left === right) return;
+      }
+      if (fallback != null && String(fallback) === String(value)) return;
+      patch[key] = value;
+    });
+    return Object.keys(patch).length ? patch : null;
+  }
+
+  function applyShareParams(searchParams) {
+    if (!searchParams) return;
+    const messageTheme = searchParams.get("mt");
+    const mosaicTheme = searchParams.get("mo");
+    const messageSelect = document.getElementById("live-message-theme");
+    const mosaicSelect = document.getElementById("live-mosaic-theme");
+    if (messageTheme) {
+      localStorage.setItem(LIVE_MESSAGE_KEY, messageTheme);
+      if (messageSelect && [...messageSelect.options].some((opt) => opt.value === messageTheme)) {
+        messageSelect.value = messageTheme;
+      }
+    }
+    if (mosaicTheme) {
+      localStorage.setItem(LIVE_MOSAIC_KEY, mosaicTheme);
+      if (mosaicSelect && [...mosaicSelect.options].some((opt) => opt.value === mosaicTheme)) {
+        mosaicSelect.value = mosaicTheme;
+      }
+    }
+    const cfg = searchParams.get("cfg");
+    if (!cfg) return;
+    try {
+      const map = decodeShare(cfg);
+      Object.keys(map || {}).forEach((id) => {
+        if (!map[id] || typeof map[id] !== "object") return;
+        settingsByTheme[id] = { ...(settingsByTheme[id] || {}), ...map[id] };
+      });
+    } catch {
+      /* A copied link with a damaged settings blob still opens the templates. */
+    }
+  }
+
+  function buildViewerUrl(viewNonce) {
+    const viewerUrl = new URL(location.href);
+    viewerUrl.search = "";
+    viewerUrl.hash = "";
+    viewerUrl.searchParams.set("view", "1");
+    if (usingOutput && outputUrl) viewerUrl.searchParams.set("output", outputUrl);
+    const messageTheme = liveThemeId("message");
+    const mosaicTheme = liveThemeId("mosaic");
+    if (messageTheme) viewerUrl.searchParams.set("mt", messageTheme);
+    if (mosaicTheme) viewerUrl.searchParams.set("mo", mosaicTheme);
+    const themeForUrl =
+      (active && active.id) ||
+      (mosaicTheme && mosaicTheme !== "off" ? mosaicTheme : "") ||
+      (messageTheme && messageTheme !== "off" ? messageTheme : "");
+    if (themeForUrl) viewerUrl.searchParams.set("theme", themeForUrl);
+    if (stageMode === "custom") {
+      viewerUrl.searchParams.set("aspect", "custom");
+      viewerUrl.searchParams.set("aw", String(aspectW.value || "16"));
+      viewerUrl.searchParams.set("ah", String(aspectH.value || "9"));
+    } else {
+      const aspect = resolvedAspect();
+      if (aspect && aspect !== "16:9") viewerUrl.searchParams.set("aspect", aspect);
+    }
+    applyChromeParams(viewerUrl.searchParams);
+    const cfg = {};
+    [messageTheme, mosaicTheme, active && active.id].forEach((id) => {
+      const patch = shareableSettings(id);
+      if (patch) cfg[id] = patch;
+    });
+    if (Object.keys(cfg).length) viewerUrl.searchParams.set("cfg", encodeShare(cfg));
+    if (viewNonce) viewerUrl.searchParams.set("viewNonce", viewNonce);
+    return viewerUrl;
   }
 
   function applyUrlSettings(themeId, params) {
@@ -1517,6 +1973,37 @@
     if (keep && [...themeSelect.options].some((opt) => opt.value === keep)) {
       themeSelect.value = keep;
     }
+    fillLiveSelects();
+  }
+
+  function fillLiveSelects() {
+    fillKindSelect(document.getElementById("live-message-theme"), "message", LIVE_MESSAGE_KEY);
+    fillKindSelect(document.getElementById("live-mosaic-theme"), "mosaic", LIVE_MOSAIC_KEY);
+  }
+
+  function fillKindSelect(select, kind, storageKey) {
+    if (!select) return;
+    const saved = localStorage.getItem(storageKey) || select.value || "";
+    select.replaceChildren();
+    const off = document.createElement("option");
+    off.value = "off";
+    off.textContent = "Off";
+    select.appendChild(off);
+    catalog
+      .filter((item) => item.kind === kind)
+      .forEach((item) => {
+        const opt = document.createElement("option");
+        opt.value = item.id;
+        opt.textContent = item.isNew ? item.label + " (new)" : item.label;
+        select.appendChild(opt);
+      });
+    if (saved && [...select.options].some((opt) => opt.value === saved)) {
+      select.value = saved;
+      return;
+    }
+    const fallback = kind === "message" ? "message-brushed" : "mosaic-neon-fans";
+    if ([...select.options].some((opt) => opt.value === fallback)) select.value = fallback;
+    else if (select.options.length > 1) select.value = select.options[1].value;
   }
 
   function syncCatalogFromPacks() {
@@ -1547,8 +2034,52 @@
   aspectSelect.appendChild(customOpt);
 
   let stageMode = "16:9";
-  let previewShowQr = false;
-  let previewShowLogo = false;
+  const kindChrome = {
+    message: { qr: false, logo: false, bgId: "", bgFit: "cover" },
+    mosaic: { qr: false, logo: false, bgId: "", bgFit: "cover" },
+  };
+
+  function stageKind() {
+    const forced = usingOutput ? forcedOutputKind(outputUrl) : "";
+    if (forced === "message" || forced === "mosaic") return forced;
+    if (usingOutput && (liveApplication === "message" || liveApplication === "mosaic")) return liveApplication;
+    if (active && (active.kind === "message" || active.kind === "mosaic")) return active.kind;
+    return document.body.classList.contains("is-mosaic") ? "mosaic" : "message";
+  }
+
+  function bgStoreId(kind) {
+    return "preview-stage-bg-" + kind;
+  }
+
+  function normalizeBgFit(value) {
+    const raw = value || "cover";
+    return mediaApi && mediaApi.normalizeFit ? mediaApi.normalizeFit(raw) : raw;
+  }
+
+  function applyChromeParams(p) {
+    ["message", "mosaic"].forEach((kind) => {
+      const chrome = kindChrome[kind];
+      const prefix = kind === "message" ? "m" : "o";
+      if (chrome.qr) p.set(prefix + "qr", "1");
+      if (chrome.logo) p.set(prefix + "logo", "1");
+      if (chrome.bgFit && chrome.bgFit !== "cover") p.set(prefix + "bgfit", chrome.bgFit);
+    });
+  }
+
+  function readChromeParams(searchParams) {
+    if (!searchParams) return;
+    ["message", "mosaic"].forEach((kind) => {
+      const prefix = kind === "message" ? "m" : "o";
+      const qrKey = prefix + "qr";
+      const logoKey = prefix + "logo";
+      const fitKey = prefix + "bgfit";
+      kindChrome[kind].qr = searchParams.has(qrKey) ? searchParams.get(qrKey) === "1" : searchParams.get("qr") === "1";
+      kindChrome[kind].logo = searchParams.has(logoKey)
+        ? searchParams.get(logoKey) === "1"
+        : searchParams.get("logo") === "1";
+      kindChrome[kind].bgFit = normalizeBgFit(searchParams.get(fitKey) || searchParams.get("bgfit") || "cover");
+    });
+  }
   let active = null;
   let messageState = null;
   let mosaicState = null;
@@ -1729,8 +2260,6 @@
   const mediaApi = globalThis.BGMediaStore;
   const WALLPAPER_PREFIX = "preview-wallpaper:";
   const PREVIEW_BG_ID = "preview-stage-bg";
-  let previewBgMediaId = "";
-  let previewBgFit = "cover";
 
   function wallpaperIdFor(themeId) {
     return WALLPAPER_PREFIX + String(themeId || "");
@@ -1916,25 +2445,26 @@
     });
   }
 
-  function readSettingsForm(id) {
+  function readSettingsForm(id, root) {
+    const scope = root || settingsFields;
     const raw = {};
-    settingsFields.querySelectorAll(".theme-hex").forEach((input) => {
+    scope.querySelectorAll(".theme-hex").forEach((input) => {
       raw[input.dataset.key] = input.value;
     });
-    settingsFields.querySelectorAll(".theme-toggle").forEach((input) => {
+    scope.querySelectorAll(".theme-toggle").forEach((input) => {
       raw[input.dataset.key] = input.checked;
     });
-    settingsFields.querySelectorAll(".theme-select").forEach((input) => {
+    scope.querySelectorAll(".theme-select").forEach((input) => {
       raw[input.dataset.key] = input.value;
     });
-    const motion = settingsFields.querySelector(".theme-motion");
+    const motion = scope.querySelector(".theme-motion");
     if (motion) raw.motion = motion.value;
-    const scale = settingsFields.querySelector(".theme-scale");
+    const scale = scope.querySelector(".theme-scale");
     if (scale) raw.scale = Number(scale.value) / 100;
-    settingsFields.querySelectorAll(".theme-extra-scale").forEach((input) => {
+    scope.querySelectorAll(".theme-extra-scale").forEach((input) => {
       raw[input.dataset.key] = Number(input.value) / 100;
     });
-    const wallpaper = settingsFields.querySelector(".theme-wallpaper");
+    const wallpaper = scope.querySelector(".theme-wallpaper");
     if (wallpaper) raw.wallpaper = wallpaper.value;
     const storeId = settingsStoreId(id);
     if (rules.normalizeOneThemeSettings) return rules.normalizeOneThemeSettings(storeId, raw);
@@ -1973,7 +2503,40 @@
     }
   }
 
+  function renderLiveSettings() {
+    if (settingsPanel) {
+      settingsPanel.hidden = true;
+      settingsPanel.classList.remove("is-open");
+    }
+    renderKindSettings("message");
+    renderKindSettings("mosaic");
+  }
+
+  function renderKindSettings(kind) {
+    const box = document.getElementById(kind === "message" ? "live-message-settings" : "live-mosaic-settings");
+    if (!box) return;
+    const themeId = liveThemeId(kind);
+    const reset = document.getElementById(kind === "message" ? "reset-message-settings" : "reset-mosaic-settings");
+    box.replaceChildren();
+    if (!themeId || themeId === "off") {
+      if (reset) reset.hidden = true;
+      const note = document.createElement("p");
+      note.className = "dock-fold-note";
+      note.textContent = "Template is off.";
+      box.appendChild(note);
+      return;
+    }
+    const entry = catalog.find((item) => item.kind === kind && item.id === themeId);
+    if (reset) reset.hidden = !entry;
+    if (!entry) return;
+    fillSettingsFields(box, entry, false);
+  }
+
   function renderSettingsPanel(entry) {
+    if (usingOutput) {
+      renderLiveSettings();
+      return;
+    }
     settingsFields.replaceChildren();
     if (!entry) {
       settingsPanel.hidden = true;
@@ -2006,91 +2569,99 @@
       settingsPanel.classList.remove("is-open");
       return;
     }
+    fillSettingsFields(settingsFields, entry, true);
+    settingsPanel.hidden = false;
+    settingsPanel.classList.add("is-open");
+  }
+
+  function fillSettingsFields(fields, entry, showPanel) {
+    const meta = settingsMetaFor(entry.id);
     const values = settingsFor(entry.id, entry.pack);
     const labels = meta.labels || {};
     if (meta.defaults.scale != null) {
-      settingsFields.appendChild(scaleRow(labels.scale || "Photo size", values.scale));
+      fields.appendChild(scaleRow(labels.scale || "Photo size", values.scale));
     }
     if (meta.defaults.primary) {
-      settingsFields.appendChild(colorRow("primary", labels.primary || "Primary", values.primary));
+      fields.appendChild(colorRow("primary", labels.primary || "Primary", values.primary));
     }
     if (meta.defaults.secondary) {
-      settingsFields.appendChild(colorRow("secondary", labels.secondary || "Secondary", values.secondary));
+      fields.appendChild(colorRow("secondary", labels.secondary || "Secondary", values.secondary));
     }
     if (meta.defaults.background) {
-      settingsFields.appendChild(
+      fields.appendChild(
         colorRow("background", labels.background || "Background", values.background)
       );
     }
     if (meta.defaults.motion) {
-      settingsFields.appendChild(motionRow(values.motion));
+      fields.appendChild(motionRow(values.motion));
     }
     if (Object.prototype.hasOwnProperty.call(meta.defaults, "wallpaper")) {
-      settingsFields.appendChild(
+      fields.appendChild(
         mediaRow(entry.id, labels.wallpaper || "Chat wallpaper", values.wallpaper || "")
       );
     }
-    appendExtraThemeSettings(settingsFields, meta, values);
+    appendExtraThemeSettings(fields, meta, values);
+    bindSettingsFields(fields, entry);
+    syncNeonChromeRows(fields, entry.kind);
+    if (showPanel) {
+      settingsPanel.hidden = false;
+      settingsPanel.classList.add("is-open");
+    }
+  }
 
-    settingsFields.querySelectorAll(".theme-color").forEach((colorInput) => {
+  function bindSettingsFields(fields, entry) {
+    const store = () => {
+      settingsByTheme[entry.id] = readSettingsForm(entry.id, fields);
+      if (active && active.id === entry.id) applyLiveSettings();
+    };
+    fields.querySelectorAll(".theme-color").forEach((colorInput) => {
       const key = colorInput.dataset.key;
-      const hexInput = settingsFields.querySelector(`.theme-hex[data-key="${key}"]`);
+      const hexInput = fields.querySelector(`.theme-hex[data-key="${key}"]`);
       colorInput.addEventListener("input", () => {
         if (hexInput) hexInput.value = colorInput.value;
-        settingsByTheme[entry.id] = readSettingsForm(entry.id);
-        applyLiveSettings();
+        store();
       });
     });
-    settingsFields.querySelectorAll(".theme-hex").forEach((hexInput) => {
+    fields.querySelectorAll(".theme-hex").forEach((hexInput) => {
       const key = hexInput.dataset.key;
-      const colorInput = settingsFields.querySelector(`.theme-color[data-key="${key}"]`);
+      const colorInput = fields.querySelector(`.theme-color[data-key="${key}"]`);
       hexInput.addEventListener("input", () => {
         const v = hexInput.value.trim();
         if (/^#[0-9a-fA-F]{6}$/.test(v) && colorInput) colorInput.value = v.toLowerCase();
-        if (/^#[0-9a-fA-F]{6}$/.test(v)) {
-          settingsByTheme[entry.id] = readSettingsForm(entry.id);
-          applyLiveSettings();
-        }
+        if (/^#[0-9a-fA-F]{6}$/.test(v)) store();
       });
     });
-    settingsFields.querySelectorAll(".theme-scale").forEach((input) => {
+    fields.querySelectorAll(".theme-scale").forEach((input) => {
       const valueEl = input.parentElement && input.parentElement.querySelector(".theme-scale-value");
       input.addEventListener("input", () => {
         if (valueEl) valueEl.textContent = input.value + "%";
-        settingsByTheme[entry.id] = readSettingsForm(entry.id);
-        applyLiveSettings();
+        store();
       });
     });
-    settingsFields.querySelectorAll(".theme-extra-scale").forEach((input) => {
+    fields.querySelectorAll(".theme-extra-scale").forEach((input) => {
       const valueEl = input.parentElement && input.parentElement.querySelector(".theme-extra-scale-value");
       input.addEventListener("input", () => {
         if (valueEl) valueEl.textContent = input.value + "%";
-        settingsByTheme[entry.id] = readSettingsForm(entry.id);
-        applyLiveSettings();
+        store();
       });
     });
-    syncNeonChromeRows();
-    settingsFields.querySelectorAll(".theme-motion").forEach((input) => {
+    fields.querySelectorAll(".theme-motion").forEach((input) => {
       input.addEventListener("change", () => {
-        settingsByTheme[entry.id] = readSettingsForm(entry.id);
-        mountEntry(entry, { keepSettingsForm: true });
+        settingsByTheme[entry.id] = readSettingsForm(entry.id, fields);
+        if (active && active.id === entry.id) mountEntry(entry, { keepSettingsForm: true });
       });
     });
-    settingsFields.querySelectorAll(".theme-select").forEach((input) => {
-      input.addEventListener("change", () => {
-        settingsByTheme[entry.id] = readSettingsForm(entry.id);
-        applyLiveSettings();
-      });
+    fields.querySelectorAll(".theme-select").forEach((input) => {
+      input.addEventListener("change", store);
     });
-    settingsFields.querySelectorAll(".theme-toggle").forEach((input) => {
-      input.addEventListener("change", () => {
-        settingsByTheme[entry.id] = readSettingsForm(entry.id);
-        applyLiveSettings();
-      });
+    fields.querySelectorAll(".theme-toggle").forEach((input) => {
+      input.addEventListener("change", store);
     });
+  }
 
-    settingsPanel.hidden = false;
-    settingsPanel.classList.add("is-open");
+  function captureKey(capture) {
+    if (!capture) return "";
+    return [capture.src || "", capture.message || "", capture.name || ""].join("\n");
   }
 
   function captureAt(index) {
@@ -2136,9 +2707,11 @@
     metaTitle.textContent = entry.label;
     const kind = entry.kind === "mosaic" ? "Mosaic" : "Message";
     const source = entry.imported ? "imported" : entry.custom ? "example pack" : "built-in";
-    const photoNote = photos.length
-      ? photos.length + " sample photos (same as homepage)"
-      : "no sample photos loaded";
+    const photoNote = usingOutput
+      ? livePhotos.length + " live photos"
+      : photos.length
+        ? photos.length + " sample photos (same as homepage)"
+        : "no sample photos loaded";
     metaSub.innerHTML =
       kind +
       " · " +
@@ -2163,7 +2736,10 @@
     // after that so the new ratio is the one the canvas mounts with.
     pushPreviewChrome();
     applyAspect();
-    if (!(opts && opts.keepSettingsForm)) renderSettingsPanel(entry);
+    if (!(opts && opts.keepSettingsForm)) {
+      if (usingOutput) renderKindSettings(entry.kind);
+      else renderSettingsPanel(entry);
+    }
 
     if (entry.kind === "mosaic") {
       const def = mosaicApi.themes[entry.id];
@@ -2180,7 +2756,9 @@
         void renderPreviewBackground();
         return;
       }
-      const pool = photos.length ? shuffle(photos) : [];
+      const source = usingOutput ? livePhotos : photos;
+      const pool = source.length ? shuffle(source) : [];
+      activeMosaicPool = pool;
       const api = {
         nextUrl(avoid) {
           const blocked = new Set();
@@ -2251,15 +2829,19 @@
     const state = def.mount(messageRoot, settings);
     messageState = { id: entry.id, state, settings };
     if (def.applySettings) def.applySettings(messageRoot, state, settings);
-    void presentMessage(captureAt(captureIndex), def, state, settings);
+    const opening = usingOutput ? liveCapture || captureAt(0) : captureAt(captureIndex);
+    shownCaptureKey = captureKey(opening);
+    void presentMessage(opening, def, state, settings);
     if (typeof ResizeObserver !== "undefined" && messageApi.ensureFitStage) {
       resizeRo = new ResizeObserver(() => messageApi.ensureFitStage(messageRoot));
       resizeRo.observe(messageRoot);
     }
-    messageTimer = setInterval(() => {
-      captureIndex += 1;
-      void presentMessage(captureAt(captureIndex), def, state, settings);
-    }, MESSAGE_CYCLE_MS);
+    if (!usingOutput) {
+      messageTimer = setInterval(() => {
+        captureIndex += 1;
+        void presentMessage(captureAt(captureIndex), def, state, settings);
+      }, MESSAGE_CYCLE_MS);
+    }
     scheduleUrlSync();
     void renderPreviewBackground();
     syncPreviewBrand();
@@ -2286,24 +2868,24 @@
   function pushPreviewChrome() {
     if (!rules || typeof rules.applyStorageDelta !== "function") return;
     rules.applyStorageDelta({
-      messageShowQr: { newValue: previewShowQr },
-      messageShowLogo: { newValue: previewShowLogo },
-      mosaicShowQr: { newValue: previewShowQr },
-      mosaicShowLogo: { newValue: previewShowLogo },
+      messageShowQr: { newValue: kindChrome.message.qr },
+      messageShowLogo: { newValue: kindChrome.message.logo },
+      mosaicShowQr: { newValue: kindChrome.mosaic.qr },
+      mosaicShowLogo: { newValue: kindChrome.mosaic.logo },
     });
   }
 
   function syncPreviewBrand() {
     pushPreviewChrome();
-    const root = document.body.classList.contains("is-mosaic") ? mosaicRoot : messageRoot;
-    const kind = document.body.classList.contains("is-mosaic") ? "mosaic" : "message";
+    const kind = stageKind();
+    const chrome = kindChrome[kind];
+    const root = kind === "mosaic" ? mosaicRoot : messageRoot;
     if (!root) return;
     if (rules && typeof rules.ensureBrandChrome === "function") {
       rules.ensureBrandChrome(root, kind);
-    } else {
-      root.classList.toggle("dyn-show-qr", previewShowQr);
-      root.classList.toggle("dyn-show-logo", previewShowLogo);
     }
+    root.classList.toggle("dyn-show-qr", chrome.qr);
+    root.classList.toggle("dyn-show-logo", chrome.logo);
     const qr = root.querySelector("[data-qr]");
     const logo = root.querySelector("[data-logo]");
     if (qr) {
@@ -2358,6 +2940,7 @@
   }
 
   themeSelect.addEventListener("change", () => {
+    if (usingOutput) return;
     const entry = findEntry(themeSelect.value);
     if (entry) mountEntry(entry);
   });
@@ -2377,20 +2960,120 @@
     scheduleUrlSync();
   });
 
-  document.getElementById("prev-theme").addEventListener("click", () => {
-    const opts = [...themeSelect.options];
-    const i = opts.findIndex((opt) => opt.value === themeSelect.value);
-    const next = opts[(i - 1 + opts.length) % opts.length];
-    themeSelect.value = next.value;
-    mountEntry(findEntry(next.value));
+  const outputInput = document.getElementById("output-url");
+  const outputApply = document.getElementById("output-apply");
+  const sourceSamplesBtn = document.getElementById("source-samples");
+  const sourceOutputBtn = document.getElementById("source-output");
+  let sourceChosen = false;
+
+  function rememberSource(mode) {
+    if (document.body.classList.contains("preview-view")) return;
+    try {
+      localStorage.setItem(SOURCE_KEY, mode === "output" ? "output" : "samples");
+    } catch {
+      /* Private mode can block storage. The toggle still works for this visit. */
+    }
+  }
+
+  function setSourceToggle(mode, fromBoot) {
+    if (!fromBoot) sourceChosen = true;
+    const outputOn = mode === "output";
+    document.body.classList.toggle("is-output-source", outputOn);
+    if (sourceSamplesBtn) {
+      sourceSamplesBtn.classList.toggle("is-on", !outputOn);
+      sourceSamplesBtn.setAttribute("aria-selected", outputOn ? "false" : "true");
+    }
+    if (sourceOutputBtn) {
+      sourceOutputBtn.classList.toggle("is-on", outputOn);
+      sourceOutputBtn.setAttribute("aria-selected", outputOn ? "true" : "false");
+    }
+    const outputRow = document.getElementById("output-row");
+    const liveRow = document.getElementById("live-themes");
+    if (outputRow) outputRow.hidden = !outputOn;
+    if (liveRow) liveRow.hidden = !outputOn;
+    rememberSource(mode);
+  }
+
+  function showSamples() {
+    if (outputInput && outputInput.value.trim()) rememberOutputUrl(outputInput.value);
+    setSourceToggle("samples");
+    leaveOutputMode();
+    const address = new URLSearchParams(location.search);
+    if (address.has("output")) {
+      address.delete("output");
+      const qs = address.toString();
+      history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "") + location.hash);
+    }
+    setOutputStatus("");
+    const entry = findEntry(themeSelect.value);
+    if (entry) mountEntry(entry);
+    scheduleUrlSync();
+  }
+
+  function showOutput() {
+    setSourceToggle("output");
+    renderLiveSettings();
+    const next = outputInput ? outputInput.value.trim() : "";
+    if (!next) {
+      if (usingOutput) leaveOutputMode();
+      setOutputStatus("Paste an output URL.", "is-warn");
+      return;
+    }
+    if (usingOutput && outputUrl === next) {
+      followLive();
+      return;
+    }
+    void connectOutput(next).catch((err) => {
+      setOutputStatus(err && err.message ? err.message : "Could not read that output.", "is-error");
+    });
+  }
+
+  if (outputInput) {
+    outputInput.addEventListener("input", () => rememberOutputUrl(outputInput.value));
+    outputInput.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      if (outputApply) outputApply.click();
+    });
+  }
+  if (outputApply) {
+    outputApply.addEventListener("click", () => {
+      const next = outputInput ? outputInput.value.trim() : "";
+      if (!next) {
+        setOutputStatus("Paste an output URL.", "is-warn");
+        return;
+      }
+      void connectOutput(next).catch((err) => {
+        setOutputStatus(err && err.message ? err.message : "Could not read that output.", "is-error");
+      });
+    });
+  }
+  if (sourceSamplesBtn) {
+    sourceSamplesBtn.addEventListener("click", () => {
+      if (!document.body.classList.contains("is-output-source")) return;
+      showSamples();
+    });
+  }
+  if (sourceOutputBtn) {
+    sourceOutputBtn.addEventListener("click", () => {
+      if (document.body.classList.contains("is-output-source")) return;
+      showOutput();
+    });
+  }
+  ["live-message-theme", "live-mosaic-theme"].forEach((id) => {
+    const select = document.getElementById(id);
+    if (!select) return;
+    select.addEventListener("change", () => {
+      const kind = id === "live-message-theme" ? "message" : "mosaic";
+      const key = kind === "message" ? LIVE_MESSAGE_KEY : LIVE_MOSAIC_KEY;
+      localStorage.setItem(key, select.value);
+      if (usingOutput) {
+        renderKindSettings(kind);
+        followLive();
+      }
+    });
   });
-  document.getElementById("next-theme").addEventListener("click", () => {
-    const opts = [...themeSelect.options];
-    const i = opts.findIndex((opt) => opt.value === themeSelect.value);
-    const next = opts[(i + 1) % opts.length];
-    themeSelect.value = next.value;
-    mountEntry(findEntry(next.value));
-  });
+
   if (resetSettingsBtn) {
     resetSettingsBtn.addEventListener("click", async () => {
       if (!active) return;
@@ -2404,6 +3087,24 @@
       scheduleUrlSync();
     });
   }
+  ["reset-message-settings", "reset-mosaic-settings"].forEach((id) => {
+    const button = document.getElementById(id);
+    if (!button) return;
+    button.addEventListener("click", async () => {
+      const kind = id === "reset-message-settings" ? "message" : "mosaic";
+      const themeId = liveThemeId(kind);
+      const entry = catalog.find((item) => item.kind === kind && item.id === themeId);
+      if (!entry) return;
+      const prev = settingsByTheme[entry.id] || {};
+      if (prev.wallpaper && mediaApi) await mediaApi.removeMedia(prev.wallpaper);
+      delete settingsByTheme[entry.id];
+      const storeId = settingsStoreId(entry.id);
+      if (storeId !== entry.id) delete settingsByTheme[storeId];
+      renderKindSettings(kind);
+      if (active && active.id === entry.id) mountEntry(entry, { keepSettingsForm: true });
+      scheduleUrlSync();
+    });
+  });
 
   const previewBgHost = document.getElementById("preview-bg");
   const previewBgFile = document.getElementById("preview-bg-file");
@@ -2414,15 +3115,89 @@
 
   function applyPreviewBgFit(node) {
     if (!node || !mediaApi) return;
-    const css = mediaApi.fitCss(previewBgFit);
+    const css = mediaApi.fitCss(kindChrome[stageKind()].bgFit);
     node.style.objectFit = css.objectFit;
     node.style.objectPosition = css.objectPosition;
   }
 
+  function syncChromeControls() {
+    const shown = kindChrome[stageKind()];
+    if (previewQrBox) previewQrBox.checked = shown.qr;
+    if (previewLogoBox) previewLogoBox.checked = shown.logo;
+    if (previewBgFitSelect) previewBgFitSelect.value = shown.bgFit;
+    refreshMediaName(previewBgName, shown.bgId);
+    ["message", "mosaic"].forEach((kind) => {
+      const fold = document.getElementById(kind === "message" ? "live-message-fold" : "live-mosaic-fold");
+      if (!fold) return;
+      const chrome = kindChrome[kind];
+      const qr = fold.querySelector("[data-chrome='qr']");
+      const logo = fold.querySelector("[data-chrome='logo']");
+      const fit = fold.querySelector("[data-bg-fit]");
+      if (qr) qr.checked = chrome.qr;
+      if (logo) logo.checked = chrome.logo;
+      if (fit) fit.value = chrome.bgFit;
+      refreshMediaName(fold.querySelector("[data-bg-name]"), chrome.bgId);
+    });
+  }
+
+  async function loadKindBackgrounds() {
+    if (!mediaApi) return;
+    const splitKey = "dyn-preview-bg-split";
+    const alreadySplit = localStorage.getItem(splitKey) === "1";
+    let legacy = null;
+    if (!alreadySplit) {
+      try {
+        legacy = await mediaApi.getMedia(PREVIEW_BG_ID);
+      } catch {
+        legacy = null;
+      }
+    }
+    for (const kind of ["message", "mosaic"]) {
+      const id = bgStoreId(kind);
+      let asset = null;
+      try {
+        asset = await mediaApi.getMedia(id);
+      } catch {
+        asset = null;
+      }
+      if (!asset && legacy) {
+        try {
+          await mediaApi.putMedia(id, legacy);
+          asset = legacy;
+        } catch {
+          asset = null;
+        }
+      }
+      kindChrome[kind].bgId = asset ? id : "";
+    }
+    try {
+      localStorage.setItem(splitKey, "1");
+    } catch {
+      /* Private mode can block storage. The in-memory ids still apply. */
+    }
+    syncChromeControls();
+  }
+
+  function applyKindChromeChange(kind) {
+    syncChromeControls();
+    syncNeonChromeRows();
+    if (stageKind() !== kind) {
+      scheduleUrlSync();
+      return;
+    }
+    if (kind === "mosaic" && active && active.kind === "mosaic") mountEntry(active, { keepSettingsForm: true });
+    else syncPreviewBrand();
+    void renderPreviewBackground();
+    scheduleUrlSync();
+  }
+
   async function renderPreviewBackground() {
+    syncChromeControls();
     if (!previewBgHost) return;
     const stage = document.getElementById("stage");
-    const activeTheme = document.body.classList.contains("is-mosaic")
+    const kind = stageKind();
+    const chrome = kindChrome[kind];
+    const activeTheme = kind === "mosaic"
       ? document.getElementById("dyn-mosaic-theme")
       : document.getElementById("dyn-message-theme");
 
@@ -2432,7 +3207,7 @@
       }
     }
 
-    if (!previewBgMediaId || !mediaApi) {
+    if (!chrome.bgId || !mediaApi) {
       previewBgHost.replaceChildren();
       document.body.classList.remove("has-preview-bg");
       parkPreviewBg();
@@ -2444,7 +3219,7 @@
       }
       return;
     }
-    const asset = await mediaApi.getMedia(previewBgMediaId);
+    const asset = await mediaApi.getMedia(chrome.bgId);
     if (!asset || !asset.dataUrl) {
       previewBgHost.replaceChildren();
       document.body.classList.remove("has-preview-bg");
@@ -2490,12 +3265,74 @@
     }
   }
 
+  async function setKindBackground(kind, file, statusEl) {
+    if (!file) return;
+    if (!mediaApi) {
+      setMediaStatus(statusEl, "Media uploads unavailable.", "is-error");
+      return;
+    }
+    try {
+      setMediaStatus(statusEl, "Importing…");
+      const asset = await mediaApi.ingestFile(file);
+      const id = bgStoreId(kind);
+      const ok = await mediaApi.putMedia(id, asset);
+      if (!ok) throw new Error("Could not save that file.");
+      kindChrome[kind].bgId = id;
+      setMediaStatus(statusEl, "Saved.", "is-ok");
+      syncChromeControls();
+      if (stageKind() === kind) await renderPreviewBackground();
+    } catch (err) {
+      setMediaStatus(statusEl, err && err.message ? err.message : "Import failed.", "is-error");
+    }
+  }
+
+  async function clearKindBackground(kind, statusEl) {
+    const id = bgStoreId(kind);
+    if (mediaApi) await mediaApi.removeMedia(id);
+    kindChrome[kind].bgId = "";
+    setMediaStatus(statusEl, "Cleared.");
+    syncChromeControls();
+    if (stageKind() === kind) await renderPreviewBackground();
+  }
+
+  function bindKindBackground(kind, root, fileInput, clearBtn, statusEl, fitSelect) {
+    if (fileInput) {
+      fileInput.addEventListener("change", async () => {
+        const file = fileInput.files && fileInput.files[0];
+        fileInput.value = "";
+        await setKindBackground(kind, file, statusEl);
+      });
+    }
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        void clearKindBackground(kind, statusEl);
+      });
+    }
+    if (fitSelect) {
+      fitSelect.addEventListener("change", () => {
+        kindChrome[kind].bgFit = normalizeBgFit(fitSelect.value);
+        syncChromeControls();
+        if (stageKind() === kind) {
+          const node = previewBgHost && previewBgHost.firstElementChild;
+          if (node) applyPreviewBgFit(node);
+        }
+        scheduleUrlSync();
+      });
+    }
+    root.querySelectorAll("[data-chrome]").forEach((input) => {
+      input.addEventListener("change", () => {
+        if (input.dataset.chrome === "qr") kindChrome[kind].qr = input.checked;
+        if (input.dataset.chrome === "logo") kindChrome[kind].logo = input.checked;
+        applyKindChromeChange(kind);
+      });
+    });
+  }
+
   if (previewBgFitSelect) {
-    previewBgFitSelect.value = previewBgFit;
     previewBgFitSelect.addEventListener("change", () => {
-      previewBgFit = mediaApi && mediaApi.normalizeFit
-        ? mediaApi.normalizeFit(previewBgFitSelect.value)
-        : previewBgFitSelect.value || "cover";
+      const kind = stageKind();
+      kindChrome[kind].bgFit = normalizeBgFit(previewBgFitSelect.value);
+      syncChromeControls();
       const node = previewBgHost && previewBgHost.firstElementChild;
       if (node) applyPreviewBgFit(node);
       scheduleUrlSync();
@@ -2506,39 +3343,28 @@
     previewBgFile.addEventListener("change", async () => {
       const file = previewBgFile.files && previewBgFile.files[0];
       previewBgFile.value = "";
-      if (!file) return;
-      if (!mediaApi) {
-        setMediaStatus(previewBgStatus, "Media uploads unavailable.", "is-error");
-        return;
-      }
-      try {
-        setMediaStatus(previewBgStatus, "Importing…");
-        const asset = await mediaApi.ingestFile(file);
-        const ok = await mediaApi.putMedia(PREVIEW_BG_ID, asset);
-        if (!ok) throw new Error("Could not save that file.");
-        previewBgMediaId = PREVIEW_BG_ID;
-        await refreshMediaName(previewBgName, previewBgMediaId);
-        setMediaStatus(previewBgStatus, "Saved.", "is-ok");
-        await renderPreviewBackground();
-      } catch (err) {
-        setMediaStatus(
-          previewBgStatus,
-          err && err.message ? err.message : "Import failed.",
-          "is-error"
-        );
-      }
+      await setKindBackground(stageKind(), file, previewBgStatus);
     });
   }
 
   if (previewBgClear) {
-    previewBgClear.addEventListener("click", async () => {
-      if (mediaApi) await mediaApi.removeMedia(PREVIEW_BG_ID);
-      previewBgMediaId = "";
-      if (previewBgName) previewBgName.textContent = "No file";
-      setMediaStatus(previewBgStatus, "Cleared.");
-      await renderPreviewBackground();
+    previewBgClear.addEventListener("click", () => {
+      void clearKindBackground(stageKind(), previewBgStatus);
     });
   }
+
+  ["message", "mosaic"].forEach((kind) => {
+    const fold = document.getElementById(kind === "message" ? "live-message-fold" : "live-mosaic-fold");
+    if (!fold) return;
+    bindKindBackground(
+      kind,
+      fold,
+      fold.querySelector("[data-bg-file]"),
+      fold.querySelector("[data-bg-clear]"),
+      fold.querySelector("[data-bg-status]"),
+      fold.querySelector("[data-bg-fit]")
+    );
+  });
 
   let previewResizeTimer = 0;
   window.addEventListener("resize", () => {
@@ -2686,6 +3512,19 @@
       settingsByTheme[themeId] = { ...(settingsByTheme[themeId] || {}), ...data.settings };
     }
     const found = catalog.find((item) => item.id === themeId) || entry;
+    if (data.outputUrl) {
+      if (data.messageTheme) localStorage.setItem(LIVE_MESSAGE_KEY, data.messageTheme);
+      if (data.mosaicTheme) localStorage.setItem(LIVE_MOSAIC_KEY, data.mosaicTheme);
+      fillLiveSelects();
+      const messageSelect = document.getElementById("live-message-theme");
+      const mosaicSelect = document.getElementById("live-mosaic-theme");
+      if (messageSelect && data.messageTheme) messageSelect.value = data.messageTheme;
+      if (mosaicSelect && data.mosaicTheme) mosaicSelect.value = data.mosaicTheme;
+      void connectOutput(data.outputUrl).catch((err) => {
+        metaSub.textContent = err && err.message ? err.message : "Could not read that output.";
+      });
+      return;
+    }
     if (found) mountEntry(found);
   }
 
@@ -2856,26 +3695,27 @@
   const openViewerBtn = document.getElementById("open-viewer");
   if (openViewerBtn) {
     openViewerBtn.addEventListener("click", () => {
-      if (!active) return;
-      syncUrlFromState();
+      if (!active && !usingOutput) return;
+      if (active) syncUrlFromState();
       const viewNonce = Date.now().toString(36) + Math.random().toString(36).slice(2);
-      const viewerUrl = new URL(location.href);
-      viewerUrl.searchParams.set("view", "1");
-      viewerUrl.searchParams.set("theme", active.id);
-      viewerUrl.searchParams.set("viewNonce", viewNonce);
+      const viewerUrl = buildViewerUrl(viewNonce);
       const payload = {
         source: VIEW_CHANNEL,
         type: "pack",
         nonce: viewNonce,
-        themeId: active.id,
-        settings: settingsFor(active.id, active.pack),
-        pack: active.imported ? active.pack : null,
-        engineSource: active.imported
-          ? active.engineSource ||
-            sessionEngineSources[(active.pack && active.pack.engine) || ""] ||
-            ""
-          : "",
-        fontAssets: active.imported ? fontAssetsForPack(active.pack) : [],
+        themeId: active ? active.id : themeForUrl,
+        settings: active ? settingsFor(active.id, active.pack) : null,
+        pack: active && active.imported ? active.pack : null,
+        engineSource:
+          active && active.imported
+            ? active.engineSource ||
+              sessionEngineSources[(active.pack && active.pack.engine) || ""] ||
+              ""
+            : "",
+        fontAssets: active && active.imported ? fontAssetsForPack(active.pack) : [],
+        outputUrl: usingOutput ? outputUrl : "",
+        messageTheme: liveThemeId("message"),
+        mosaicTheme: liveThemeId("mosaic"),
       };
       let delivered = false;
       const bus = viewBus();
@@ -2940,50 +3780,39 @@
   stageMode = aspectSelect.value;
   syncCustomAspectUI();
 
-  const bgFitParam = params.get("bgfit");
-  if (bgFitParam && mediaApi && mediaApi.normalizeFit) {
-    previewBgFit = mediaApi.normalizeFit(bgFitParam);
-  } else if (bgFitParam) {
-    previewBgFit = bgFitParam;
-  }
-  if (previewBgFitSelect) previewBgFitSelect.value = previewBgFit;
-
   if (params.get("view") === "1") document.body.classList.add("preview-view");
   if (params.get("dock") === "min") setDockCollapsed(true);
   const previewQrBox = document.getElementById("preview-show-qr");
   const previewLogoBox = document.getElementById("preview-show-logo");
-  if (params.get("qr") === "1") {
-    previewShowQr = true;
-    if (previewQrBox) previewQrBox.checked = true;
-  }
-  if (params.get("logo") === "1") {
-    previewShowLogo = true;
-    if (previewLogoBox) previewLogoBox.checked = true;
-  }
-  function syncNeonChromeRows() {
-    if (!settingsFields) return;
-    settingsFields.querySelectorAll("[data-chrome-toggle]").forEach((row) => {
-      const which = row.dataset.chromeToggle;
-      const on = which === "qr" ? previewShowQr : previewShowLogo;
-      row.hidden = !on;
+  readChromeParams(params);
+  syncChromeControls();
+  function syncNeonChromeRows(root, kind) {
+    const jobs = root
+      ? [{ scope: root, kind: kind || stageKind() }]
+      : [
+          { scope: settingsFields, kind: stageKind() },
+          { scope: document.getElementById("live-message-settings"), kind: "message" },
+          { scope: document.getElementById("live-mosaic-settings"), kind: "mosaic" },
+        ];
+    jobs.forEach((job) => {
+      if (!job.scope) return;
+      const flags = kindChrome[job.kind === "mosaic" ? "mosaic" : "message"];
+      job.scope.querySelectorAll("[data-chrome-toggle]").forEach((row) => {
+        const which = row.dataset.chromeToggle;
+        row.hidden = !(which === "qr" ? flags.qr : flags.logo);
+      });
     });
   }
   if (previewQrBox) {
     previewQrBox.addEventListener("change", () => {
-      previewShowQr = previewQrBox.checked;
-      syncNeonChromeRows();
-      if (active && active.kind === "mosaic") mountEntry(active, { keepSettingsForm: true });
-      else syncPreviewBrand();
-      scheduleUrlSync();
+      kindChrome[stageKind()].qr = previewQrBox.checked;
+      applyKindChromeChange(stageKind());
     });
   }
   if (previewLogoBox) {
     previewLogoBox.addEventListener("change", () => {
-      previewShowLogo = previewLogoBox.checked;
-      syncNeonChromeRows();
-      if (active && active.kind === "mosaic") mountEntry(active, { keepSettingsForm: true });
-      else syncPreviewBrand();
-      scheduleUrlSync();
+      kindChrome[stageKind()].logo = previewLogoBox.checked;
+      applyKindChromeChange(stageKind());
     });
   }
 
@@ -3018,14 +3847,412 @@
     catalog.find((item) => item.id === "led-scoreboard") ||
     catalog[0];
 
-  function bootPreview(entry) {
+  function setOutputStatus(text, kind) {
+    const status = document.getElementById("output-status");
+    if (!status) return;
+    status.textContent = text || "";
+    status.classList.remove("is-error", "is-ok", "is-warn");
+    if (kind) status.classList.add(kind);
+  }
+
+  function forcedOutputKind(url) {
+    if (/[?&]standalone=mosaic(?:&|$)/i.test(url)) return "mosaic";
+    if (/[?&]standalone=message(?:&|$)/i.test(url)) return "message";
+    return "";
+  }
+
+  function outputSessionTargets(pageUrl) {
+    const query = "url=" + encodeURIComponent(pageUrl);
+    const targets = ["/api/output-session?" + query];
+    if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
+      targets.push("http://127.0.0.1:9999/api/output-session?" + query);
+    }
+    return targets;
+  }
+
+  async function fetchOutputSession(pageUrl) {
+    let lastError = "Could not read that output.";
+    for (const target of outputSessionTargets(pageUrl)) {
+      try {
+        const res = await fetch(target, { cache: "no-store" });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          lastError = body.error || lastError;
+          continue;
+        }
+        return body;
+      } catch {
+        /* The local preview server has no helper until Netlify is serving it. */
+      }
+    }
+    throw new Error(lastError);
+  }
+
+  function rememberOutputUrl(value) {
+    const next = String(value || "").trim();
+    if (next) localStorage.setItem(OUTPUT_URL_KEY, next);
+    else localStorage.removeItem(OUTPUT_URL_KEY);
+  }
+
+  function stopOutputSocket() {
+    if (outputRetry) {
+      clearTimeout(outputRetry);
+      outputRetry = 0;
+    }
+    if (outputWs) {
+      const socket = outputWs;
+      outputWs = null;
+      socket.onclose = null;
+      try {
+        socket.close();
+      } catch {
+        /* already closed */
+      }
+    }
+  }
+
+  function leaveOutputMode() {
+    stopOutputSocket();
+    usingOutput = false;
+    livePhotos = [];
+    liveCapture = null;
+    liveApplication = "";
+    shownCaptureKey = "";
+    activeMosaicPool = null;
+    hideNative();
+    photos = samplePhotos.slice();
+    captures = sampleCaptures.slice();
+    document.body.classList.remove("is-live-output");
+  }
+
+  function photoSetKey(list) {
+    return (list || []).slice().sort().join("\n");
+  }
+
+  function setLivePhotoList(urls) {
+    const next = [];
+    const seen = new Set();
+    (urls || []).forEach((src) => {
+      if (typeof src !== "string" || !/^https?:/i.test(src) || seen.has(src)) return;
+      if (/\/config\//i.test(src) || /output_logo|layers__logo|default_am_output_logo/i.test(src)) return;
+      seen.add(src);
+      next.push(src);
+    });
+    livePhotos = next;
+    photos = next.slice();
+  }
+
+  function applySnapshot(session) {
+    if (Array.isArray(session.photos) && session.photos.length) setLivePhotoList(session.photos);
+    if (session.capture) liveCapture = session.capture;
+    const sceneName = session.application && session.application !== "other" ? session.application : "";
+    if (sceneName) liveApplication = sceneName;
+    if (session.native && session.native.application && session.native.application !== "other") {
+      liveScene = {
+        application: session.native.application,
+        metadata: session.native.metadata || {},
+      };
+      if (!liveApplication) liveApplication = session.native.application;
+    }
+  }
+
+  function ingestOutputEvent(data) {
+    if (!data || !data.event) return;
+    const payload = data.data || {};
+    if (data.event === "mosaic.entries" && Array.isArray(payload.entries)) {
+      setLivePhotoList(payload.entries);
+    } else if (data.event === "mosaic.changed") {
+      const next = livePhotos.slice();
+      (payload.added || []).forEach((src) => {
+        if (typeof src === "string" && src && !next.includes(src)) next.push(src);
+      });
+      (payload.removed || []).forEach((src) => {
+        const at = next.indexOf(src);
+        if (at >= 0) next.splice(at, 1);
+      });
+      setLivePhotoList(next);
+    }
+    const scene = payload.currentScene;
+    if (!scene || !scene.application) return;
+    liveScene = scene;
+    liveApplication = String(scene.application);
+    if (scene.application === "message" && scene.metadata) {
+      const userData = scene.metadata.userData || {};
+      const message = String(userData.mes00 || userData.message || userData.Message || "").trim();
+      const name = String(userData.nam00 || userData.name || userData.Name || "").trim();
+      const fields = { message, name };
+      const questions = [];
+      Object.keys(userData).forEach((key) => {
+        if (key === "mes00" || key === "nam00" || key === "ema00" || /email/i.test(key)) return;
+        const text = String(userData[key] || "").trim();
+        if (!text || text === message || text === name) return;
+        questions.push(text);
+        fields["question" + questions.length] = text;
+      });
+      fields.questions = questions;
+      let src = String(scene.metadata.assetUrl || scene.metadata.imageUrl || "").trim();
+      if (!/^https?:/i.test(src) || /\/config\//i.test(src)) src = "";
+      if (src || message || name) liveCapture = { src, message, name, fields };
+    }
+  }
+
+  function liveThemeId(kind) {
+    const select = document.getElementById(kind === "message" ? "live-message-theme" : "live-mosaic-theme");
+    return select ? select.value : "off";
+  }
+
+  function sceneTitle(app) {
+    const names = {
+      cta: "CTA",
+      photo_magic: "Photo Magic",
+      video_magic: "Video Magic",
+      groov: "Groov",
+      live: "Live",
+      home: "Home",
+      polling: "Polling",
+      reels: "Reels",
+      stream: "Stream",
+    };
+    const key = String(app || "");
+    return names[key] || key.replace(/_/g, " ") || "this screen";
+  }
+
+  function hideNative() {
+    const el = document.getElementById("output-native");
+    shownNativeKey = "";
+    if (!el) return;
+    el.hidden = true;
+    el.replaceChildren();
+  }
+
+  function nativeContentKey(scene) {
+    const meta = (scene && scene.metadata) || {};
+    const type = String(meta.type || "").toLowerCase();
+    const src = String(
+      meta.assetUrl || meta.videoUrl || meta.processedVideoUrl || meta.processedAssetUrl || meta.imageUrl || ""
+    ).trim();
+    return [scene && scene.application, type, src].join("\n");
+  }
+
+  function showNativeContent(scene) {
+    const el = document.getElementById("output-native");
+    const title = sceneTitle(scene && scene.application);
+    const key = nativeContentKey(scene);
+    if (el && !el.hidden && key === shownNativeKey) {
+      setOutputStatus(title, "is-ok");
+      return;
+    }
+    unmountCurrent();
+    active = null;
+    if (settingsPanel) settingsPanel.hidden = true;
+    shownNativeKey = key;
+    if (!el) {
+      setOutputStatus(title, "is-warn");
+      return;
+    }
+    const meta = (scene && scene.metadata) || {};
+    const type = String(meta.type || "").toLowerCase();
+    const src = String(
+      meta.assetUrl || meta.videoUrl || meta.processedVideoUrl || meta.processedAssetUrl || meta.imageUrl || ""
+    ).trim();
+    el.replaceChildren();
+    el.hidden = false;
+    const videoLike = type === "video" || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(src);
+    const urlLike = type === "url" || (src && !videoLike && !/\.(jpe?g|png|gif|webp|avif)(\?|$)/i.test(src) && !/\/(capture|playlist|overlays)\//i.test(src));
+    if (src && /^https?:/i.test(src) && videoLike) {
+      const video = document.createElement("video");
+      video.src = src;
+      video.autoplay = true;
+      video.loop = true;
+      video.muted = true;
+      video.playsInline = true;
+      el.appendChild(video);
+    } else if (src && /^https?:/i.test(src) && urlLike) {
+      const frame = document.createElement("iframe");
+      frame.src = src;
+      frame.title = title;
+      frame.setAttribute("allowfullscreen", "");
+      frame.setAttribute(
+        "sandbox",
+        "allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation"
+      );
+      el.appendChild(frame);
+    } else if (src && /^https?:/i.test(src)) {
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = title;
+      el.appendChild(img);
+    } else {
+      const note = document.createElement("p");
+      note.textContent = title;
+      el.appendChild(note);
+    }
+    setOutputStatus(title, "is-ok");
+  }
+
+  function markLiveFold(kind) {
+    const messageBlock = document.getElementById("live-message-block");
+    const mosaicBlock = document.getElementById("live-mosaic-block");
+    if (messageBlock) messageBlock.classList.toggle("is-current", kind === "message");
+    if (mosaicBlock) mosaicBlock.classList.toggle("is-current", kind === "mosaic");
+  }
+
+  function followLive() {
+    if (!usingOutput) return;
+    const kind = forcedOutputKind(outputUrl) || liveApplication;
+    markLiveFold(kind);
+    photos = livePhotos.slice();
+    if (liveCapture) captures = [liveCapture];
+    if (!kind || kind === "other") return;
+    if (kind !== "message" && kind !== "mosaic") {
+      showNativeContent(liveScene);
+      return;
+    }
+    hideNative();
+    const themeId = liveThemeId(kind);
+    if (!themeId || themeId === "off") {
+      unmountCurrent();
+      active = null;
+      if (settingsPanel) settingsPanel.hidden = true;
+      setOutputStatus((kind === "message" ? "Message" : "Mosaic") + " template is off.", "is-warn");
+      return;
+    }
+    const entry = catalog.find((item) => item.kind === kind && item.id === themeId);
+    if (!entry) return;
+    const same = active && active.kind === entry.kind && active.id === entry.id;
+    if (!same) {
+      mountEntry(entry);
+      const label = kind === "message" ? "Message" : "Mosaic";
+      setOutputStatus(label + " · " + entry.label, "is-ok");
+      return;
+    }
+    if (kind === "mosaic") {
+      const shown = activeMosaicPool ? photoSetKey(activeMosaicPool) : "";
+      const next = photoSetKey(livePhotos);
+      if (livePhotos.length && shown !== next) mountEntry(entry);
+      setOutputStatus("Mosaic · " + entry.label + " · " + livePhotos.length + " photos", "is-ok");
+      return;
+    }
+    if (kind === "message" && messageState && liveCapture) {
+      const key = captureKey(liveCapture);
+      if (key !== shownCaptureKey) {
+        shownCaptureKey = key;
+        const def = messageApi.themes[entry.id];
+        if (def) void presentMessage(liveCapture, def, messageState.state, messageState.settings);
+      }
+      setOutputStatus("Message · " + entry.label, "is-ok");
+    }
+  }
+
+  function openOutputSocket(wsUrl) {
+    stopOutputSocket();
+    let socket;
+    try {
+      socket = new WebSocket(wsUrl);
+    } catch {
+      scheduleOutputPoll();
+      return;
+    }
+    outputWs = socket;
+    socket.onmessage = (event) => {
+      if (!usingOutput || outputWs !== socket) return;
+      try {
+        ingestOutputEvent(JSON.parse(event.data));
+      } catch {
+        return;
+      }
+      followLive();
+    };
+    socket.onerror = () => {};
+    socket.onclose = () => {
+      if (!usingOutput || outputWs !== socket) return;
+      outputWs = null;
+      scheduleOutputPoll();
+    };
+  }
+
+  function scheduleOutputPoll() {
+    if (!usingOutput || outputRetry) return;
+    outputRetry = window.setTimeout(() => {
+      outputRetry = 0;
+      if (!usingOutput) return;
+      void connectOutput(outputUrl, { quiet: true });
+    }, 4000);
+  }
+
+  async function connectOutput(pageUrl, opts) {
+    const quiet = opts && opts.quiet;
+    const url = String(pageUrl || "").trim();
+    if (!url) {
+      leaveOutputMode();
+      setOutputStatus("");
+      if (active) mountEntry(active);
+      return;
+    }
+    rememberOutputUrl(url);
+    outputUrl = url;
+    setSourceToggle("output", true);
+    if (!quiet) setOutputStatus("Connecting to that output…");
+    const session = await fetchOutputSession(url);
+    usingOutput = true;
+    document.body.classList.add("is-live-output");
+    if (!quiet) renderLiveSettings();
+    applySnapshot(session);
+    followLive();
+    if (session.wsUrl) openOutputSocket(session.wsUrl);
+    else scheduleOutputPoll();
+  }
+
+  async function bootPreview(entry) {
+    const queryOutput = params.get("output") || "";
+    let storedOutput = "";
+    let storedSource = "";
+    try {
+      storedOutput = localStorage.getItem(OUTPUT_URL_KEY) || "";
+      storedSource = localStorage.getItem(SOURCE_KEY) || "";
+    } catch {
+      storedOutput = "";
+      storedSource = "";
+    }
+    const savedOutput = queryOutput || storedOutput;
+    await loadKindBackgrounds();
+    applyShareParams(params);
     if (entry) applyUrlSettings(entry.id, params);
     urlSyncReady = true;
+    if (outputInput && savedOutput && !String(outputInput.value || "").trim()) outputInput.value = savedOutput;
+    if (sourceChosen) {
+      if (!active && entry && !document.body.classList.contains("is-output-source")) mountEntry(entry);
+      return;
+    }
+    const viewing = document.body.classList.contains("preview-view");
+    const wantOutput =
+      Boolean(queryOutput) ||
+      (!viewing && (storedSource === "output" || (!storedSource && Boolean(storedOutput))));
+    if (wantOutput) {
+      setSourceToggle("output", true);
+      renderLiveSettings();
+      if (savedOutput) {
+        void connectOutput(savedOutput).catch((err) => {
+          setOutputStatus(err && err.message ? err.message : "Could not read that output.", "is-error");
+          usingOutput = false;
+          document.body.classList.remove("is-live-output");
+          if (!sourceChosen) setSourceToggle("output", true);
+          renderLiveSettings();
+          if (entry && !active) mountEntry(entry);
+        });
+        return;
+      }
+      setOutputStatus("Paste an output URL.", "is-warn");
+    } else {
+      setSourceToggle("samples", true);
+    }
     if (entry) mountEntry(entry);
     else metaSub.textContent = "No themes available.";
   }
 
-  if (document.body.classList.contains("preview-view")) {
+  if (document.body.classList.contains("preview-view") && params.get("output")) {
+    bootPreview(start);
+  } else if (document.body.classList.contains("preview-view")) {
     let booted = false;
     const viewNonce = params.get("viewNonce") || "";
     function takePack(data) {
@@ -3039,6 +4266,7 @@
       } catch (err) {
         metaSub.textContent = err && err.message ? err.message : "Could not open that pack.";
       }
+      if (data.outputUrl) return;
       if (!active) bootPreview(start);
     }
     window.addEventListener("message", (event) => {

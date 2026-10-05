@@ -1,0 +1,36 @@
+{
+  "format": "dynamic-backgrounds-theme",
+  "version": 1,
+  "kind": "message",
+  "id": "message-geico-marathon",
+  "label": "Geico NY Marathon",
+  "engine": "message-geico-marathon-engine",
+  "engineFile": "message-geico-marathon-engine.js",
+  "fonts": "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&family=Caveat:wght@700&family=Outfit:wght@700&display=swap",
+  "css": "#dyn-message-theme[data-theme=\"message-geico-marathon\"],\n#dyn-message-theme[data-theme=\"message-geico-marathon\"] .dyn-fit-stage {\n  background: var(--background, #005eac);\n}\n#dyn-message-theme[data-theme=\"message-geico-marathon\"] .board {\n  position: absolute;\n  inset: 0;\n  background: var(--background, #005eac);\n  container-type: size;\n  overflow: hidden;\n  color: #fff;\n}\n#dyn-message-theme[data-theme=\"message-geico-marathon\"] .bar {\n  position: absolute;\n  z-index: 4;\n  top: 4.5cqh;\n  right: 4.5cqw;\n  display: flex;\n  justify-content: flex-end;\n}\n\n#dyn-message-theme[data-theme=\"message-geico-marathon\"] .logo {\n  width: 22cqw;\n  height: auto;\n  display: block;\n}\n#dyn-message-theme[data-theme=\"message-geico-marathon\"] .copy {\n  position: absolute;\n  z-index: 3;\n  left: 8cqw;\n  right: 8cqw;\n  top: 16cqh;\n  bottom: 14cqh;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  text-align: center;\n  opacity: 0;\n  transform: translateY(1.4cqh);\n}\n#dyn-message-theme[data-theme=\"message-geico-marathon\"].on .copy {\n  opacity: 1;\n  transform: none;\n  transition: opacity 0.45s ease, transform 0.45s ease;\n}\n#dyn-message-theme[data-theme=\"message-geico-marathon\"][data-motion=\"drift\"].on .copy {\n  transition-duration: 0.9s;\n}\n#dyn-message-theme[data-theme=\"message-geico-marathon\"][data-motion=\"fizz\"].on .copy {\n  transition-duration: 0.28s;\n}\n#dyn-message-theme[data-theme=\"message-geico-marathon\"] .racer,\n#dyn-message-theme[data-theme=\"message-geico-marathon\"] .from {\n  margin: 0;\n  color: var(--secondary, #ffffff);\n  font-family: Caveat, cursive;\n  font-weight: 700;\n  line-height: 0.95;\n  max-width: 100%;\n}\n#dyn-message-theme[data-theme=\"message-geico-marathon\"] .racer {\n  font-size: 13cqw;\n}\n#dyn-message-theme[data-theme=\"message-geico-marathon\"] .from {\n  font-size: 6.5cqw;\n  margin-top: 0.12em;\n}\n#dyn-message-theme[data-theme=\"message-geico-marathon\"] .sign {\n  margin: 0.04em 0 0;\n  color: var(--primary, #d6f25c);\n  font-family: \"Barlow Condensed\", \"Arial Narrow\", sans-serif;\n  font-weight: 700;\n  font-size: 8.2cqw;\n  line-height: 0.95;\n  max-width: 100%;\n  transition: opacity 0.28s ease;\n}\n#dyn-message-theme[data-theme=\"message-geico-marathon\"] .glyph {\n  position: absolute;\n  z-index: 2;\n  left: 1.2cqw;\n  bottom: 0.4cqh;\n  width: 22cqw;\n  height: auto;\n  display: block;\n  pointer-events: none;\n  transition: opacity 0.28s ease;\n}\n#dyn-message-theme[data-theme=\"message-geico-marathon\"] .sign.is-fading,\n#dyn-message-theme[data-theme=\"message-geico-marathon\"] .glyph.is-fading {\n  opacity: 0;\n}\n#dyn-message-theme[data-theme=\"message-geico-marathon\"] .slot-logo,\n#dyn-message-theme[data-theme=\"message-geico-marathon\"] .slot-qr {\n  display: none;\n}\n#dyn-message-theme[data-theme=\"message-geico-marathon\"].dyn-show-logo .slot-logo {\n  display: block;\n  position: absolute;\n  z-index: 5;\n  top: 4cqh;\n  left: 4cqw;\n  width: 14cqw;\n}\n\n#dyn-message-theme[data-theme=\"message-geico-marathon\"].dyn-show-qr .slot-qr {\n  display: block;\n  position: absolute;\n  z-index: 5;\n  right: 3cqw;\n  bottom: 4cqh;\n  width: 12cqw;\n}\n#dyn-message-theme[data-theme=\"message-geico-marathon\"].no-racer .racer,\n#dyn-message-theme[data-theme=\"message-geico-marathon\"].no-name .from {\n  display: none;\n}",
+  "html": "<div class=\"board\"><div class=\"bar\"><img class=\"logo\" alt=\"GEICO\" data-brand=\"geico\"></div><div class=\"copy\"><p class=\"racer\" data-message></p><p class=\"sign\" data-sign></p><p class=\"from\" data-name></p></div><img class=\"glyph\" data-glyph alt=\"\"><div class=\"slot-logo\" data-logo></div><div class=\"slot-qr\" data-qr></div></div>",
+  "settings": {
+    "primary": {
+      "label": "Sign",
+      "default": "#d6f25c"
+    },
+    "secondary": {
+      "label": "Names",
+      "default": "#ffffff"
+    },
+    "background": {
+      "label": "Board",
+      "default": "#005eac"
+    },
+    "motion": {
+      "label": "Motion",
+      "default": "slow"
+    }
+  },
+  "revealMs": 700,
+  "hideMs": 280,
+  "notes": {
+    "message": "Racer name",
+    "name": "From"
+  }
+}

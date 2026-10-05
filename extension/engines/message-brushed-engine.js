@@ -244,9 +244,7 @@ function fitAll(themeRoot, fit) {
   const savedTilt = lockup ? lockup.style.transform : "";
   if (lockup) lockup.style.transform = "none";
   const line1 = themeRoot.querySelector(".line1");
-  if (line1) {
-    line1.style.fontSize = shrinkToBox(line1, copy, 104, 24) + "px";
-  }
+  if (line1) fitChrome(line1, copy);
   const heroes = themeRoot.querySelector(".heroes");
   const fills = themeRoot.querySelectorAll(".hero-fill");
   if (heroes && fills.length) {
@@ -259,32 +257,101 @@ function fitAll(themeRoot, fit) {
       fill.style.marginLeft = "auto";
       fill.style.marginRight = "auto";
     });
-    let size = 136;
+    let size = 128;
     applyHeroSize(heroes, fills, size);
     let guard = 0;
-    while (guard < 70 && size > 52 && (heroWiderThan(fills, copy) || heroWordOverflows(fills, copy))) {
+    while (guard < 40 && size > 108 && heroLineCount(fills) > 2) {
+      size -= 2;
+      applyHeroSize(heroes, fills, size);
+      guard += 1;
+    }
+    while (guard < 70 && size > 96 && (heroWiderThan(fills, copy) || heroWordOverflows(fills, copy))) {
       size -= 2;
       applyHeroSize(heroes, fills, size);
       guard += 1;
     }
     if (lockup) lockup.style.transform = savedTilt;
-    guard = 0;
-    while (guard < 24 && size > 52 && heroHitsClip(fills, copy, hd)) {
+    while (guard < 90 && size > 88 && heroHitsClip(fills, copy, hd)) {
       size -= 2;
       applyHeroSize(heroes, fills, size);
       guard += 1;
-    }
-    const line1Px = line1 ? parseFloat(line1.style.fontSize) : 0;
-    if (line1Px && size > line1Px * 1.42) {
-      size = Math.round(line1Px * 1.42);
-      applyHeroSize(heroes, fills, size);
     }
     tightenLockup(themeRoot, size);
   } else if (lockup) {
     lockup.style.transform = savedTilt;
   }
   fitPlateToName(themeRoot, fit);
+  compressStack(themeRoot, copy);
   pinBotStroke(themeRoot);
+}
+
+function fitChrome(line1, copy) {
+  const words = line1.querySelectorAll(".word").length;
+  line1.style.whiteSpace = "nowrap";
+  line1.style.lineHeight = "";
+  let size = shrinkToBox(line1, copy, 104, 28);
+  if (words > 2 && size < 92) {
+    line1.style.whiteSpace = "normal";
+    line1.style.lineHeight = "0.96";
+    size = 96;
+    line1.style.fontSize = size + "px";
+    let guard = 0;
+    while (guard < 16 && size > 80 && chromeOverflows(line1, copy, size)) {
+      size -= 2;
+      line1.style.fontSize = size + "px";
+      guard += 1;
+    }
+    return size;
+  }
+  line1.style.fontSize = size + "px";
+  return size;
+}
+
+function chromeOverflows(line1, copy, size) {
+  const limit = copyLimit(copy, 0.94);
+  const words = line1.querySelectorAll(".word");
+  for (let i = 0; i < words.length; i += 1) {
+    if (words[i].getBoundingClientRect().width > limit) return true;
+  }
+  return line1.getBoundingClientRect().height > size * 2.2;
+}
+
+function heroLineCount(fills) {
+  let lines = 1;
+  for (let i = 0; i < fills.length; i += 1) {
+    const size = parseFloat(fills[i].style.fontSize) || 96;
+    const height = fills[i].getBoundingClientRect().height;
+    lines = Math.max(lines, Math.round(height / (size * 0.82)));
+  }
+  return lines;
+}
+
+function compressStack(themeRoot, copy) {
+  const lockup = themeRoot.querySelector(".copy-lockup");
+  const plate = themeRoot.querySelector(".plate");
+  const heroes = themeRoot.querySelector(".heroes");
+  const fills = themeRoot.querySelectorAll(".hero-fill");
+  const line1 = themeRoot.querySelector(".line1");
+  if (!lockup || !copy) return;
+  const saved = lockup.style.transform;
+  lockup.style.transform = "none";
+  let guard = 0;
+  while (guard < 14) {
+    const plateH = plate && plate.offsetParent ? plate.offsetHeight + 12 : 0;
+    if (lockup.offsetHeight + plateH <= copy.clientHeight) break;
+    const gold = parseFloat(heroes && heroes.style.fontSize) || 0;
+    const chrome = parseFloat(line1 && line1.style.fontSize) || 0;
+    if (heroes && fills.length && gold > 100) {
+      applyHeroSize(heroes, fills, gold - 4);
+      tightenLockup(themeRoot, gold - 4);
+    } else if (line1 && chrome > 76) {
+      line1.style.fontSize = chrome - 4 + "px";
+    } else {
+      break;
+    }
+    guard += 1;
+  }
+  lockup.style.transform = saved;
 }
 
 function tightenLockup(themeRoot, size) {
@@ -326,13 +393,29 @@ function pinBotStroke(themeRoot) {
     }
     return;
   }
+  const plate = themeRoot.querySelector(".plate");
+  const hd = themeRoot.querySelector(".hd") || themeRoot;
   const saved = lockup.style.transform;
-  lockup.style.transform = "none";
-  const y = offsetTopIn(last, lockup) + last.offsetHeight;
-  const drop = Math.round(Math.min(16, Math.max(8, last.offsetHeight * 0.1)));
-  bot.style.top = Math.round(y + drop) + "px";
+  lockup.style.transform = saved || "";
+  const hdBox = hd.getBoundingClientRect();
+  const scale = hdBox.height / (hd.clientHeight || hdBox.height) || 1;
+  if (!bot.style.top) bot.style.top = "0px";
   bot.style.transform = "translate(-50%, 0)";
-  lockup.style.transform = saved;
+  for (let pass = 0; pass < 2; pass += 1) {
+    const ink = inkBox(last);
+    const botBox = bot.getBoundingClientRect();
+    const want = ink.bottom - botBox.height * 0.42;
+    const delta = (want - botBox.top) / scale;
+    bot.style.top = Math.round((parseFloat(bot.style.top) || 0) + delta) + "px";
+  }
+  if (!plate || !plate.offsetParent) return;
+  const inkShown = inkBox(last);
+  const shown = plate.getBoundingClientRect();
+  const gap = shown.top - inkShown.bottom;
+  const target = hdBox.height * (themeRoot.classList.contains("dyn-portrait") ? 0.032 : 0.048);
+  const current = parseFloat(plate.style.marginTop);
+  const base = Number.isFinite(current) ? current : (plate.offsetTop - lockup.offsetTop - lockup.offsetHeight);
+  plate.style.marginTop = Math.round(base + (target - gap) / scale) + "px";
 }
 
 function fitPlateToName(themeRoot, fit) {
