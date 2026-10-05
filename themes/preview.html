@@ -7,6 +7,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  if (/(?:^|[?&])view=1(?:&|$)/.test(location.search)) {
+    document.documentElement.classList.add("preview-view");
+  }
+</script>
 <style>
   :root {
     --dock-bg: rgba(12, 12, 18, 0.94);
@@ -18,6 +23,7 @@
     --side-w: min(340px, 42vw);
   }
 
+  html.preview-view,
   body.dock-collapsed,
   body.preview-view {
     --side-w: 0px;
@@ -59,7 +65,9 @@
     transform: none !important;
   }
 
+  html.preview-view #dock,
   body.preview-view #dock,
+  html.preview-view .dock-meta,
   body.preview-view .dock-meta {
     display: none !important;
   }
@@ -82,6 +90,11 @@
     color: #fff;
     font: 600 13px Inter, system-ui, sans-serif;
     pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+
+  #viewer-hint.is-gone {
+    opacity: 0;
   }
 
   #preview-bg {
@@ -1352,7 +1365,7 @@
 <script src="../extension/engines/message-brushed-engine.js?v=1.33.25b"></script>
 <script src="../extension/engines/message-chalk-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/message-ticket-engine.js?v=1.32.1"></script>
-<script src="../extension/engines/message-geico-marathon-engine.js?v=1.34.3"></script>
+<script src="../extension/engines/message-geico-marathon-engine.js?v=1.34.4"></script>
 <script src="../extension/engines/mosaic-block-wall-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/mosaic-bowl-lights-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/mosaic-neon-fans-engine.js?v=1.33.24c"></script>
@@ -1433,7 +1446,7 @@
   let previewRegistering = false;
   const settled = await Promise.all(
     CUSTOM_FILES.map(([file]) =>
-      fetch(file + "?v=1.34.3")
+      fetch(file + "?v=1.34.4")
         .then((r) => {
           if (!r.ok) throw new Error(file);
           return r.json();
@@ -2113,6 +2126,7 @@
   /** Match extension/message.js present(): visible exit, hidden swap, animated enter. */
   async function presentMessage(capture, def, state, settings) {
     if (!capture || !def || !messageState) return;
+    if (sameVisibleMessage(capture)) return;
     const token = ++messageCycle;
     const shouldHide = messageRoot.classList.contains("on");
     messageRoot.classList.remove("dyn-awaiting-show");
@@ -2657,10 +2671,25 @@
     });
   }
 
+  function sameVisibleMessage(capture) {
+    if (!messageRoot || !messageRoot.classList.contains("on") || !capture) return false;
+    if (messageRoot.dataset.theme !== "message-geico-marathon") return false;
+    const racer = messageRoot.querySelector("[data-message]");
+    const from = messageRoot.querySelector("[data-name]");
+    if (!racer || !from) return false;
+    return racer.textContent === (capture.message || "") && from.textContent === (capture.name || "");
+  }
+
   function captureKey(capture) {
     if (!capture) return "";
+    const message = capture.message || "";
+    const name = capture.name || "";
+    // This board never shows the guest photo, so a refreshed photo URL is the same screen.
+    if (messageRoot && messageRoot.dataset.theme === "message-geico-marathon") {
+      return [message, name].join("\n");
+    }
     const src = String(capture.src || "").split("?")[0];
-    return [src, capture.message || "", capture.name || ""].join("\n");
+    return [src, message, name].join("\n");
   }
 
   function playlistIsHolding() {
@@ -3863,8 +3892,18 @@
     hint.id = "viewer-hint";
     hint.textContent = "Click the picture or press F to hide the address bar";
     document.body.appendChild(hint);
+    let hintGone = false;
+    function dismissHint() {
+      if (hintGone) return;
+      hintGone = true;
+      hint.classList.add("is-gone");
+      window.setTimeout(() => {
+        hint.hidden = true;
+      }, 400);
+    }
+    window.setTimeout(dismissHint, 2500);
     document.addEventListener("fullscreenchange", () => {
-      hint.hidden = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+      if (document.fullscreenElement || document.webkitFullscreenElement) dismissHint();
     });
     document.addEventListener("pointerdown", presentViewer);
     document.addEventListener("keydown", (event) => {

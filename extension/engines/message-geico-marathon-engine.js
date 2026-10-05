@@ -48,10 +48,7 @@ BGThemeEngines.define({
   applySettings(themeRoot, state, settings) {
     var helpers = globalThis.BGMessageThemes || {};
     if (helpers.applyVars) helpers.applyVars(themeRoot, settings);
-    if (state) {
-      state.color = (settings && settings.primary) || "#d6f25c";
-      paintSign(state);
-    }
+    if (state) state.color = (settings && settings.primary) || "#d6f25c";
   },
 
   async show(themeRoot, capture, state) {
@@ -71,6 +68,7 @@ BGThemeEngines.define({
       state.index = (state.index + 1) % SIGNS.length;
     }
     if (state) await paintSign(state);
+    await nextFrame();
     themeRoot.classList.toggle("no-copy", !message && !name);
     themeRoot.classList.toggle("no-name", !name);
     themeRoot.classList.toggle("no-racer", !message);
@@ -111,24 +109,69 @@ BGThemeEngines.define({
 });
 
 function setDissolved(themeRoot, out) {
-  ["copy", "glyph"].forEach(function (name) {
-    var node = themeRoot.querySelector("." + name);
-    if (node) node.classList.toggle("is-out", out);
-  });
+  var copy = themeRoot.querySelector(".copy");
+  var slot = themeRoot.querySelector(".glyph-slot") || themeRoot.querySelector(".glyph");
+  if (copy) copy.classList.toggle("is-out", out);
+  if (slot) slot.classList.toggle("is-out", out);
 }
 
 function paintSign(state) {
   if (!state || !state.sign) return Promise.resolve();
   var sign = SIGNS[state.index % SIGNS.length];
-  state.sign.innerHTML = sign.line
-    .split("\n")
-    .map(escapeHtml)
-    .join("<br>");
+  if (state.signLine !== sign.line) {
+    state.signLine = sign.line;
+    state.sign.innerHTML = sign.line
+      .split("\n")
+      .map(escapeHtml)
+      .join("<br>");
+  }
   if (!state.glyph) return Promise.resolve();
-  var mask = 'url("' + assetUrl(sign.file) + '")';
+  var src = assetUrl(sign.file);
+  var ready = warmGlyph(src);
+  if (state.glyph.dataset.glyphSrc === src) return ready;
+  state.glyph.dataset.glyphSrc = src;
+  var mask = 'url("' + src + '")';
   state.glyph.style.webkitMaskImage = mask;
   state.glyph.style.maskImage = mask;
-  return Promise.resolve();
+  return ready.then(function () {
+    return nextFrame();
+  });
+}
+
+var glyphReady = Object.create(null);
+
+function warmGlyph(src) {
+  if (!src) return Promise.resolve();
+  if (glyphReady[src]) return glyphReady[src];
+  glyphReady[src] = new Promise(function (resolve) {
+    var img = new Image();
+    var settled = false;
+    function finish() {
+      if (settled) return;
+      settled = true;
+      resolve();
+    }
+    img.onload = function () {
+      if (typeof img.decode === "function") img.decode().then(finish, finish);
+      else finish();
+    };
+    img.onerror = finish;
+    img.src = src;
+    if (img.complete && img.naturalWidth) {
+      if (typeof img.decode === "function") img.decode().then(finish, finish);
+      else finish();
+    }
+    window.setTimeout(finish, 2000);
+  });
+  return glyphReady[src];
+}
+
+function nextFrame() {
+  return new Promise(function (resolve) {
+    window.requestAnimationFrame(function () {
+      resolve();
+    });
+  });
 }
 
 function concealPhoto(img) {
@@ -234,7 +277,7 @@ var FALLBACK_HTML =
   '<div class="board">' +
   '<div class="bar"><div class="logo" data-brand="geico"></div></div>' +
   '<div class="copy"><p class="racer" data-message></p><p class="sign" data-sign></p><p class="from" data-name></p></div>' +
-  '<div class="glyph" data-glyph></div>' +
+  '<div class="glyph-slot"><div class="glyph" data-glyph></div></div>' +
   '<div class="slot-logo" data-logo></div><div class="slot-qr" data-qr></div>' +
   "</div>";
 })();
