@@ -32,7 +32,14 @@ export async function readOutput(pageUrl) {
     throw new Error("That output link did not include a live playlist.");
   }
   const wsUrl = PLAYLIST_WS + "?token=" + encodeURIComponent(token);
+  const htmlPromise = fetch(finalUrl, {
+    headers: { accept: "text/html" },
+    signal: AbortSignal.timeout(6000),
+  })
+    .then((res) => (res.ok ? res.text() : ""))
+    .catch(() => "");
   const live = await listen(wsUrl);
+  const stage = stageFromHtml(await htmlPromise);
   const forced = forcedKind(start.href);
   const application = forced || live.application || "";
   return {
@@ -41,8 +48,17 @@ export async function readOutput(pageUrl) {
     photos: live.photos,
     capture: live.capture,
     native: live.native,
+    stage,
     wsUrl,
   };
+}
+
+function stageFromHtml(html) {
+  const match = String(html || "").match(/\b(\d{3,4})x(\d{3,4})\b/);
+  const w = match ? Number(match[1]) : 1920;
+  const h = match ? Number(match[2]) : 1080;
+  if (w < 320 || h < 240) return { w: 1920, h: 1080 };
+  return { w, h };
 }
 
 function json(body, status = 200) {

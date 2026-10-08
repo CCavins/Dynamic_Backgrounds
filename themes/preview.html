@@ -120,7 +120,7 @@
   #output-native {
     position: absolute;
     inset: 0;
-    z-index: 1;
+    z-index: 8;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -148,6 +148,41 @@
     color: #fff;
     font: 600 22px Inter, system-ui, sans-serif;
     text-align: center;
+  }
+
+  #vixi-live-player {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: transparent;
+    visibility: hidden;
+  }
+
+  #vixi-live-player.is-live {
+    visibility: visible;
+  }
+
+  #vixi-live-player[hidden] {
+    display: none;
+  }
+
+  #vixi-live-player .vixi-player-frame {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    translate: -50% -50%;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  #vixi-live-player .vixi-player-frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #000;
   }
 
   #dyn-message-theme,
@@ -1139,6 +1174,7 @@
 <body>
   <div id="stage" aria-hidden="true">
     <div id="preview-bg"></div>
+    <div id="vixi-live-player" hidden></div>
     <div id="output-native" hidden></div>
     <div id="dyn-message-theme"></div>
     <div id="dyn-mosaic-theme"></div>
@@ -1365,7 +1401,7 @@
 <script src="../extension/engines/message-brushed-engine.js?v=1.33.25b"></script>
 <script src="../extension/engines/message-chalk-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/message-ticket-engine.js?v=1.32.1"></script>
-<script src="../extension/engines/message-geico-marathon-engine.js?v=1.34.4"></script>
+<script src="../extension/engines/message-geico-marathon-engine.js?v=1.34.6"></script>
 <script src="../extension/engines/mosaic-block-wall-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/mosaic-bowl-lights-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/mosaic-neon-fans-engine.js?v=1.33.24c"></script>
@@ -1446,7 +1482,7 @@
   let previewRegistering = false;
   const settled = await Promise.all(
     CUSTOM_FILES.map(([file]) =>
-      fetch(file + "?v=1.34.4")
+      fetch(file + "?v=1.34.6")
         .then((r) => {
           if (!r.ok) throw new Error(file);
           return r.json();
@@ -2757,6 +2793,8 @@
   }
 
   function mountEntry(entry, opts) {
+    showingPassthrough = false;
+    setVixiPlayerVisible(false);
     unmountCurrent();
     active = entry;
     updateMeta(entry);
@@ -3992,6 +4030,16 @@
     shownCaptureKey = "";
     playlistStatus = "playing";
     activeMosaicPool = null;
+    passthroughPending = false;
+    showingPassthrough = false;
+    vixiPlayerReady = false;
+    vixiPlayerFrame = null;
+    const playerSlot = document.getElementById("vixi-live-player");
+    if (playerSlot) {
+      playerSlot.hidden = true;
+      playerSlot.classList.remove("is-live");
+      playerSlot.replaceChildren();
+    }
     hideNative();
     photos = samplePhotos.slice();
     captures = sampleCaptures.slice();
@@ -4015,7 +4063,17 @@
     photos = next.slice();
   }
 
+  let vixiStage = { w: 1920, h: 1080 };
+  let vixiPlayerFrame = null;
+  let vixiPlayerReady = false;
+  let passthroughPending = false;
+  let showingPassthrough = false;
+
   function applySnapshot(session) {
+    if (session.stage && session.stage.w && session.stage.h) {
+      vixiStage = session.stage;
+      if (vixiPlayerFrame) applyVixiFrameSize(vixiPlayerFrame);
+    }
     if (Array.isArray(session.photos) && session.photos.length) setLivePhotoList(session.photos);
     if (session.capture) liveCapture = session.capture;
     const sceneName = session.application && session.application !== "other" ? session.application : "";
@@ -4078,6 +4136,8 @@
   function sceneTitle(app) {
     const names = {
       cta: "CTA",
+      message: "Message",
+      mosaic: "Mosaic",
       photo_magic: "Photo Magic",
       video_magic: "Video Magic",
       groov: "Groov",
@@ -4183,18 +4243,18 @@
     if (liveCapture) captures = [liveCapture];
     if (!kind || kind === "other") return;
     if (kind !== "message" && kind !== "mosaic") {
-      showNativeContent(liveScene);
+      showUnthemed();
+      return;
+    }
+    const themeId = liveThemeId(kind);
+    if (!themeId || themeId === "off") {
+      showUnthemed();
       return;
     }
     hideNative();
-    const themeId = liveThemeId(kind);
-    if (!themeId || themeId === "off") {
-      unmountCurrent();
-      active = null;
-      if (settingsPanel) settingsPanel.hidden = true;
-      setOutputStatus((kind === "message" ? "Message" : "Mosaic") + " template is off.", "is-warn");
-      return;
-    }
+    passthroughPending = false;
+    showingPassthrough = false;
+    setVixiPlayerVisible(false);
     const entry = catalog.find((item) => item.kind === kind && item.id === themeId);
     if (!entry) return;
     const same = active && active.kind === entry.kind && active.id === entry.id;
@@ -4232,30 +4292,174 @@
       return;
     }
     outputWs = socket;
+    lastOutputTrafficAt = Date.now();
+    let sawMessage = false;
+    socket.onopen = () => {
+      if (outputWs !== socket) return;
+      lastOutputTrafficAt = Date.now();
+    };
     socket.onmessage = (event) => {
       if (!usingOutput || outputWs !== socket) return;
+      lastOutputTrafficAt = Date.now();
+      sawMessage = true;
+      outputRetryDelay = RETRY_MIN_MS;
       try {
         ingestOutputEvent(JSON.parse(event.data));
       } catch {
         return;
       }
-      followLive();
+      try {
+        followLive();
+      } catch {
+        /* One bad frame should never stop the feed. */
+      }
     };
     socket.onerror = () => {};
     socket.onclose = () => {
       if (!usingOutput || outputWs !== socket) return;
       outputWs = null;
+      if (!sawMessage) outputRetryDelay = Math.min(RETRY_MAX_MS, Math.round(outputRetryDelay * 1.6));
       scheduleOutputPoll();
     };
   }
 
-  function scheduleOutputPoll() {
+  const RETRY_MIN_MS = 4000;
+  const RETRY_MAX_MS = 30000;
+  const STALE_SOCKET_MS = 3 * 60 * 1000;
+  let outputRetryDelay = RETRY_MIN_MS;
+  let lastOutputTrafficAt = 0;
+  let reconnectInFlight = false;
+
+  function scheduleOutputPoll(delayMs) {
     if (!usingOutput || outputRetry) return;
+    const wait = typeof delayMs === "number" ? delayMs : outputRetryDelay;
     outputRetry = window.setTimeout(() => {
       outputRetry = 0;
       if (!usingOutput) return;
-      void connectOutput(outputUrl, { quiet: true });
-    }, 4000);
+      void reconnectOutput();
+    }, wait);
+  }
+
+  async function reconnectOutput() {
+    if (!usingOutput || reconnectInFlight) return;
+    reconnectInFlight = true;
+    try {
+      await connectOutput(outputUrl, { quiet: true });
+      outputRetryDelay = RETRY_MIN_MS;
+    } catch {
+      const jitter = Math.round(Math.random() * 1000);
+      outputRetryDelay = Math.min(RETRY_MAX_MS, Math.round(outputRetryDelay * 1.6));
+      if (usingOutput && !outputWs) scheduleOutputPoll(outputRetryDelay + jitter);
+    } finally {
+      reconnectInFlight = false;
+    }
+  }
+
+  function socketLooksStale() {
+    if (!usingOutput || !outputWs) return false;
+    if (outputWs.readyState === WebSocket.CONNECTING) return Date.now() - lastOutputTrafficAt > 20000;
+    if (outputWs.readyState !== WebSocket.OPEN) return false;
+    return Date.now() - lastOutputTrafficAt > STALE_SOCKET_MS;
+  }
+
+  window.setInterval(() => {
+    if (!usingOutput) return;
+    if (outputWs && !socketLooksStale()) return;
+    if (!outputWs && outputRetry) return;
+    if (reconnectInFlight) return;
+    scheduleOutputPoll(0);
+  }, 15000);
+
+  window.addEventListener("online", () => {
+    if (!usingOutput || reconnectInFlight) return;
+    if (outputWs && outputWs.readyState === WebSocket.OPEN) return;
+    outputRetryDelay = RETRY_MIN_MS;
+    if (outputRetry) {
+      clearTimeout(outputRetry);
+      outputRetry = 0;
+    }
+    scheduleOutputPoll(250);
+  });
+
+  function applyVixiFrameSize(frame) {
+    const w = Number(vixiStage.w) || 1920;
+    const h = Number(vixiStage.h) || 1080;
+    frame.style.aspectRatio = w + " / " + h;
+    frame.style.width = "min(100%, calc(100cqh * " + w + " / " + h + "))";
+    frame.style.height = "min(100%, calc(100cqw * " + h + " / " + w + "))";
+  }
+
+  function setVixiPlayerVisible(on) {
+    const slot = document.getElementById("vixi-live-player");
+    if (!slot) return;
+    slot.classList.toggle("is-live", Boolean(on));
+  }
+
+  function needsVixiPlayer() {
+    return Boolean(String(outputUrl || "").trim());
+  }
+
+  function sceneWantsTheme() {
+    const kind = forcedOutputKind(outputUrl) || liveApplication;
+    if (kind !== "message" && kind !== "mosaic") return false;
+    const themeId = liveThemeId(kind);
+    return Boolean(themeId && themeId !== "off");
+  }
+
+  function warmVixiPlayer() {
+    if (!needsVixiPlayer()) return;
+    const src = String(outputUrl || "").trim();
+    const slot = document.getElementById("vixi-live-player");
+    if (!slot || !src) return;
+    if (vixiPlayerFrame && vixiPlayerFrame.dataset.src === src) {
+      applyVixiFrameSize(vixiPlayerFrame);
+      slot.hidden = false;
+      return;
+    }
+    vixiPlayerReady = false;
+    const frame = document.createElement("div");
+    frame.className = "vixi-player-frame";
+    frame.dataset.src = src;
+    const iframe = document.createElement("iframe");
+    iframe.src = src;
+    iframe.title = "VIXI output";
+    iframe.setAttribute("allow", "autoplay; fullscreen; picture-in-picture");
+    iframe.setAttribute("allowfullscreen", "");
+    iframe.addEventListener("load", () => {
+      if (!vixiPlayerFrame || vixiPlayerFrame.dataset.src !== src) return;
+      vixiPlayerReady = true;
+      if (passthroughPending && !sceneWantsTheme()) showUnthemed();
+      else passthroughPending = false;
+    });
+    frame.appendChild(iframe);
+    applyVixiFrameSize(frame);
+    slot.replaceChildren(frame);
+    slot.hidden = false;
+    vixiPlayerFrame = frame;
+  }
+
+  function showUnthemed() {
+    warmVixiPlayer();
+    if (!vixiPlayerReady) {
+      passthroughPending = true;
+      setOutputStatus(sceneTitle(liveApplication), "is-ok");
+      return;
+    }
+    if (showingPassthrough) {
+      setVixiPlayerVisible(true);
+      setOutputStatus(sceneTitle(liveApplication), "is-ok");
+      return;
+    }
+    showingPassthrough = true;
+    passthroughPending = false;
+    setVixiPlayerVisible(true);
+    unmountCurrent();
+    active = null;
+    if (messageRoot) messageRoot.hidden = true;
+    if (mosaicRoot) mosaicRoot.hidden = true;
+    if (settingsPanel) settingsPanel.hidden = true;
+    hideNative();
+    setOutputStatus(sceneTitle(liveApplication), "is-ok");
   }
 
   async function connectOutput(pageUrl, opts) {
@@ -4269,14 +4473,23 @@
     }
     rememberOutputUrl(url);
     outputUrl = url;
+    warmVixiPlayer();
     setSourceToggle("output", true);
     if (!quiet) setOutputStatus("Connecting to that output…");
     const session = await fetchOutputSession(url);
     usingOutput = true;
     document.body.classList.add("is-live-output");
-    if (!quiet) renderLiveSettings();
+    try {
+      if (!quiet) renderLiveSettings();
+    } catch {
+      /* A theme with no settings must not stop the live feed. */
+    }
     applySnapshot(session);
-    followLive();
+    try {
+      followLive();
+    } catch {
+      /* A theme hiccup should not stop the socket from opening. */
+    }
     if (session.wsUrl) openOutputSocket(session.wsUrl);
     else scheduleOutputPoll();
   }
@@ -4284,13 +4497,10 @@
   async function bootPreview(entry) {
     const queryOutput = params.get("output") || "";
     let storedOutput = "";
-    let storedSource = "";
     try {
       storedOutput = localStorage.getItem(OUTPUT_URL_KEY) || "";
-      storedSource = localStorage.getItem(SOURCE_KEY) || "";
     } catch {
       storedOutput = "";
-      storedSource = "";
     }
     const savedOutput = queryOutput || storedOutput;
     await loadKindBackgrounds();
@@ -4302,10 +4512,7 @@
       if (!active && entry && !document.body.classList.contains("is-output-source")) mountEntry(entry);
       return;
     }
-    const viewing = document.body.classList.contains("preview-view");
-    const wantOutput =
-      Boolean(queryOutput) ||
-      (!viewing && (storedSource === "output" || (!storedSource && Boolean(storedOutput))));
+    const wantOutput = Boolean(queryOutput);
     if (wantOutput) {
       setSourceToggle("output", true);
       renderLiveSettings();
