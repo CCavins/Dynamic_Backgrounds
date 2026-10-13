@@ -34,7 +34,7 @@ Decision tree:
 - `my-theme-engine.js` — required only when the pack uses a new engine. Classic script. Calls `BGThemeEngines.define({...})`.
 - Optional font file(s) — `.woff2` / `.woff` / `.ttf` / `.otf` when the pack uses `fontFile` / `fontFaces` (see [Custom fonts](#custom-fonts)).
 - Import in the extension popup (**Import packs…**): select one or many `.json` files from a themes folder, plus each pack’s `*-engine.js` if needed, plus any custom fonts those packs name. Matching is automatic (engines by `engine` / filename; fonts by each `fontFile` basename).
-- Test the same selection in [`preview.html`](preview.html) **Import packs…** before installing it in Chrome. Preview runs the pack on the extension’s compile / fit / show path and can **Open viewer** for a chrome-less window. Preview keeps imported packs in this browser (`localStorage`) until you **Remove** them. Importing the same id or label again replaces that imported pack. A built-in theme name is left alone. Engines compile in the page there; output still needs Allow User Scripts.
+- Test the same selection in [`preview.html`](preview.html) **Import packs…** before installing it in Chrome. Preview runs the pack on the extension’s compile / fit / show path and can **Open full screen output** for a chrome-less window. Preview keeps imported packs in this browser (`localStorage`) until you **Remove** them. Importing the same id or label again replaces that imported pack. A built-in theme name is left alone. Engines compile in the page there; output still needs Allow User Scripts.
 - `"engine"` in the JSON must match `id` in `BGThemeEngines.define`.
 - `"engineFile"` is an optional human hint (`message-aurora-engine.js`). It is never fetched.
 
@@ -369,7 +369,8 @@ Use the gallery preview to iterate on packs **before** a Vixi output tab:
 - **Live settings** in the dock call `applySettings` only (same as popup on output), not a full remount — except when `photoStyle` or mosaic `scale` requires it.
 - **Message cycle** uses the same visible exit → swap → enter pattern as `extension/message.js` `present()`.
 - **Stage background** in the dock is like **Show background** + an uploaded still/video — it sits inside the theme root **above** theme backdrop layers (brick wall, asphalt texture, dark stage fills) and **below** cards/copy. With **Fill** fit, the asset fully replaces those backdrops; transparent PNG/GIF holes can still show the theme **Background** color when fit is not full-bleed.
-- URL params: `?theme=message-grunge-poster`, `&primary=…`, `&secondary=…`, `&aspect=16:9`, etc.
+- URL params: `?theme=message-grunge-poster`, `&primary=…`, `&secondary=…`, `&aspect=16:9`, `&mt=` (message theme), `&mo=` (mosaic theme), `&cfg=` (other non-default settings), `&feed=playlist` or `&feed=playlist5` or `&feed=mosaic`.
+- **Vixi API** in the dock replaces a pasted output URL. **Playlist (messages)** and **Mosaic** are one choice. The share link is the address bar. It never includes the API key. A visitor without `localStorage` key `vixi-api-key` is prompted. Playlist order is oldest `updatedAt` first, then it loops. If the playlist order changes, the screen stays on the current message and then continues with whatever follows it.
 
 When preview and extension diverge, fix the **shared** path (`applyVars`, pack CSS, asset URLs) — not a preview-only fork.
 

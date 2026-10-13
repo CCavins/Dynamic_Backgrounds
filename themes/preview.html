@@ -8,8 +8,35 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script>
+  (function () {
+    try {
+      var params = new URLSearchParams(location.search);
+      var stored = "";
+      try { stored = localStorage.getItem("vixi-api-key") || ""; } catch (err) { stored = ""; }
+      var blocked = { key: 1, apikey: 1, "api-key": 1, api_key: 1, password: 1, token: 1 };
+      var changed = false;
+      Array.from(params.keys()).forEach(function (name) {
+        var value = params.get(name) || "";
+        if (blocked[String(name).toLowerCase()] || (stored && value === stored)) {
+          params.delete(name);
+          changed = true;
+        }
+      });
+      if (changed) {
+        var qs = params.toString();
+        history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "") + location.hash);
+      }
+    } catch (err) { /* The address bar stays as it was. */ }
+  })();
   if (/(?:^|[?&])view=1(?:&|$)/.test(location.search)) {
     document.documentElement.classList.add("preview-view");
+  }
+  if (/(?:^|[?&])feed=(?:playlist|mosaic)/.test(location.search)) {
+    try {
+      if (!localStorage.getItem("vixi-api-key")) document.documentElement.classList.add("needs-vixi-key");
+    } catch (err) {
+      document.documentElement.classList.add("needs-vixi-key");
+    }
   }
 </script>
 <style>
@@ -130,6 +157,17 @@
 
   #output-native[hidden] {
     display: none;
+  }
+
+  body.is-holding-api-media #dyn-message-theme img,
+  body.is-holding-api-media #dyn-mosaic-theme img,
+  body.is-holding-api-media #dyn-message-theme video,
+  body.is-holding-api-media #dyn-mosaic-theme video,
+  body.is-holding-api-media #dyn-message-theme [data-message],
+  body.is-holding-api-media #dyn-message-theme [data-name],
+  body.is-holding-api-media #dyn-message-theme [data-field],
+  body.is-holding-api-media #dyn-message-theme [data-question] {
+    visibility: hidden !important;
   }
 
   #output-native img,
@@ -356,6 +394,14 @@
     padding: 12px 14px;
   }
 
+  .dock-key-form {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin: 0;
+    width: 100%;
+  }
+
   .dock-row + .dock-row,
   .dock-row + .dock-section {
     border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -399,8 +445,122 @@
     padding-bottom: 8px;
   }
 
+  #output-row .source-toggle-btn {
+    position: relative;
+    display: grid;
+    place-items: center;
+  }
+
+  #output-row .source-toggle-btn input {
+    position: absolute;
+    opacity: 0;
+  }
+
+  #output-row .source-toggle-btn:has(input:checked) {
+    background: #0d3b28;
+    color: #3dd68c;
+  }
+
+  #vixi-preview-key,
+  #vixi-preview-seconds {
+    width: 100%;
+    height: 32px;
+    padding: 0 10px;
+  }
+
+  #vixi-preview-seconds {
+    width: 72px;
+  }
+
+  .api-key-note {
+    margin: 0;
+    color: var(--dock-muted);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  #vixi-key-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.72);
+  }
+
+  #vixi-key-gate[hidden] {
+    display: none;
+  }
+
+  html.needs-vixi-key #vixi-key-gate {
+    display: grid !important;
+  }
+
+  #vixi-key-gate form {
+    position: relative;
+    width: min(420px, 100%);
+    display: grid;
+    gap: 12px;
+    padding: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    background: #14141c;
+  }
+
+  #vixi-key-gate h2,
+  #vixi-key-gate p {
+    margin: 0;
+  }
+
+  #vixi-key-gate input {
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font: 500 14px Inter, system-ui, sans-serif;
+  }
+
+  #vixi-key-gate button[type="submit"] {
+    height: 34px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--dock-accent);
+    color: #fff;
+    font: 650 13px Inter, system-ui, sans-serif;
+    cursor: pointer;
+  }
+
+  #vixi-key-cancel {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font: 600 18px/1 Inter, system-ui, sans-serif;
+    cursor: pointer;
+  }
+
+  #vixi-key-error {
+    color: #fec651;
+    font-size: 13px;
+  }
+
   body:not(.is-output-source) #output-row,
   body:not(.is-output-source) #live-themes {
+    display: none;
+  }
+
+  body.is-output-source.is-feed-mosaic #live-message-block,
+  body.is-output-source:not(.is-feed-mosaic) #live-mosaic-block,
+  body.is-output-source.is-feed-mosaic #playlist-seconds-field {
     display: none;
   }
 
@@ -1025,6 +1185,51 @@
     cursor: pointer;
   }
 
+  .dock-row-fullscreen {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+  }
+
+  #open-viewer {
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  #copy-viewer {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid var(--dock-border);
+    border-radius: 7px;
+    background: transparent;
+    color: var(--dock-text);
+    cursor: pointer;
+  }
+
+  #copy-viewer .icon-check {
+    display: none;
+  }
+
+  #copy-viewer.is-copied {
+    color: #3dd68c;
+    border-color: #3dd68c;
+  }
+
+  #copy-viewer.is-copied .icon-copy {
+    display: none;
+  }
+
+  #copy-viewer.is-copied .icon-check {
+    display: block;
+  }
+
   .dock-row-import {
     flex-direction: row;
     flex-wrap: wrap;
@@ -1166,8 +1371,30 @@
 
   .dock-meta a:hover { text-decoration: underline; }
 
-  .dock-panel select {
-    color-scheme: dark;
+  /* The closed field stays light-on-dark. The open list follows the system
+     theme, so option text has to as well — otherwise light mode is white on white. */
+  @media (prefers-color-scheme: light) {
+    .dock-panel select {
+      color-scheme: light;
+    }
+
+    .dock-panel select option,
+    .dock-panel select optgroup {
+      color: #1a1a22;
+      background-color: #ffffff;
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .dock-panel select {
+      color-scheme: dark;
+    }
+
+    .dock-panel select option,
+    .dock-panel select optgroup {
+      color: #f4f4f7;
+      background-color: #16161e;
+    }
   }
 </style>
 </head>
@@ -1178,6 +1405,17 @@
     <div id="output-native" hidden></div>
     <div id="dyn-message-theme"></div>
     <div id="dyn-mosaic-theme"></div>
+  </div>
+
+  <div id="vixi-key-gate" hidden>
+    <form id="vixi-key-form" method="post" action="#" autocomplete="off">
+      <h2>Vixi API key</h2>
+      <button type="button" id="vixi-key-cancel" aria-label="Back to samples">×</button>
+      <p>The link already chose Playlist (messages) or Mosaic and saved the theme settings. Enter the API key to play it. The key stays in this browser and is not added to the link.</p>
+      <input id="vixi-key-input" type="password" autocomplete="off" spellcheck="false" placeholder="API key" required>
+      <p id="vixi-key-error" hidden></p>
+      <button type="submit">Continue</button>
+    </form>
   </div>
 
   <aside id="dock">
@@ -1202,15 +1440,26 @@
         <div class="dock-row dock-row-source" id="source-row">
           <div class="source-toggle" role="tablist" aria-label="Preview source">
             <button type="button" class="source-toggle-btn is-on" id="source-samples" role="tab" aria-selected="true">Samples</button>
-            <button type="button" class="source-toggle-btn" id="source-output" role="tab" aria-selected="false">Output URL</button>
+            <button type="button" class="source-toggle-btn" id="source-output" role="tab" aria-selected="false">Vixi API</button>
           </div>
         </div>
 
         <div class="dock-row dock-row-output" id="output-row" hidden>
-          <label class="dock-field dock-field-output">
-            <span>Output URL</span>
-            <input id="output-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…/go/o/…">
+          <form id="vixi-preview-key-form" class="dock-key-form" method="post" action="#" autocomplete="off">
+            <label class="dock-field dock-field-output">
+              <span>Vixi API key</span>
+              <input id="vixi-preview-key" type="password" autocomplete="off" spellcheck="false" placeholder="Stays in this browser only">
+            </label>
+          </form>
+          <div class="source-toggle" role="radiogroup" aria-label="API feed">
+            <label class="source-toggle-btn"><input type="radio" name="vixi-preview-feed" value="playlist" checked> Playlist (messages)</label>
+            <label class="source-toggle-btn"><input type="radio" name="vixi-preview-feed" value="mosaic"> Mosaic</label>
+          </div>
+          <label class="dock-field" id="playlist-seconds-field">
+            <span>Playlist seconds</span>
+            <input id="vixi-preview-seconds" type="number" min="1" max="120" step="1" value="10" inputmode="numeric">
           </label>
+          <p class="api-key-note">Pick one: Playlist (messages) or Mosaic. The address bar can be shared. The API key is saved only in this browser, so each computer enters it once.</p>
           <p class="dock-import-status" id="output-status" role="status"></p>
         </div>
 
@@ -1225,8 +1474,8 @@
               <div class="dock-fold-body dock-settings is-open">
                 <div class="dock-settings-fields" id="live-message-settings"></div>
                 <div class="kind-chrome">
-                  <label class="dock-check"><input type="checkbox" data-chrome="qr"> Show QR</label>
-                  <label class="dock-check"><input type="checkbox" data-chrome="logo"> Show logo</label>
+                  <label class="dock-check"><input type="checkbox" name="live-message-show-qr" data-chrome="qr"> Show QR</label>
+                  <label class="dock-check"><input type="checkbox" name="live-message-show-logo" data-chrome="logo"> Show logo</label>
                 </div>
                 <div class="kind-bg dock-bg" data-kind-bg="message">
                   <div class="setting-row media">
@@ -1235,14 +1484,14 @@
                       <span class="media-file-name" data-bg-name>No file</span>
                     </div>
                     <div class="media-actions">
-                      <label class="dock-btn">Choose file…<input type="file" data-bg-file accept="image/*,video/*,.gif" hidden></label>
+                      <label class="dock-btn">Choose file…<input type="file" name="live-message-bg-file" data-bg-file accept="image/*,video/*,.gif" hidden></label>
                       <button type="button" class="dock-btn dock-btn-ghost" data-bg-clear>Clear</button>
                     </div>
                     <p class="media-status" data-bg-status role="status"></p>
                   </div>
                   <label class="dock-field dock-field-fit">
                     <span>Fit</span>
-                    <select data-bg-fit>
+                    <select name="live-message-bg-fit" data-bg-fit>
                       <option value="cover">Fill — crop to cover</option>
                       <option value="contain">Fit — letterbox</option>
                       <option value="fill">Stretch</option>
@@ -1264,8 +1513,8 @@
               <div class="dock-fold-body dock-settings is-open">
                 <div class="dock-settings-fields" id="live-mosaic-settings"></div>
                 <div class="kind-chrome">
-                  <label class="dock-check"><input type="checkbox" data-chrome="qr"> Show QR</label>
-                  <label class="dock-check"><input type="checkbox" data-chrome="logo"> Show logo</label>
+                  <label class="dock-check"><input type="checkbox" name="live-mosaic-show-qr" data-chrome="qr"> Show QR</label>
+                  <label class="dock-check"><input type="checkbox" name="live-mosaic-show-logo" data-chrome="logo"> Show logo</label>
                 </div>
                 <div class="kind-bg dock-bg" data-kind-bg="mosaic">
                   <div class="setting-row media">
@@ -1274,14 +1523,14 @@
                       <span class="media-file-name" data-bg-name>No file</span>
                     </div>
                     <div class="media-actions">
-                      <label class="dock-btn">Choose file…<input type="file" data-bg-file accept="image/*,video/*,.gif" hidden></label>
+                      <label class="dock-btn">Choose file…<input type="file" name="live-mosaic-bg-file" data-bg-file accept="image/*,video/*,.gif" hidden></label>
                       <button type="button" class="dock-btn dock-btn-ghost" data-bg-clear>Clear</button>
                     </div>
                     <p class="media-status" data-bg-status role="status"></p>
                   </div>
                   <label class="dock-field dock-field-fit">
                     <span>Fit</span>
-                    <select data-bg-fit>
+                    <select name="live-mosaic-bg-fit" data-bg-fit>
                       <option value="cover">Fill — crop to cover</option>
                       <option value="contain">Fit — letterbox</option>
                       <option value="fill">Stretch</option>
@@ -1302,28 +1551,12 @@
           </label>
         </div>
 
-        <div class="dock-row dock-row-import">
-          <label class="dock-btn">Import packs…<input type="file" id="import-packs" accept=".json,.js,.woff,.woff2,.ttf,.otf,application/json,text/javascript,font/woff,font/woff2" multiple hidden></label>
-          <span class="import-info">
-            <button type="button" class="info-btn" id="import-info" aria-expanded="false" aria-controls="import-help" title="How to import a pack">i</button>
-            <div class="import-help" id="import-help" hidden>
-              <p>Select every file for a theme in the same Import packs… pick:</p>
-              <ul>
-                <li>the theme <code>.json</code></li>
-                <li>its <code>.js</code> engine, when the JSON has an <code>engine</code></li>
-                <li>every font file named in <code>fontFile</code> or <code>fontFaces</code></li>
-              </ul>
-              <p>A Google Fonts link in the JSON does not need a file. The same name replaces that imported pack. A built-in name is left alone.</p>
-            </div>
-          </span>
-          <button type="button" class="dock-btn" id="open-viewer">Open viewer</button>
-          <button type="button" class="dock-btn dock-btn-ghost" id="remove-import" hidden>Remove</button>
-          <p class="dock-import-status" id="import-status" role="status"></p>
-        </div>
-        <div class="import-note" id="import-note" hidden role="alertdialog" aria-labelledby="import-note-title">
-          <p id="import-note-title"><strong>Some files were not included</strong></p>
-          <ul id="import-note-list"></ul>
-          <button type="button" class="dock-btn" id="import-note-close">OK</button>
+        <div class="dock-row dock-row-fullscreen" id="fullscreen-row">
+          <button type="button" class="dock-btn" id="open-viewer">Open full screen output</button>
+          <button type="button" id="copy-viewer" aria-label="Copy full screen output URL" title="Copy full screen output URL">
+            <svg class="icon-copy" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <svg class="icon-check" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M5 12l5 5L19 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
         </div>
 
         <div class="dock-row dock-row-stage">
@@ -1378,6 +1611,29 @@
             </label>
           </div>
         </div>
+
+        <div class="dock-row dock-row-import">
+          <label class="dock-btn">Import packs…<input type="file" id="import-packs" accept=".json,.js,.woff,.woff2,.ttf,.otf,application/json,text/javascript,font/woff,font/woff2" multiple hidden></label>
+          <span class="import-info">
+            <button type="button" class="info-btn" id="import-info" aria-expanded="false" aria-controls="import-help" title="How to import a pack">i</button>
+            <div class="import-help" id="import-help" hidden>
+              <p>Select every file for a theme in the same Import packs… pick:</p>
+              <ul>
+                <li>the theme <code>.json</code></li>
+                <li>its <code>.js</code> engine, when the JSON has an <code>engine</code></li>
+                <li>every font file named in <code>fontFile</code> or <code>fontFaces</code></li>
+              </ul>
+              <p>A Google Fonts link in the JSON does not need a file. The same name replaces that imported pack. A built-in name is left alone.</p>
+            </div>
+          </span>
+          <button type="button" class="dock-btn dock-btn-ghost" id="remove-import" hidden>Remove</button>
+          <p class="dock-import-status" id="import-status" role="status"></p>
+        </div>
+        <div class="import-note" id="import-note" hidden role="alertdialog" aria-labelledby="import-note-title">
+          <p id="import-note-title"><strong>Some files were not included</strong></p>
+          <ul id="import-note-list"></ul>
+          <button type="button" class="dock-btn" id="import-note-close">OK</button>
+        </div>
       </div>
     </div>
   </aside>
@@ -1401,7 +1657,7 @@
 <script src="../extension/engines/message-brushed-engine.js?v=1.33.25b"></script>
 <script src="../extension/engines/message-chalk-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/message-ticket-engine.js?v=1.32.1"></script>
-<script src="../extension/engines/message-geico-marathon-engine.js?v=1.34.6"></script>
+<script src="../extension/engines/message-geico-marathon-engine.js?v=1.34.8"></script>
 <script src="../extension/engines/mosaic-block-wall-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/mosaic-bowl-lights-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/mosaic-neon-fans-engine.js?v=1.33.24c"></script>
@@ -1421,11 +1677,75 @@
   const rules = globalThis.BGExtensionRules;
   if (!messageApi || !mosaicApi || !rules) return;
 
-  // Match homepage tile previews: size against the stage box, not the window.
+  function endOfCssString(src, start) {
+    const quote = src[start];
+    let i = start + 1;
+    while (i < src.length) {
+      if (src[i] === "\\") {
+        i += 2;
+        continue;
+      }
+      if (src[i] === quote) return i + 1;
+      i += 1;
+    }
+    return src.length;
+  }
+
+  function endOfCssUrl(src, start) {
+    let i = start + 4;
+    while (i < src.length && /\s/.test(src[i])) i += 1;
+    if (src[i] === '"' || src[i] === "'") {
+      i = endOfCssString(src, i);
+      while (i < src.length && src[i] !== ")") i += 1;
+      return i < src.length ? i + 1 : src.length;
+    }
+    let depth = 1;
+    while (i < src.length && depth > 0) {
+      if (src[i] === "(") depth += 1;
+      else if (src[i] === ")") depth -= 1;
+      if (depth === 0) return i + 1;
+      i += 1;
+    }
+    return src.length;
+  }
+
+  // Size theme units to the stage. Leave url() and quoted values unchanged so
+  // embedded images, fonts, and SVG data stay byte-for-byte intact.
   function rewriteThemeCss(css) {
-    return String(css || "")
-      .replace(/(\d*\.?\d+)vh\b/g, "$1cqh")
-      .replace(/(\d*\.?\d+)vw\b/g, "$1cqw");
+    const src = String(css || "");
+    let out = "";
+    let i = 0;
+    while (i < src.length) {
+      const ch = src[i];
+      if (ch === '"' || ch === "'") {
+        const end = endOfCssString(src, i);
+        out += src.slice(i, end);
+        i = end;
+        continue;
+      }
+      if (ch === "/" && src[i + 1] === "*") {
+        const close = src.indexOf("*/", i + 2);
+        const end = close === -1 ? src.length : close + 2;
+        out += src.slice(i, end);
+        i = end;
+        continue;
+      }
+      if (src.slice(i, i + 4).toLowerCase() === "url(") {
+        const end = endOfCssUrl(src, i);
+        out += src.slice(i, end);
+        i = end;
+        continue;
+      }
+      const unit = src.slice(i).match(/^(\d*\.?\d+)(vh|vw)\b/);
+      if (unit && /\d/.test(unit[1])) {
+        out += unit[1] + (unit[2] === "vh" ? "cqh" : "cqw");
+        i += unit[0].length;
+        continue;
+      }
+      out += ch;
+      i += 1;
+    }
+    return out;
   }
   const style = document.createElement("style");
   style.textContent = rewriteThemeCss(messageApi.STYLE) + "\n" + rewriteThemeCss(mosaicApi.STYLE);
@@ -1482,7 +1802,7 @@
   let previewRegistering = false;
   const settled = await Promise.all(
     CUSTOM_FILES.map(([file]) =>
-      fetch(file + "?v=1.34.6")
+      fetch(file + "?v=1.34.8")
         .then((r) => {
           if (!r.ok) throw new Error(file);
           return r.json();
@@ -1684,6 +2004,8 @@
   let shownCaptureKey = "";
   let playlistStatus = "playing";
   const OUTPUT_URL_KEY = "dyn-preview-output-url";
+  const VIXI_KEY_STORAGE = "vixi-api-key";
+  const VIXI_FEED_MODE_KEY = "vixi-feed-mode";
   const SOURCE_KEY = "dyn-preview-source";
   const LIVE_MESSAGE_KEY = "dyn-preview-live-message";
   const LIVE_MOSAIC_KEY = "dyn-preview-live-mosaic";
@@ -1764,12 +2086,10 @@
   }
 
   function syncUrlFromState() {
-    if (!urlSyncReady || (!active && !usingOutput)) return;
+    const apiOn = document.body.classList.contains("is-output-source");
+    if (!urlSyncReady || (!active && !usingOutput && !apiOn)) return;
     const p = new URLSearchParams();
-    const themeId =
-      (active && active.id) ||
-      (liveThemeId("mosaic") !== "off" ? liveThemeId("mosaic") : "") ||
-      (liveThemeId("message") !== "off" ? liveThemeId("message") : "");
+    const themeId = sharedThemeId();
     if (themeId) p.set("theme", themeId);
     if (stageMode === "custom") {
       p.set("aspect", "custom");
@@ -1794,28 +2114,33 @@
         p.set("scale", String(Math.round(Number(settings.scale) * 100) / 100));
       }
     }
-    if (usingOutput && outputUrl) {
-      p.set("output", outputUrl);
-      const messageTheme = liveThemeId("message");
-      const mosaicTheme = liveThemeId("mosaic");
-      if (messageTheme) p.set("mt", messageTheme);
-      if (mosaicTheme) p.set("mo", mosaicTheme);
-      const cfg = {};
-      [messageTheme, mosaicTheme, active && active.id].forEach((id) => {
-        const patch = shareableSettings(id);
-        if (patch) cfg[id] = patch;
-      });
-      if (Object.keys(cfg).length) p.set("cfg", encodeShare(cfg));
-    }
+    appendLiveShareParams(p);
     if (document.body.classList.contains("preview-view")) p.set("view", "1");
     applyChromeParams(p);
     if (!document.body.classList.contains("preview-view") && document.body.classList.contains("dock-collapsed")) {
       p.set("dock", "min");
     }
+    scrubSharedParams(p);
     const qs = p.toString();
     const next = location.pathname + (qs ? "?" + qs : "") + location.hash;
     const cur = location.pathname + location.search + location.hash;
     if (next !== cur) history.replaceState(null, "", next);
+  }
+
+  function scrubSharedParams(params) {
+    const secrets = [storedApiKey()];
+    ["vixi-preview-key", "vixi-key-input"].forEach((id) => {
+      const value = ((document.getElementById(id) || {}).value || "").trim();
+      if (value) secrets.push(value);
+    });
+    const blocked = new Set(["key", "apikey", "api-key", "api_key", "password", "token"]);
+    Array.from(params.keys()).forEach((name) => {
+      const value = params.get(name) || "";
+      if (blocked.has(String(name).toLowerCase()) || secrets.some((secret) => secret && value === secret)) {
+        params.delete(name);
+      }
+    });
+    return params;
   }
 
   function scheduleUrlSync() {
@@ -1909,20 +2234,43 @@
     }
   }
 
+  function sharedThemeId() {
+    if (document.body.classList.contains("is-output-source")) {
+      const mode = dockFeedMode() || feedModeFromUrl() || "playlist";
+      const id = liveThemeId(mode === "mosaic" ? "mosaic" : "message");
+      if (id && id !== "off") return id;
+    }
+    if (active && active.id) return active.id;
+    const mosaicTheme = liveThemeId("mosaic");
+    const messageTheme = liveThemeId("message");
+    if (mosaicTheme && mosaicTheme !== "off") return mosaicTheme;
+    if (messageTheme && messageTheme !== "off") return messageTheme;
+    return "";
+  }
+
+  function appendLiveShareParams(p) {
+    if (!document.body.classList.contains("is-output-source")) return;
+    const mode = dockFeedMode() || feedModeFromUrl() || "playlist";
+    p.set("feed", mode);
+    const messageTheme = liveThemeId("message");
+    const mosaicTheme = liveThemeId("mosaic");
+    if (messageTheme) p.set("mt", messageTheme);
+    if (mosaicTheme) p.set("mo", mosaicTheme);
+    const cfg = {};
+    [messageTheme, mosaicTheme, active && active.id].forEach((id) => {
+      const patch = shareableSettings(id);
+      if (patch) cfg[id] = patch;
+    });
+    if (Object.keys(cfg).length) p.set("cfg", encodeShare(cfg));
+  }
+
   function buildViewerUrl(viewNonce) {
     const viewerUrl = new URL(location.href);
     viewerUrl.search = "";
     viewerUrl.hash = "";
     viewerUrl.searchParams.set("view", "1");
-    if (usingOutput && outputUrl) viewerUrl.searchParams.set("output", outputUrl);
-    const messageTheme = liveThemeId("message");
-    const mosaicTheme = liveThemeId("mosaic");
-    if (messageTheme) viewerUrl.searchParams.set("mt", messageTheme);
-    if (mosaicTheme) viewerUrl.searchParams.set("mo", mosaicTheme);
-    const themeForUrl =
-      (active && active.id) ||
-      (mosaicTheme && mosaicTheme !== "off" ? mosaicTheme : "") ||
-      (messageTheme && messageTheme !== "off" ? messageTheme : "");
+    appendLiveShareParams(viewerUrl.searchParams);
+    const themeForUrl = sharedThemeId();
     if (themeForUrl) viewerUrl.searchParams.set("theme", themeForUrl);
     if (stageMode === "custom") {
       viewerUrl.searchParams.set("aspect", "custom");
@@ -1933,12 +2281,7 @@
       if (aspect && aspect !== "16:9") viewerUrl.searchParams.set("aspect", aspect);
     }
     applyChromeParams(viewerUrl.searchParams);
-    const cfg = {};
-    [messageTheme, mosaicTheme, active && active.id].forEach((id) => {
-      const patch = shareableSettings(id);
-      if (patch) cfg[id] = patch;
-    });
-    if (Object.keys(cfg).length) viewerUrl.searchParams.set("cfg", encodeShare(cfg));
+    scrubSharedParams(viewerUrl.searchParams);
     if (viewNonce) viewerUrl.searchParams.set("viewNonce", viewNonce);
     return viewerUrl;
   }
@@ -2340,11 +2683,11 @@
       '<span class="media-file-name">No file</span>' +
       "</div>" +
       '<div class="media-actions">' +
-      '<label class="dock-btn">Choose file…<input type="file" accept="image/*,video/*,.gif" hidden></label>' +
+      '<label class="dock-btn">Choose file…<input type="file" name="theme-wallpaper-file" accept="image/*,video/*,.gif" hidden></label>' +
       '<button type="button" class="dock-btn dock-btn-ghost media-clear">Clear</button>' +
       "</div>" +
       '<p class="media-status" role="status"></p>' +
-      `<input type="hidden" class="theme-wallpaper" value="${mediaId || ""}">`;
+      `<input type="hidden" class="theme-wallpaper" name="theme-wallpaper" value="${mediaId || ""}">`;
     const nameEl = wrap.querySelector(".media-file-name");
     const status = wrap.querySelector(".media-status");
     const hidden = wrap.querySelector(".theme-wallpaper");
@@ -2391,8 +2734,8 @@
     row.className = "setting-row";
     row.innerHTML =
       `<span>${label}</span>` +
-      `<input type="text" class="theme-hex" data-key="${key}" maxlength="7" spellcheck="false" value="${value}">` +
-      `<input type="color" class="theme-color" data-key="${key}" value="${value}">`;
+      `<input type="text" class="theme-hex" name="theme-hex-${key}" data-key="${key}" maxlength="7" spellcheck="false" value="${value}">` +
+      `<input type="color" class="theme-color" name="theme-color-${key}" data-key="${key}" value="${value}">`;
     return row;
   }
 
@@ -2401,7 +2744,7 @@
     row.className = "setting-row select";
     row.innerHTML =
       `<span>Motion</span>` +
-      `<select class="theme-motion" data-key="motion">` +
+      `<select class="theme-motion" name="theme-motion" data-key="motion">` +
         `<option value="slow">Slow — wander</option>` +
         `<option value="drift">Drift — across the field</option>` +
         `<option value="fizz">Fizz — rise from below</option>` +
@@ -2423,7 +2766,7 @@
     if (key === "logoScale") row.dataset.chromeToggle = "logo";
     row.innerHTML =
       `<span>${label}</span>` +
-      `<input type="range" class="theme-extra-scale" data-key="${key}" min="${min}" max="${max}" step="1" value="${pct}">` +
+      `<input type="range" class="theme-extra-scale" name="theme-scale-${key}" data-key="${key}" min="${min}" max="${max}" step="1" value="${pct}">` +
       `<span class="theme-extra-scale-value">${pct}%</span>`;
     return row;
   }
@@ -2434,7 +2777,7 @@
     row.className = "setting-row scale";
     row.innerHTML =
       `<span>${label}</span>` +
-      `<input type="range" class="theme-scale" min="90" max="150" step="1" value="${pct}">` +
+      `<input type="range" class="theme-scale" name="theme-scale" min="90" max="150" step="1" value="${pct}">` +
       `<span class="theme-scale-value">${pct}%</span>`;
     return row;
   }
@@ -2450,7 +2793,7 @@
       .join("");
     row.innerHTML =
       `<span>${label}</span>` +
-      `<select class="theme-select" data-key="${key}">${opts}</select>`;
+      `<select class="theme-select" name="theme-select-${key}" data-key="${key}">${opts}</select>`;
     const select = row.querySelector("select");
     if (select) select.value = value || (options[0] && options[0].value) || "";
     return row;
@@ -2461,7 +2804,7 @@
     row.className = "setting-row toggle";
     row.innerHTML =
       `<span>${label}</span>` +
-      `<input type="checkbox" class="theme-toggle" data-key="${key}"${value ? " checked" : ""}>`;
+      `<input type="checkbox" class="theme-toggle" name="theme-toggle-${key}" data-key="${key}"${value ? " checked" : ""}>`;
     return row;
   }
 
@@ -2624,6 +2967,7 @@
 
   function fillSettingsFields(fields, entry, showPanel) {
     const meta = settingsMetaFor(entry.id);
+    if (!meta || !meta.defaults) return;
     const values = settingsFor(entry.id, entry.pack);
     const labels = meta.labels || {};
     if (meta.defaults.scale != null) {
@@ -2827,7 +3171,10 @@
         void renderPreviewBackground();
         return;
       }
-      const source = usingOutput ? livePhotos : photos;
+      const holdMedia = Boolean(opts && opts.holdMedia);
+      if (holdMedia) document.body.classList.add("is-holding-api-media");
+      else if (usingOutput) document.body.classList.remove("is-holding-api-media");
+      const source = holdMedia ? [] : (usingOutput ? livePhotos : photos);
       const pool = source.length ? shuffle(source) : [];
       activeMosaicPool = pool;
       const api = {
@@ -2896,18 +3243,23 @@
       void renderPreviewBackground();
       return;
     }
+    const holdMedia = Boolean(opts && opts.holdMedia);
+    if (holdMedia) document.body.classList.add("is-holding-api-media");
+    else if (usingOutput) document.body.classList.remove("is-holding-api-media");
     const settings = settingsFor(entry.id, entry.pack);
     const state = def.mount(messageRoot, settings);
     messageState = { id: entry.id, state, settings };
     if (def.applySettings) def.applySettings(messageRoot, state, settings);
-    const opening = usingOutput ? liveCapture || captureAt(0) : captureAt(captureIndex);
-    shownCaptureKey = captureKey(opening);
-    void presentMessage(opening, def, state, settings);
+    const opening = holdMedia ? null : (usingOutput ? liveCapture : captureAt(captureIndex));
+    if (opening) {
+      shownCaptureKey = captureKey(opening);
+      void presentMessage(opening, def, state, settings);
+    }
     if (typeof ResizeObserver !== "undefined" && messageApi.ensureFitStage) {
       resizeRo = new ResizeObserver(() => messageApi.ensureFitStage(messageRoot));
       resizeRo.observe(messageRoot);
     }
-    if (!usingOutput) {
+    if (!usingOutput && !document.body.classList.contains("is-output-source")) {
       messageTimer = setInterval(() => {
         captureIndex += 1;
         void presentMessage(captureAt(captureIndex), def, state, settings);
@@ -3049,6 +3401,7 @@
     if (!fromBoot) sourceChosen = true;
     const outputOn = mode === "output";
     document.body.classList.toggle("is-output-source", outputOn);
+    document.body.classList.toggle("is-feed-mosaic", outputOn && dockFeedMode() === "mosaic");
     if (sourceSamplesBtn) {
       sourceSamplesBtn.classList.toggle("is-on", !outputOn);
       sourceSamplesBtn.setAttribute("aria-selected", outputOn ? "false" : "true");
@@ -3065,7 +3418,8 @@
   }
 
   function showSamples() {
-    if (outputInput && outputInput.value.trim()) rememberOutputUrl(outputInput.value);
+    stopApiFeed();
+    hideKeyGate();
     setSourceToggle("samples");
     leaveOutputMode();
     const address = new URLSearchParams(location.search);
@@ -3121,32 +3475,59 @@
   }
 
   function showOutput() {
-    const next = outputUrlFromField();
-    if (outputInput && next && !outputInput.value.trim()) outputInput.value = next;
+    const keyInput = document.getElementById("vixi-preview-key");
+    if (keyInput && !keyInput.value) keyInput.value = storedApiKey();
+    applyDockFeedFromUrl();
     setSourceToggle("output");
-    renderLiveSettings();
-    startOutput(next);
+    try { renderLiveSettings(); } catch { /* A theme with no settings must not stop the feed. */ }
+    scheduleUrlSync();
+    startApiFeed();
   }
 
-  let outputTypeTimer = 0;
-  if (outputInput) {
-    outputInput.addEventListener("input", () => {
-      rememberOutputUrl(outputInput.value);
-      if (!document.body.classList.contains("is-output-source")) return;
-      clearTimeout(outputTypeTimer);
-      outputTypeTimer = setTimeout(() => {
-        if (!document.body.classList.contains("is-output-source")) return;
-        const next = outputInput.value.trim();
-        if (!usableOutputUrl(next) || (usingOutput && outputUrl === next)) return;
-        startOutput(next);
-      }, 400);
-    });
-    outputInput.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter") return;
+  const previewKey = document.getElementById("vixi-preview-key");
+  const previewKeyForm = document.getElementById("vixi-preview-key-form");
+  if (previewKeyForm) {
+    previewKeyForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      clearTimeout(outputTypeTimer);
-      if (document.body.classList.contains("is-output-source")) startOutput(outputInput.value);
+      if (previewKey) previewKey.dispatchEvent(new Event("change"));
     });
+  }
+  if (previewKey) {
+    previewKey.addEventListener("change", () => {
+      rememberTypedApiKey(previewKey.value);
+      if (!previewKey.value.trim()) {
+        if (document.body.classList.contains("is-output-source")) stopApiFeed();
+        return;
+      }
+      if (!document.body.classList.contains("is-output-source")) setSourceToggle("output");
+      startApiFeed();
+    });
+  }
+  function selectFeedChoice(mode) {
+    const mosaic = mode === "mosaic";
+    document.querySelectorAll('#output-row input[name="vixi-preview-feed"]').forEach((radio) => {
+      radio.checked = mosaic ? radio.value === "mosaic" : radio.value === "playlist";
+    });
+    document.body.classList.toggle("is-feed-mosaic", mosaic && document.body.classList.contains("is-output-source"));
+  }
+  document.querySelectorAll('#output-row input[name="vixi-preview-feed"]').forEach((control) => {
+    control.addEventListener("change", () => {
+      if (!document.body.classList.contains("is-output-source")) return;
+      selectFeedChoice(control.value);
+      scheduleUrlSync();
+      queueFeedClock(false);
+    });
+  });
+  const playlistSeconds = document.getElementById("vixi-preview-seconds");
+  if (playlistSeconds) {
+    const onSeconds = () => {
+      if (!document.body.classList.contains("is-output-source")) return;
+      if (document.body.classList.contains("is-feed-mosaic")) return;
+      scheduleUrlSync();
+      queueFeedClock(true);
+    };
+    playlistSeconds.addEventListener("change", onSeconds);
+    playlistSeconds.addEventListener("input", onSeconds);
   }
   if (sourceSamplesBtn) {
     sourceSamplesBtn.addEventListener("click", () => {
@@ -3612,7 +3993,7 @@
       settingsByTheme[themeId] = { ...(settingsByTheme[themeId] || {}), ...data.settings };
     }
     const found = catalog.find((item) => item.id === themeId) || entry;
-    if (data.outputUrl) {
+    if (data.feed) {
       if (data.messageTheme) localStorage.setItem(LIVE_MESSAGE_KEY, data.messageTheme);
       if (data.mosaicTheme) localStorage.setItem(LIVE_MOSAIC_KEY, data.mosaicTheme);
       fillLiveSelects();
@@ -3620,9 +4001,10 @@
       const mosaicSelect = document.getElementById("live-mosaic-theme");
       if (messageSelect && data.messageTheme) messageSelect.value = data.messageTheme;
       if (mosaicSelect && data.mosaicTheme) mosaicSelect.value = data.mosaicTheme;
-      void connectOutput(data.outputUrl).catch((err) => {
-        metaSub.textContent = err && err.message ? err.message : "Could not read that output.";
-      });
+      applyFeedModeToDock(data.feed);
+      setSourceToggle("output", true);
+      renderLiveSettings();
+      startApiFeed();
       return;
     }
     if (found) mountEntry(found);
@@ -3792,6 +4174,26 @@
     });
   }
 
+  const copyViewerBtn = document.getElementById("copy-viewer");
+  if (copyViewerBtn) {
+    copyViewerBtn.addEventListener("click", async () => {
+      if (active) syncUrlFromState();
+      const url = buildViewerUrl().toString();
+      if (!navigator.clipboard) return;
+      try {
+        await navigator.clipboard.writeText(url);
+        copyViewerBtn.classList.add("is-copied");
+        copyViewerBtn.setAttribute("aria-label", "Copied");
+        window.setTimeout(() => {
+          copyViewerBtn.classList.remove("is-copied");
+          copyViewerBtn.setAttribute("aria-label", "Copy full screen output URL");
+        }, 1600);
+      } catch {
+        setImportStatus("Could not copy the full screen output link.", "is-warn");
+      }
+    });
+  }
+
   const openViewerBtn = document.getElementById("open-viewer");
   if (openViewerBtn) {
     openViewerBtn.addEventListener("click", () => {
@@ -3803,7 +4205,7 @@
         source: VIEW_CHANNEL,
         type: "pack",
         nonce: viewNonce,
-        themeId: active ? active.id : themeForUrl,
+        themeId: sharedThemeId() || (active ? active.id : ""),
         settings: active ? settingsFor(active.id, active.pack) : null,
         pack: active && active.imported ? active.pack : null,
         engineSource:
@@ -3813,7 +4215,7 @@
               ""
             : "",
         fontAssets: active && active.imported ? fontAssetsForPack(active.pack) : [],
-        outputUrl: usingOutput ? outputUrl : "",
+        feed: document.body.classList.contains("is-output-source") ? dockFeedMode() : "",
         messageTheme: liveThemeId("message"),
         mosaicTheme: liveThemeId("mosaic"),
       };
@@ -4046,15 +4448,26 @@
     document.body.classList.remove("is-live-output");
   }
 
-  function photoSetKey(list) {
-    return (list || []).slice().sort().join("\n");
+  function absorbMosaicPool(nextUrls) {
+    if (!activeMosaicPool) return false;
+    const next = (nextUrls || []).filter(Boolean);
+    const keep = new Set(next);
+    for (let i = activeMosaicPool.length - 1; i >= 0; i -= 1) {
+      if (!keep.has(activeMosaicPool[i])) activeMosaicPool.splice(i, 1);
+    }
+    const have = new Set(activeMosaicPool);
+    next.forEach((src) => {
+      if (!have.has(src)) activeMosaicPool.push(src);
+    });
+    return true;
   }
 
   function setLivePhotoList(urls) {
     const next = [];
     const seen = new Set();
     (urls || []).forEach((src) => {
-      if (typeof src !== "string" || !/^https?:/i.test(src) || seen.has(src)) return;
+      if (typeof src !== "string" || seen.has(src)) return;
+      if (!/^https?:/i.test(src) && !src.startsWith("blob:")) return;
       if (/\/config\//i.test(src) || /output_logo|layers__logo|default_am_output_logo/i.test(src)) return;
       seen.add(src);
       next.push(src);
@@ -4265,13 +4678,15 @@
       return;
     }
     if (kind === "mosaic") {
-      const shown = activeMosaicPool ? photoSetKey(activeMosaicPool) : "";
-      const next = photoSetKey(livePhotos);
-      if (livePhotos.length && shown !== next) mountEntry(entry);
+      if (livePhotos.length) document.body.classList.remove("is-holding-api-media");
+      const sameTheme = active && active.kind === "mosaic" && active.id === entry.id && activeMosaicPool && activeMosaicPool.length;
+      if (sameTheme) absorbMosaicPool(livePhotos);
+      else if (livePhotos.length) mountEntry(entry);
       setOutputStatus("Mosaic · " + entry.label + " · " + livePhotos.length + " photos", "is-ok");
       return;
     }
     if (kind === "message" && messageState && liveCapture) {
+      document.body.classList.remove("is-holding-api-media");
       const key = captureKey(liveCapture);
       if (key !== shownCaptureKey) {
         shownCaptureKey = key;
@@ -4363,6 +4778,7 @@
   }
 
   window.setInterval(() => {
+    if (feedTimer) return;
     if (!usingOutput) return;
     if (outputWs && !socketLooksStale()) return;
     if (!outputWs && outputRetry) return;
@@ -4371,6 +4787,7 @@
   }, 15000);
 
   window.addEventListener("online", () => {
+    if (feedTimer) return;
     if (!usingOutput || reconnectInFlight) return;
     if (outputWs && outputWs.readyState === WebSocket.OPEN) return;
     outputRetryDelay = RETRY_MIN_MS;
@@ -4494,43 +4911,449 @@
     else scheduleOutputPoll();
   }
 
-  async function bootPreview(entry) {
-    const queryOutput = params.get("output") || "";
-    let storedOutput = "";
+  const VIXI_API = "/api/vixi-live";
+  const MOSAIC_CACHE = "vixi-mosaic-v1";
+  const MESSAGE_CACHE = "vixi-messages-v1";
+  let feedTimer = 0;
+  let feedBusy = false;
+  let feedMode = "";
+  let shownCueId = "";
+  let playlistOrderIds = [];
+  const mosaicBlobs = new Map();
+  const retiredMosaicBlobs = new Map();
+  const messageBlobs = new Map();
+
+  function storedApiKey() {
     try {
-      storedOutput = localStorage.getItem(OUTPUT_URL_KEY) || "";
+      return localStorage.getItem(VIXI_KEY_STORAGE) || "";
     } catch {
-      storedOutput = "";
+      return "";
     }
-    const savedOutput = queryOutput || storedOutput;
+  }
+
+  function rememberTypedApiKey(value) {
+    const next = String(value || "").trim();
+    try {
+      if (next) localStorage.setItem(VIXI_KEY_STORAGE, next);
+      else localStorage.removeItem(VIXI_KEY_STORAGE);
+    } catch { /* private mode */ }
+    const field = document.getElementById("vixi-preview-key");
+    const gateInput = document.getElementById("vixi-key-input");
+    if (field && field.value !== next) field.value = next;
+    if (gateInput && document.activeElement !== gateInput && gateInput.value !== next) gateInput.value = next;
+  }
+
+  function feedModeFromUrl() {
+    const raw = String(new URLSearchParams(location.search).get("feed") || "").toLowerCase();
+    if (raw === "mosaic") return "mosaic";
+    if (/^playlist(?:[1-9]\d{0,2})?$/.test(raw)) return raw;
+    return "";
+  }
+
+  function dockFeedMode() {
+    const selected = document.querySelector('#output-row input[name="vixi-preview-feed"]:checked');
+    if (selected && selected.value === "mosaic") return "mosaic";
+    const seconds = Number((document.getElementById("vixi-preview-seconds") || {}).value);
+    if (Number.isFinite(seconds) && seconds >= 1 && Math.round(seconds) !== 10) {
+      return "playlist" + Math.min(120, Math.max(1, Math.round(seconds)));
+    }
+    return "playlist";
+  }
+
+  function applyFeedModeToDock(mode) {
+    if (!mode) return;
+    selectFeedChoice(mode === "mosaic" ? "mosaic" : "playlist");
+    const seconds = document.getElementById("vixi-preview-seconds");
+    const match = String(mode).match(/^playlist(\d+)$/);
+    if (seconds && match) seconds.value = String(Math.min(120, Math.max(1, Number(match[1]))));
+    if (seconds && mode === "playlist") seconds.value = "10";
+  }
+
+  function storedFeedMode() {
+    try {
+      const raw = localStorage.getItem(VIXI_FEED_MODE_KEY) || "";
+      if (raw === "mosaic" || /^playlist(?:[1-9]\d{0,2})?$/.test(raw)) return raw;
+    } catch { /* private mode */ }
+    return "";
+  }
+
+  function applyDockFeedFromUrl() {
+    const mode = feedModeFromUrl();
+    if (!mode) return;
+    applyFeedModeToDock(mode);
+  }
+
+  function feedIntervalMs(mode) {
+    if (mode === "mosaic") return 15000;
+    const match = String(mode || "").match(/^playlist(\d+)$/);
+    const seconds = match ? Number(match[1]) : 10;
+    return Math.min(120, Math.max(1, seconds)) * 1000;
+  }
+
+  function showKeyGate(message) {
+    const gate = document.getElementById("vixi-key-gate");
+    const input = document.getElementById("vixi-key-input");
+    const error = document.getElementById("vixi-key-error");
+    if (input && !input.value) input.value = storedApiKey();
+    if (error) {
+      error.hidden = !message;
+      error.textContent = message || "";
+    }
+    if (gate) gate.hidden = false;
+    document.documentElement.classList.remove("needs-vixi-key");
+    if (input) input.focus();
+  }
+
+  function hideKeyGate() {
+    const gate = document.getElementById("vixi-key-gate");
+    document.documentElement.classList.remove("needs-vixi-key");
+    if (gate) gate.hidden = true;
+  }
+
+  function bindKeyGate() {
+    const form = document.getElementById("vixi-key-form");
+    const gate = document.getElementById("vixi-key-gate");
+    if (gate && !gate.dataset.bound) {
+      gate.dataset.bound = "1";
+      gate.addEventListener("pointerdown", (event) => event.stopPropagation());
+    }
+    if (!form || form.dataset.bound) return;
+    form.dataset.bound = "1";
+    const cancel = document.getElementById("vixi-key-cancel");
+    if (cancel) {
+      cancel.addEventListener("click", () => {
+        hideKeyGate();
+        showSamples();
+      });
+    }
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const input = document.getElementById("vixi-key-input");
+      const value = input ? input.value.trim() : "";
+      if (!value) {
+        showKeyGate("Enter a Vixi API key.");
+        return;
+      }
+      rememberTypedApiKey(value);
+      hideKeyGate();
+      startApiFeed();
+    });
+  }
+
+  function stopApiFeed() {
+    if (feedTimer) {
+      clearInterval(feedTimer);
+      feedTimer = 0;
+    }
+  }
+
+  let feedClockTimer = 0;
+
+  function queueFeedClock(keepPlace) {
+    clearTimeout(feedClockTimer);
+    feedClockTimer = window.setTimeout(() => {
+      if (!storedApiKey() || !usingOutput) return;
+      const mode = dockFeedMode();
+      const wasPlaylist = feedMode && feedMode !== "mosaic";
+      const nowPlaylist = mode !== "mosaic";
+      applyFeedClock(mode, Boolean(keepPlace && wasPlaylist && nowPlaylist));
+    }, keepPlace ? 350 : 0);
+  }
+
+  function publishFeedMode(mode) {
+    if (document.body.classList.contains("preview-view")) return;
+    const bus = viewBus();
+    if (!bus) return;
+    bus.postMessage({ source: VIEW_CHANNEL, type: "feed-mode", mode: mode });
+  }
+
+  function applyFeedClock(mode, keepPlace) {
+    stopApiFeed();
+    if (messageTimer) {
+      clearInterval(messageTimer);
+      messageTimer = 0;
+    }
+    feedMode = mode;
+    try { localStorage.setItem(VIXI_FEED_MODE_KEY, mode); } catch { /* private mode */ }
+    selectFeedChoice(mode === "mosaic" ? "mosaic" : "playlist");
+    if (!keepPlace) {
+      playlistOrderIds = [];
+      shownCueId = "";
+      void pollApiFeed();
+    }
+    feedTimer = window.setInterval(() => void pollApiFeed(), feedIntervalMs(mode));
+    publishFeedMode(mode);
+    if (document.body.classList.contains("preview-view")) {
+      const next = new URLSearchParams(location.search);
+      next.set("feed", mode);
+      const qs = next.toString();
+      history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "") + location.hash);
+    }
+  }
+
+  function acceptViewerFeedMode(mode) {
+    if (!document.body.classList.contains("preview-view")) return;
+    const locked = feedModeFromUrl();
+    if (locked && (locked === "mosaic") !== (mode === "mosaic")) return;
+    const seconds = document.getElementById("vixi-preview-seconds");
+    const match = String(mode || "").match(/^playlist(\d+)$/);
+    if (mode === "mosaic") selectFeedChoice("mosaic");
+    else {
+      selectFeedChoice("playlist");
+      if (seconds) seconds.value = match ? String(Math.min(120, Math.max(1, Number(match[1])))) : "10";
+    }
+    if (!storedApiKey() || !usingOutput) return;
+    const wasPlaylist = feedMode && feedMode !== "mosaic";
+    const nowPlaylist = mode !== "mosaic";
+    applyFeedClock(mode, Boolean(wasPlaylist && nowPlaylist));
+  }
+
+  function startApiFeed() {
+    bindKeyGate();
+    stopApiFeed();
+    if (messageTimer) {
+      clearInterval(messageTimer);
+      messageTimer = 0;
+    }
+    const mode = (document.body.classList.contains("preview-view") && feedModeFromUrl()) || dockFeedMode() || feedModeFromUrl();
+    const typed = (document.getElementById("vixi-preview-key") || {}).value || (document.getElementById("vixi-key-input") || {}).value || "";
+    if (String(typed).trim()) rememberTypedApiKey(typed);
+    const key = storedApiKey();
+    setSourceToggle("output", true);
+    try { renderLiveSettings(); } catch { /* A theme with no settings must not stop the feed. */ }
+    scheduleUrlSync();
+    if (!key) {
+      mountHeldOutput();
+      showKeyGate("");
+      setOutputStatus("Enter a Vixi API key. It is not added to the shared link.", "is-warn");
+      return;
+    }
+    hideKeyGate();
+    usingOutput = true;
+    outputUrl = "";
+    document.body.classList.add("is-live-output");
+    const entry = outputThemeEntry();
+    if (entry && mode !== "mosaic") mountEntry(entry, { holdMedia: true });
+    setOutputStatus(mode === "mosaic" ? "Reading mosaic images…" : "Reading the playlist…");
+    applyFeedClock(mode, false);
+  }
+
+  async function pollApiFeed() {
+    if (feedBusy) return;
+    const key = storedApiKey();
+    if (!key || !feedMode) return;
+    feedBusy = true;
+    try {
+      const data = await fetchVixiFeed(feedMode === "mosaic" ? "mosaic" : "playlist");
+      if (feedMode === "mosaic") {
+        await showMosaicFeed(data.photos || []);
+        return;
+      }
+      const cue = nextPlaylistCue(data.captures || []);
+      if (!cue) return;
+      shownCueId = String(cue.id || cue.src || "");
+      liveCapture = await messageCapture(cue);
+      captures = [liveCapture];
+      liveApplication = "message";
+      followLive();
+    } catch (err) {
+      if (err && err.status === 401) {
+        stopApiFeed();
+        if (err.message !== "Enter an API key.") {
+          try { localStorage.removeItem(VIXI_KEY_STORAGE); } catch { /* private mode */ }
+          const field = document.getElementById("vixi-preview-key");
+          if (field) field.value = "";
+        }
+        showKeyGate(err.message || "That API key was not accepted.");
+        return;
+      }
+      setOutputStatus(err && err.message ? err.message : "Could not read the Vixi feed.", "is-error");
+    } finally {
+      feedBusy = false;
+    }
+  }
+
+  async function fetchVixiFeed(part) {
+    const key = storedApiKey();
+    if (!key) {
+      const error = new Error("Enter a Vixi API key.");
+      error.status = 401;
+      throw error;
+    }
+    const response = await fetch(new URL(VIXI_API + "?part=" + encodeURIComponent(part), location.origin), {
+      method: "POST",
+      cache: "no-store",
+      credentials: "omit",
+      referrerPolicy: "no-referrer",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ key: String(key || "").replace(/[\s\u200B-\u200D\uFEFF]/g, "") }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(body.error || "Could not read the Vixi feed.");
+      error.status = response.status;
+      throw error;
+    }
+    return body;
+  }
+
+  async function messageCapture(row) {
+    const src = await cachedImageUrl(MESSAGE_CACHE, row.src, "message:" + (row.id || row.src));
+    return {
+      src: src || row.src || "",
+      message: row.message || "",
+      name: row.name || "",
+      fields: { message: row.message || "", name: row.name || "" },
+    };
+  }
+
+  async function showMosaicFeed(urls) {
+    await retainMosaicImages(urls);
+    const visible = (urls || []).map((src) => mosaicBlobs.get(src)).filter(Boolean);
+    setLivePhotoList(visible);
+    liveApplication = "mosaic";
+    followLive();
+    sweepRetiredMosaicBlobs();
+  }
+
+  async function retainMosaicImages(urls) {
+    const keep = new Set(urls || []);
+    let cache = null;
+    try {
+      cache = await caches.open(MOSAIC_CACHE);
+      const keys = await cache.keys();
+      await Promise.all(keys.map(async (request) => {
+        const src = new URL(request.url, location.origin).searchParams.get("image") || "";
+        if (keep.has(src)) return;
+        await cache.delete(request);
+        const blobUrl = mosaicBlobs.get(src);
+        if (blobUrl) retiredMosaicBlobs.set(src, blobUrl);
+        mosaicBlobs.delete(src);
+      }));
+    } catch {
+      cache = null;
+    }
+    for (const src of keep) {
+      if (!src || mosaicBlobs.has(src)) continue;
+      const blobUrl = await cachedImageUrl(MOSAIC_CACHE, src, "");
+      if (blobUrl) mosaicBlobs.set(src, blobUrl);
+    }
+  }
+
+  function sweepRetiredMosaicBlobs() {
+    const root = document.getElementById("dyn-mosaic-theme");
+    const visible = new Set();
+    if (root) {
+      root.querySelectorAll("img").forEach((img) => {
+        const src = img.currentSrc || img.getAttribute("src") || "";
+        if (src) visible.add(src);
+      });
+    }
+    retiredMosaicBlobs.forEach((blobUrl, src) => {
+      if (visible.has(blobUrl) || (activeMosaicPool && activeMosaicPool.includes(blobUrl))) return;
+      if (String(blobUrl).startsWith("blob:")) URL.revokeObjectURL(blobUrl);
+      retiredMosaicBlobs.delete(src);
+    });
+  }
+
+  async function cachedImageUrl(cacheName, src, memoryKey) {
+    if (!src) return "";
+    if (memoryKey && messageBlobs.has(memoryKey)) return messageBlobs.get(memoryKey);
+    try {
+      const cache = await caches.open(cacheName);
+      const requestUrl = new URL(VIXI_API + "?image=" + encodeURIComponent(src), location.origin).href;
+      let response = await cache.match(requestUrl);
+      if (!response) {
+        const fetched = await fetch(requestUrl, {
+          cache: "no-store",
+          credentials: "omit",
+          referrerPolicy: "no-referrer",
+        });
+        if (!fetched.ok) return src;
+        await cache.put(requestUrl, fetched.clone());
+        response = fetched;
+      }
+      const blobUrl = URL.createObjectURL(await response.blob());
+      if (memoryKey) messageBlobs.set(memoryKey, blobUrl);
+      return blobUrl;
+    } catch {
+      return src;
+    }
+  }
+
+  function nextPlaylistCue(rows) {
+    const ordered = (rows || [])
+      .filter((row) => row && row.kind === "message" && (row.id || row.src))
+      .slice()
+      .sort((a, b) => {
+        const updated = String(a.updated || "").localeCompare(String(b.updated || ""));
+        if (updated) return updated;
+        return String(a.id || a.src || "").localeCompare(String(b.id || b.src || ""));
+      });
+    if (!ordered.length) return null;
+    const keyOf = (row) => String(row.id || row.src || "");
+    const remember = () => {
+      playlistOrderIds = ordered.map(keyOf);
+    };
+    if (!shownCueId) {
+      remember();
+      return ordered[0];
+    }
+    const at = ordered.findIndex((row) => keyOf(row) === shownCueId);
+    if (at >= 0) {
+      const next = ordered[(at + 1) % ordered.length];
+      remember();
+      return next;
+    }
+    const previousAt = playlistOrderIds.indexOf(shownCueId);
+    const still = new Map(ordered.map((row) => [keyOf(row), row]));
+    const after = previousAt >= 0 ? playlistOrderIds.slice(previousAt + 1) : [];
+    const next = after.map((id) => still.get(id)).find(Boolean) || ordered[0];
+    remember();
+    return next;
+  }
+
+  function outputThemeEntry() {
+    const mosaic = (feedModeFromUrl() || dockFeedMode()) === "mosaic";
+    const kind = mosaic ? "mosaic" : "message";
+    const id = liveThemeId(kind);
+    return catalog.find((item) => item.kind === kind && item.id === id) || null;
+  }
+
+  function mountHeldOutput() {
+    const entry = outputThemeEntry();
+    if (!entry) return;
+    mountEntry(entry, { holdMedia: true });
+  }
+
+  async function bootPreview(entry) {
     await loadKindBackgrounds();
     applyShareParams(params);
     if (entry) applyUrlSettings(entry.id, params);
     urlSyncReady = true;
-    if (outputInput && savedOutput && !String(outputInput.value || "").trim()) outputInput.value = savedOutput;
+    fillLiveSelects();
+    applyDockFeedFromUrl();
+    if (!feedModeFromUrl() && storedApiKey() && !document.body.classList.contains("preview-view")) {
+      applyFeedModeToDock(storedFeedMode() || "playlist");
+    }
+    const keyInput = document.getElementById("vixi-preview-key");
+    if (keyInput && !keyInput.value) keyInput.value = storedApiKey();
+    bindKeyGate();
     if (sourceChosen) {
       if (!active && entry && !document.body.classList.contains("is-output-source")) mountEntry(entry);
       return;
     }
-    const wantOutput = Boolean(queryOutput);
-    if (wantOutput) {
+    if (feedModeFromUrl() || (storedApiKey() && !document.body.classList.contains("preview-view"))) {
       setSourceToggle("output", true);
-      renderLiveSettings();
-      if (savedOutput) {
-        void connectOutput(savedOutput).catch((err) => {
-          setOutputStatus(err && err.message ? err.message : "Could not read that output.", "is-error");
-          usingOutput = false;
-          document.body.classList.remove("is-live-output");
-          if (!sourceChosen) setSourceToggle("output", true);
-          renderLiveSettings();
-          if (entry && !active) mountEntry(entry);
-        });
-        return;
+      try {
+        renderLiveSettings();
+      } catch (err) {
+        setOutputStatus(err && err.message ? err.message : "Could not open that theme.", "is-error");
       }
-      setOutputStatus("Paste an output URL.", "is-warn");
-    } else {
-      setSourceToggle("samples", true);
+      startApiFeed();
+      return;
     }
+    setSourceToggle("samples", true);
     if (entry) mountEntry(entry);
     else metaSub.textContent = "No themes available.";
   }
@@ -4551,7 +5374,7 @@
       } catch (err) {
         metaSub.textContent = err && err.message ? err.message : "Could not open that pack.";
       }
-      if (data.outputUrl) return;
+      if (data.outputUrl || data.feed) return;
       if (!active) bootPreview(start);
     }
     window.addEventListener("message", (event) => {
@@ -4559,7 +5382,14 @@
       takePack(event.data);
     });
     const bus = viewBus();
-    if (bus) bus.addEventListener("message", (event) => takePack(event.data));
+    if (bus) {
+      bus.addEventListener("message", (event) => {
+        const data = event.data;
+        if (!data || data.source !== VIEW_CHANNEL || data.type !== "feed-mode") return;
+        acceptViewerFeedMode(data.mode);
+      });
+      bus.addEventListener("message", (event) => takePack(event.data));
+    }
     const announce = () => {
       const msg = { source: VIEW_CHANNEL, type: "ready", nonce: viewNonce };
       if (bus) bus.postMessage(msg);

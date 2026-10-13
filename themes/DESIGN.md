@@ -34,8 +34,9 @@ Give the copy a new `id` and `label`. Do not reuse a built-in name (`led-scorebo
 1. Open https://vixi-custom-theme-extension.netlify.app/themes/preview.html
 2. Click **Import packs…**. In one selection, include the `.json`, the `*-engine.js` if the pack has one, and every font file the JSON names.
 3. If a notice lists missing files, add those files and import again. That theme is not saved until the files are together.
-4. Confirm the sample photo and message show (or the mosaic photos). Change a color setting and confirm the theme recolors. Turn on **Show QR** and **Show logo** and confirm the layout makes room. **Open viewer**, then click the picture or press F to hide the address bar.
-5. Edit the local files and import again. The same `id` or `label` replaces the saved copy.
+4. Confirm the sample photo and message show (or the mosaic photos). Change a color setting and confirm the theme recolors. Turn on **Show QR** and **Show logo** and confirm the layout makes room. **Open full screen output**, then click the picture or press F to hide the address bar.
+5. To check a live playlist, choose **Vixi API**, then **Playlist (messages)** or **Mosaic**. Enter the API key when asked. Copy the address bar to share that setup. The key is not in the link.
+6. Edit the local files and import again. The same `id` or `label` replaces the saved copy.
 
 ## Prompt
 

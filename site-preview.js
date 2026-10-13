@@ -25,12 +25,73 @@
         document.head.appendChild(fonts);
     }
 
+    function endOfCssString(src, start) {
+        const quote = src[start];
+        let i = start + 1;
+        while (i < src.length) {
+            if (src[i] === "\\") {
+                i += 2;
+                continue;
+            }
+            if (src[i] === quote) return i + 1;
+            i += 1;
+        }
+        return src.length;
+    }
+
+    function endOfCssUrl(src, start) {
+        let i = start + 4;
+        while (i < src.length && /\s/.test(src[i])) i += 1;
+        if (src[i] === '"' || src[i] === "'") {
+            i = endOfCssString(src, i);
+            while (i < src.length && src[i] !== ")") i += 1;
+            return i < src.length ? i + 1 : src.length;
+        }
+        let depth = 1;
+        while (i < src.length && depth > 0) {
+            if (src[i] === "(") depth += 1;
+            else if (src[i] === ")") depth -= 1;
+            if (depth === 0) return i + 1;
+            i += 1;
+        }
+        return src.length;
+    }
+
     function rewriteThemeCss(css, fromId, toClass) {
-        return String(css || "")
-            .split(fromId)
-            .join(toClass)
-            .replace(/(\d*\.?\d+)vh\b/g, "$1cqh")
-            .replace(/(\d*\.?\d+)vw\b/g, "$1cqw");
+        const src = String(css || "").split(fromId).join(toClass);
+        let out = "";
+        let i = 0;
+        while (i < src.length) {
+            const ch = src[i];
+            if (ch === '"' || ch === "'") {
+                const end = endOfCssString(src, i);
+                out += src.slice(i, end);
+                i = end;
+                continue;
+            }
+            if (ch === "/" && src[i + 1] === "*") {
+                const close = src.indexOf("*/", i + 2);
+                const end = close === -1 ? src.length : close + 2;
+                out += src.slice(i, end);
+                i = end;
+                continue;
+            }
+            if (src.slice(i, i + 4).toLowerCase() === "url(") {
+                const end = endOfCssUrl(src, i);
+                out += src.slice(i, end);
+                i = end;
+                continue;
+            }
+            const unit = src.slice(i).match(/^(\d*\.?\d+)(vh|vw)\b/);
+            if (unit && /\d/.test(unit[1])) {
+                out += unit[1] + (unit[2] === "vh" ? "cqh" : "cqw");
+                i += unit[0].length;
+                continue;
+            }
+            out += ch;
+            i += 1;
+        }
+        return out;
     }
 
     function parseCsv(text) {
