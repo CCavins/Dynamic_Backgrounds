@@ -93,10 +93,10 @@ async function playlistCaptures(key) {
 function normalizeCapture(row) {
   const tags = Array.isArray(row && row.tags) ? row.tags.map((tag) => String(tag)) : [];
   const lowered = tags.map((tag) => tag.toLowerCase());
-  const kind = lowered.some((tag) => tag.includes("mosaic"))
-    ? "mosaic"
-    : lowered.some((tag) => tag.includes("message"))
-      ? "message"
+  const kind = lowered.some((tag) => tag.includes("message"))
+    ? "message"
+    : lowered.some((tag) => tag.includes("mosaic"))
+      ? "mosaic"
       : "other";
   return {
     id: String((row && row.id) || "").trim(),

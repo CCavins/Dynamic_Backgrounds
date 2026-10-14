@@ -51,6 +51,7 @@
     "message-chalk-engine",
     "message-ticket-engine",
     "message-geico-marathon-engine",
+    "message-geico-marathon-signs-engine",
     "mosaic-block-wall-engine",
     "mosaic-bowl-lights-engine",
     "mosaic-neon-fans-engine",
@@ -64,6 +65,7 @@
     "packs/message-chalk.json",
     "packs/message-ticket.json",
     "packs/message-geico-marathon.json",
+    "packs/message-geico-marathon-signs.json",
     "packs/mosaic-block-wall.json",
     "packs/mosaic-bowl-lights.json",
     "packs/mosaic-neon-fans.json",
@@ -71,7 +73,7 @@
     "packs/mosaic-bubble-rise.json",
   ];
   const BUNDLED_PACK_IDS = {
-    message: ["message-grunge-poster", "message-brushed", "message-chalk", "message-ticket", "message-geico-marathon"],
+    message: ["message-grunge-poster", "message-brushed", "message-chalk", "message-ticket", "message-geico-marathon", "message-geico-marathon-signs"],
     mosaic: [
       "mosaic-slant-rows",
       "mosaic-block-wall",
@@ -86,6 +88,7 @@
     "message-chalk",
     "message-ticket",
     "message-geico-marathon",
+    "message-geico-marathon-signs",
     "mosaic-block-wall",
     "mosaic-bowl-lights",
     "mosaic-neon-fans",

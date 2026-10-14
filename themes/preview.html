@@ -1640,7 +1640,7 @@
 
 <script src="../extension/rules.js?v=1.32.1"></script>
 <script src="../extension/media.js?v=1.24.28"></script>
-<script src="../extension/message-themes.js?v=1.34.2"></script>
+<script src="../extension/message-themes.js?v=1.35.2"></script>
 <script src="../extension/vendor/three.min.js"></script>
 <script src="../extension/vendor/RoundedBoxGeometry.js"></script>
 <script src="../extension/vendor/tile-field.js?v=1.24.28"></script>
@@ -1658,6 +1658,8 @@
 <script src="../extension/engines/message-chalk-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/message-ticket-engine.js?v=1.32.1"></script>
 <script src="../extension/engines/message-geico-marathon-engine.js?v=1.34.8"></script>
+<script src="../extension/engines/message-geico-marathon-signs-engine.js?v=1.35.9"></script>
+<script src="./message-geico-marathon-signs-qr.js?v=4"></script>
 <script src="../extension/engines/mosaic-block-wall-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/mosaic-bowl-lights-engine.js?v=1.33.24"></script>
 <script src="../extension/engines/mosaic-neon-fans-engine.js?v=1.33.24c"></script>
@@ -1762,6 +1764,7 @@
     ["message-chalk.json", "Chalk", true],
     ["message-ticket.json", "Ticket", true],
     ["message-geico-marathon.json", "Geico NY Marathon", true],
+    ["message-geico-marathon-signs.json", "Geico NYC Marathon Signs", true],
     ["mosaic-block-wall.json", "Block Wall", true],
     ["mosaic-bowl-lights.json", "Bowl Lights", true],
     ["mosaic-neon-fans.json", "Neon Fans", true],
@@ -1786,6 +1789,7 @@
     "message-chalk",
     "message-ticket",
     "message-geico-marathon",
+    "message-geico-marathon-signs",
     "mosaic-block-wall",
     "mosaic-bowl-lights",
     "mosaic-neon-fans",
@@ -1802,7 +1806,7 @@
   let previewRegistering = false;
   const settled = await Promise.all(
     CUSTOM_FILES.map(([file]) =>
-      fetch(file + "?v=1.34.8")
+      fetch(file + "?v=1.35.9")
         .then((r) => {
           if (!r.ok) throw new Error(file);
           return r.json();
@@ -3053,7 +3057,7 @@
 
   function sameVisibleMessage(capture) {
     if (!messageRoot || !messageRoot.classList.contains("on") || !capture) return false;
-    if (messageRoot.dataset.theme !== "message-geico-marathon") return false;
+    if (messageRoot.dataset.theme !== "message-geico-marathon" && messageRoot.dataset.theme !== "message-geico-marathon-signs") return false;
     const racer = messageRoot.querySelector("[data-message]");
     const from = messageRoot.querySelector("[data-name]");
     if (!racer || !from) return false;
@@ -3065,7 +3069,7 @@
     const message = capture.message || "";
     const name = capture.name || "";
     // This board never shows the guest photo, so a refreshed photo URL is the same screen.
-    if (messageRoot && messageRoot.dataset.theme === "message-geico-marathon") {
+    if (messageRoot && (messageRoot.dataset.theme === "message-geico-marathon" || messageRoot.dataset.theme === "message-geico-marathon-signs")) {
       return [message, name].join("\n");
     }
     const src = String(capture.src || "").split("?")[0];
